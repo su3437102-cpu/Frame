@@ -1,0 +1,86 @@
+[
+  {
+    "name": "proportional controls 0.15",
+    "passed": true
+  },
+  {
+    "name": "resize contained 0.15",
+    "passed": true
+  },
+  {
+    "name": "transparent resize 0.15",
+    "passed": true
+  },
+  {
+    "name": "object-space border 0.15",
+    "passed": true
+  },
+  {
+    "name": "proportional controls 0.5",
+    "passed": true
+  },
+  {
+    "name": "resize contained 0.5",
+    "passed": true
+  },
+  {
+    "name": "transparent resize 0.5",
+    "passed": true
+  },
+  {
+    "name": "object-space border 0.5",
+    "passed": true
+  },
+  {
+    "name": "proportional controls 1",
+    "passed": true
+  },
+  {
+    "name": "resize contained 1",
+    "passed": true
+  },
+  {
+    "name": "transparent resize 1",
+    "passed": true
+  },
+  {
+    "name": "object-space border 1",
+    "passed": true
+  },
+  {
+    "name": "proportional controls 3",
+    "passed": true
+  },
+  {
+    "name": "resize contained 3",
+    "passed": true
+  },
+  {
+    "name": "transparent resize 3",
+    "passed": true
+  },
+  {
+    "name": "object-space border 3",
+    "passed": true
+  },
+  {
+    "name": "board connector anchored to icon",
+    "passed": true
+  },
+  {
+    "name": "idle circle hides arrow",
+    "passed": true
+  },
+  {
+    "name": "hover reveals arrow",
+    "passed": true
+  },
+  {
+    "name": "short solid arrow",
+    "passed": true
+  },
+  {
+    "name": "resize hover has no gray box",
+    "passed": true
+  }
+]

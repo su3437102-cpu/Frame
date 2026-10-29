@@ -1,0 +1,34 @@
+[
+  {
+    "name": "object connector created",
+    "passed": true
+  },
+  {
+    "name": "connector follows object movement",
+    "passed": true
+  },
+  {
+    "name": "drag preview visible",
+    "passed": true
+  },
+  {
+    "name": "palette creates note on drop",
+    "passed": true
+  },
+  {
+    "name": "palette active style",
+    "passed": true
+  },
+  {
+    "name": "connector persists across reload",
+    "passed": true
+  },
+  {
+    "name": "selection no outside gap",
+    "passed": true
+  },
+  {
+    "name": "no runtime errors",
+    "passed": true
+  }
+]

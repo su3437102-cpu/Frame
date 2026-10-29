@@ -1,0 +1,70 @@
+[
+  {
+    "name": "single click selects without creating",
+    "passed": true
+  },
+  {
+    "name": "keyboard selection does not create",
+    "passed": true
+  },
+  {
+    "name": "no blue selected note tile",
+    "passed": true
+  },
+  {
+    "name": "drag creates one object",
+    "passed": true
+  },
+  {
+    "name": "board cutout has no panel shadow",
+    "passed": true
+  },
+  {
+    "name": "board cutout is transparent",
+    "passed": true
+  },
+  {
+    "name": "board shows card count",
+    "passed": true
+  },
+  {
+    "name": "todo has proper card surface",
+    "passed": true
+  },
+  {
+    "name": "todo label toggles checkbox",
+    "passed": true
+  },
+  {
+    "name": "todo checkbox toggles independently",
+    "passed": true
+  },
+  {
+    "name": "todo contents fit",
+    "passed": true
+  },
+  {
+    "name": "column border hugs card",
+    "passed": true
+  },
+  {
+    "name": "hover alone hides connector",
+    "passed": true
+  },
+  {
+    "name": "selection shows small connector",
+    "passed": true
+  },
+  {
+    "name": "connector small at 100 percent",
+    "passed": true
+  },
+  {
+    "name": "connector size stays stable on zoom",
+    "passed": true
+  },
+  {
+    "name": "no runtime errors",
+    "passed": true
+  }
+]

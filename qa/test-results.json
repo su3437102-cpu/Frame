@@ -1,0 +1,147 @@
+{
+  "date": "2026-10-27T15:33:47.056Z",
+  "browser": "155.0.8059.85",
+  "results": [
+    {
+      "name": "30 initial photo projects",
+      "passed": true
+    },
+    {
+      "name": "all photos loaded",
+      "passed": true
+    },
+    {
+      "name": "click selects",
+      "passed": true
+    },
+    {
+      "name": "stationary held drag resets perspective",
+      "passed": true
+    },
+    {
+      "name": "drag maps screen to world",
+      "passed": true,
+      "detail": {
+        "left": 150,
+        "moved": 267.647
+      }
+    },
+    {
+      "name": "undo restores position",
+      "passed": true
+    },
+    {
+      "name": "redo restores move",
+      "passed": true
+    },
+    {
+      "name": "delete moves to trash",
+      "passed": true
+    },
+    {
+      "name": "undo restores deleted photo",
+      "passed": true
+    },
+    {
+      "name": "ctrl wheel zoom",
+      "passed": true
+    },
+    {
+      "name": "zoom anchored pointer",
+      "passed": true
+    },
+    {
+      "name": "fixed topbar sizing",
+      "passed": true
+    },
+    {
+      "name": "Space drag pans",
+      "passed": true
+    },
+    {
+      "name": "middle drag pans",
+      "passed": true
+    },
+    {
+      "name": "blank drag marquee selects multiple",
+      "passed": true
+    },
+    {
+      "name": "corner resize changes size",
+      "passed": true
+    },
+    {
+      "name": "dark theme toggles",
+      "passed": true
+    },
+    {
+      "name": "note creation",
+      "passed": true
+    },
+    {
+      "name": "reload persistence",
+      "passed": true
+    },
+    {
+      "name": "theme persists",
+      "passed": true
+    },
+    {
+      "name": "backup JSON export",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow 320",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow 375",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow 390",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow 414",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow 768",
+      "passed": true
+    },
+    {
+      "name": "phone 30 projects",
+      "passed": true
+    },
+    {
+      "name": "phone project opens",
+      "passed": true
+    },
+    {
+      "name": "local photo upload",
+      "passed": true
+    },
+    {
+      "name": "uploaded photo embedded for backup",
+      "passed": true
+    },
+    {
+      "name": "import review shows before commit",
+      "passed": true
+    },
+    {
+      "name": "validated backup restores objects",
+      "passed": true
+    },
+    {
+      "name": "offline reload",
+      "passed": true
+    },
+    {
+      "name": "zero JS runtime errors",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

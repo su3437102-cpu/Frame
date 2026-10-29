@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f1f1ef"><title>FrameLab R11 · Visual Exploration</title><link rel="stylesheet" href="style.css"></head><body>
+<a class="skip" href="#desk">跳转到桌面</a>
+<header class="topbar"><button class="home" data-action="home" title="回到初始视口"><svg viewBox="0 0 24 24"><path d="M4 10 12 3l8 7v11h-6v-7h-4v7H4Z"/></svg><span>Home</span></button><button data-action="boards" class="myboards">My boards <span class="chevron">⌄</span></button><span class="divider"></span><button data-action="home" class="brand">FrameLab</button><span class="crumb">/</span><h1>Visual Exploration</h1><div class="topright"><button data-action="people" class="people" aria-label="人员"><span>F</span><span>+</span></button><button class="share" data-action="share">Share</button><button id="zoom" data-action="zoom" aria-label="缩放">100% ⌄</button><button data-action="more" aria-label="更多" class="more">•••</button></div></header>
+<aside class="toolbar" aria-label="创建工具"><div id="tools"></div><div class="toolbottom"><button data-action="upload" title="上传照片"><i data-icon="upload"></i><span>Upload</span></button><button data-action="trash" title="回收站"><i data-icon="trash"></i><span>Trash</span></button></div></aside>
+<main id="desk" tabindex="0" aria-label="无限桌面"><div id="world"></div><div id="marquee" hidden></div></main>
+<section id="mobile" aria-label="手机项目列表"><div class="mobilehead"><h2>我的项目</h2><span id="projectcount"></span></div><div class="mobiletabs"><button data-category="image" class="active">项目</button><button data-category="board">模板</button><button data-category="zone">工具</button><button data-action="desktop">桌面视图</button></div><div id="mobilelist"></div></section>
+<div class="deskfooter"><button data-action="new" class="newproject">＋ 新建项目</button><span id="saveState">已保存到此设备</span></div>
+<div id="edgeNav"></div><button class="maptoggle" data-action="map" title="空间小地图"><i data-icon="map"></i></button><div id="minimap"><svg id="map" viewBox="0 0 210 135"></svg><span>Visual Exploration</span></div>
+<div id="selectionbar" hidden><span id="selectedcount"></span><button data-action="edit">编辑</button><button data-action="duplicate">复制</button><button data-action="front">置顶</button><button data-action="delete">删除</button></div>
+<div id="popover" hidden></div><div id="toast" role="status" aria-live="polite"></div>
+<dialog id="dialog"><form method="dialog"><div class="dialoghead"><h2 id="dialogtitle"></h2><button value="cancel" aria-label="关闭">×</button></div></form><div id="dialogbody"></div></dialog>
+<input id="fileinput" type="file" accept="image/*" multiple hidden><input id="backupinput" type="file" accept="application/json,.json" hidden>
+<script src="app.js"></script><script src="interactions.js"></script></body></html>
+
+
+
