@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "frame",
+  "main": "cloud/worker.mjs",
+  "compatibility_date": "2026-10-29",
+  "workers_dev": true,
+  "build": { "command": "node cloud/build.mjs" },
+  "durable_objects": { "bindings": [{ "name": "DESK", "class_name": "PersonalDesk" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PersonalDesk"] }]
+}
