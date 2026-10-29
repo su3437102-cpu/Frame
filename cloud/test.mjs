@@ -14,7 +14,7 @@ const state={version:1,objects:[],trash:[],camera:{x:0,y:0,z:1}};
 test('anonymous and spoofed headers cannot load the application',async()=>{
   const r=await worker.fetch(new Request('https://frame.example/',{headers:{'Cf-Access-Authenticated-User-Email':'owner@example.com'}}),{OWNER_EMAIL:'owner@example.com'},{});assert.equal(r.status,403);
 });
-test('missing owner and wrong owner fail closed',async()=>{assert.equal((await worker.fetch(request(),{},ctx)).status,503);assert.equal((await worker.fetch(request(),{OWNER_EMAIL:'other@example.com'},ctx)).status,403)});
+test('unapproved identity and wrong runtime owner fail closed',async()=>{assert.equal((await worker.fetch(request(),{},ctx)).status,403);assert.equal((await worker.fetch(request(),{OWNER_EMAIL:'other@example.com'},ctx)).status,403)});
 test('cross origin writes rejected before storage',async()=>{assert.equal((await worker.fetch(request('PUT',{},'https://evil.example'),{OWNER_EMAIL:'owner@example.com'},ctx)).status,403)});
 test('runtime assets only; no service worker or source test exposure',async()=>{
   for(const p of ['qa/test-backup.json','cloud/worker.mjs','sw.js','.git/config'])assert.equal((await worker.fetch(new Request('https://frame.example/'+p),{OWNER_EMAIL:'owner@example.com'},ctx)).status,404);
