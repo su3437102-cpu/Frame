@@ -15,7 +15,7 @@
   actions.people=()=>modal('个人云端工作空间','<p class="dialogcopy">仅所有者可登录。照片与布局保存到云端，在你的设备间同步。云端桌面上限 8MB，照片使用应用压缩后的预览图；请单独保存原片。</p>');
   actions.share=()=>modal('个人备份','<p class="dialogcopy">本工作空间不提供公开分享。导出的备份包含照片与布局，请妥善保存。</p><div class="dialogactions">'+button('导出桌面备份','export')+button('导入备份','import')+'</div>');
   actions.help=actions.people;
-  const oldMore=actions.more;actions.more=()=>{oldMore();$('#popover').insertAdjacentHTML('beforeend','<hr><button id="cloudLogout">退出登录</button>');$('#cloudLogout').onclick=()=>{if(dirty){toast('仍有未同步修改，请先同步或导出备份');return}window.cloudLoggingOut=true;localStorage.removeItem(KEY);localStorage.removeItem(META);location.href='/cdn-cgi/access/logout'}};
+  const oldMore=actions.more;actions.more=()=>{oldMore();$('#popover').insertAdjacentHTML('beforeend','<hr><button id="cloudLogout">退出登录</button>');$('#cloudLogout').onclick=()=>{if(dirty){toast('仍有未同步修改，请先同步或导出备份');return}window.cloudLoggingOut=true;localStorage.removeItem(KEY);localStorage.removeItem(META);fetch('/auth/logout',{method:'POST'}).then(()=>location.href='/login').catch(()=>location.href='/login')}};
   window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
   window.addEventListener('online',push);
   // Read before writing: never overwrite an existing cloud desk with seeded demo content.

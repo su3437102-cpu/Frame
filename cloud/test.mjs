@@ -11,15 +11,23 @@ class Store{
 const ctx={access:{getIdentity:async()=>({email:'owner@example.com'})}};
 const request=(method='GET',body,origin='https://frame.example')=>new Request('https://frame.example/api/desk',{method,headers:{Origin:origin,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
 const state={version:1,objects:[],trash:[],camera:{x:0,y:0,z:1}};
-test('anonymous and spoofed headers cannot load the application',async()=>{
-  const r=await worker.fetch(new Request('https://frame.example/',{headers:{'Cf-Access-Authenticated-User-Email':'owner@example.com'}}),{OWNER_EMAIL:'owner@example.com'},{});assert.equal(r.status,403);
+
+const makeEnv=()=>{const desk=new PersonalDesk({storage:new Store()});return {LOGIN_KEY:'test-only-random-key-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ',DESK:{idFromName:()=>'',get:()=>desk}}};
+const login=(env,key=env.LOGIN_KEY,origin='https://frame.example')=>worker.fetch(new Request('https://frame.example/auth/login',{method:'POST',headers:{Origin:origin},body:JSON.stringify({key})}),env,{});
+test('missing config fails closed and public login contains no app',async()=>{assert.equal((await worker.fetch(request(),{},{})).status,503);const r=await worker.fetch(new Request('https://frame.example/login'),{},{});assert.equal(r.status,200);assert.doesNotMatch(await r.text(),/cloud-sync.js/)});
+test('authentication, forged cookie, csrf, logout and secret rotation',async()=>{
+ const env=makeEnv();assert.equal((await worker.fetch(request(),env,{})).status,401);
+ assert.equal((await login(env,'wrong')).status,401);assert.equal((await login(env,env.LOGIN_KEY,'https://evil.example')).status,403);
+ const r=await login(env);assert.equal(r.status,200);const cookie=r.headers.get('Set-Cookie');assert.match(cookie,/HttpOnly; Secure; SameSite=Strict/);
+ const authReq=(path,method='GET',origin='https://frame.example',c=cookie)=>new Request('https://frame.example'+path,{method,headers:{Cookie:c,Origin:origin,'Content-Type':'application/json'}});
+ assert.equal((await worker.fetch(authReq('/'),env,{})).status,200);
+ assert.equal((await worker.fetch(authReq('/api/desk','PUT','https://evil.example'),env,{})).status,403);
+ assert.equal((await worker.fetch(authReq('/api/desk','GET',undefined,cookie.replace(/=./,'=0')),env,{})).status,401);
+ for(const p of ['/qa/test-backup.json','/cloud/worker.mjs','/sw.js','/.git/config'])assert.equal((await worker.fetch(authReq(p),env,{})).status,404);
+ assert.match((await worker.fetch(authReq('/auth/logout','POST'),env,{})).headers.get('Set-Cookie'),/Max-Age=0/);
+ env.LOGIN_KEY+='rotated';assert.equal((await worker.fetch(authReq('/api/desk'),env,{})).status,401);
 });
-test('unapproved identity and wrong runtime owner fail closed',async()=>{assert.equal((await worker.fetch(request(),{},ctx)).status,403);assert.equal((await worker.fetch(request(),{OWNER_EMAIL:'other@example.com'},ctx)).status,403)});
-test('cross origin writes rejected before storage',async()=>{assert.equal((await worker.fetch(request('PUT',{},'https://evil.example'),{OWNER_EMAIL:'owner@example.com'},ctx)).status,403)});
-test('runtime assets only; no service worker or source test exposure',async()=>{
-  for(const p of ['qa/test-backup.json','cloud/worker.mjs','sw.js','.git/config'])assert.equal((await worker.fetch(new Request('https://frame.example/'+p),{OWNER_EMAIL:'owner@example.com'},ctx)).status,404);
-  const r=await worker.fetch(new Request('https://frame.example/'),{OWNER_EMAIL:'owner@example.com'},ctx);assert.equal(r.status,200);assert.match(await r.text(),/cloud-sync.js/);
-});
+test('login attempt limit persists across requests',async()=>{const env=makeEnv();for(let i=0;i<30;i++)assert.equal((await login(env,'wrong')).status,401);assert.equal((await login(env)).status,429)});
 test('initial state, save, read and stale revision rejection',async()=>{
   const desk=new PersonalDesk({storage:new Store()});assert.deepEqual(await (await desk.fetch(request())).json(),{revision:0,state:null});
   assert.equal((await desk.fetch(request('PUT',{revision:0,state}))).status,200);

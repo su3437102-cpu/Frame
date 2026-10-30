@@ -1,18 +1,12 @@
 import assets from '../dist/assets.mjs';
-import ownerHash from '../dist/owner.mjs';
+import {authenticate,loginPage} from './auth.mjs';
 const json=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 export default {
   async fetch(request,env,ctx){
-    // ctx.access is supplied by Cloudflare, never by client-controlled headers.
-    // Assets are bundled deliberately: the Static Assets router does not forward ctx.access.
-    if(!ctx.access) return json({error:'需要通过 Cloudflare Access 登录。'},403);
-    if(!env.OWNER_EMAIL&&!ownerHash) return json({error:'个人登录配置尚未完成。'},503);
-    let identity;try{identity=await ctx.access.getIdentity()}catch{return json({error:'登录验证失败。'},403)}
-    const email=identity?.email?.trim().toLowerCase()||'';
-    const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(email))),b=>b.toString(16).padStart(2,'0')).join('');
-    if(!email||(env.OWNER_EMAIL?email!==env.OWNER_EMAIL.trim().toLowerCase():hash!==ownerHash))return json({error:'此工作空间仅限所有者访问。'},403);
     const url=new URL(request.url);
-    if(url.pathname==='/api/me')return json({email:identity.email});
+    const auth=await authenticate(request,env);
+    if(auth instanceof Response)return auth;
+    if(url.pathname==='/api/me')return json({email:'个人工作空间'});
     if(url.pathname==='/api/desk'){
       if(!['GET','PUT'].includes(request.method))return json({error:'Method not allowed'},405);
       if(request.method==='PUT'&&(request.headers.get('Origin')!==url.origin||!request.headers.get('Content-Type')?.startsWith('application/json')))return json({error:'Invalid origin or content type'},403);
@@ -27,6 +21,14 @@ export default {
 export class PersonalDesk {
   constructor(ctx){this.storage=ctx.storage;}
   async fetch(request){
+    if(new URL(request.url).pathname==='/internal/login-limit'){
+      return this.storage.transaction(async tx=>{
+        const now=Date.now();let rate=await tx.get('login-rate');
+        if(!rate||now>=rate.until)rate={count:0,until:now+600000};
+        rate.count++;await tx.put('login-rate',rate);
+        return json({allowed:rate.count<=30,retry:Math.ceil((rate.until-now)/1000)});
+      });
+    }
     if(request.method==='GET'){
       return this.storage.transaction(async tx=>{
         const meta=await tx.get('meta');if(!meta)return json({revision:0,state:null});

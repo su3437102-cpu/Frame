@@ -1,5 +1,4 @@
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-import {createHash} from 'node:crypto';
 const files=['index.html','app.js','style.css','interactions.js','cloud-sync.js',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
 const assets={};
 for(const file of files){
@@ -11,6 +10,4 @@ for(const file of files){
 }
 mkdirSync(new URL('../dist/',import.meta.url),{recursive:true});
 writeFileSync(new URL('../dist/assets.mjs',import.meta.url),'export default '+JSON.stringify(assets)+';');
-const configuredOwner=JSON.parse(readFileSync(new URL('./owner.json',import.meta.url),'utf8')).sha256;
-writeFileSync(new URL('../dist/owner.mjs',import.meta.url),'export default '+JSON.stringify(process.env.OWNER_EMAIL?createHash('sha256').update(process.env.OWNER_EMAIL.trim().toLowerCase()).digest('hex'):configuredOwner)+';');
 console.log('Cloud build: '+files.length+' approved runtime files; no test data, credentials or R10 files.');
