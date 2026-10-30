@@ -46,3 +46,17 @@
 
 /* V0.5: screen-sized SVG layer, native vector paths, no photo captions. */
 #connections{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;z-index:80;pointer-events:none;shape-rendering:geometricPrecision}.edge-line,.edge-preview{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.bend-handle{fill:#fff;stroke:#606870;stroke-width:1;cursor:grab}.bend-handle:active{cursor:grabbing}.edge-dot{display:none}.toolbar svg{shape-rendering:geometricPrecision;stroke-linecap:round;stroke-linejoin:round}.image .caption,.mobilecard strong,.mobilecard small{display:none!important}.handdrawn .toolbar svg{filter:none;transform:none}
+
+/* V0.6: constant screen dimensions for selection and manipulation controls. */
+.image.selected .inner:after{border-width:var(--screen-pixel,1px)}
+.object.selected:not(.image):not(.board)>.inner:after{border-width:calc(2 * var(--screen-pixel,1px))}
+.board.selected .board-symbol{outline-width:calc(2 * var(--screen-pixel,1px))}
+.object.selected.zone{outline-width:calc(2 * var(--screen-pixel,1px));outline-offset:calc(-2 * var(--screen-pixel,1px))}
+.object.selected>.connect-handle,.board.selected .board-symbol>.connect-handle{transform:scale(var(--control-scale,1));transform-origin:center}
+.object .resize,.object .resize:hover,.object .resize:active{transform:scale(var(--control-scale,1));transform-origin:bottom right}
+.toolbar .glyph-line svg{width:24px;height:24px;stroke-width:1.7}
+#connections{transform:none;contain:layout style}.edge-line,.edge-preview{stroke-width:1.5}.bend-handle{stroke-width:1}
+.image.selected .inner:after{border:0;box-shadow:inset 0 0 0 var(--screen-pixel,1px) var(--selected)}
+.object.selected:not(.image):not(.board)>.inner:after{border:0;box-shadow:inset 0 0 0 calc(2 * var(--screen-pixel,1px)) var(--selected)}
+.board.selected .board-symbol{outline:0;box-shadow:inset 0 0 0 calc(2 * var(--screen-pixel,1px)) var(--selected)}
+.object.selected.zone{outline:none!important;box-shadow:inset 0 0 0 calc(2 * var(--screen-pixel,1px)) var(--selected)}
