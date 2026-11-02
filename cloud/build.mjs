@@ -1,5 +1,5 @@
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-const files=['index.html','app.js','style.css','interactions.js','cloud-sync.js',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
+const files=['index.html','app.js','style.css','interactions.js','cloud-sync.js','ps-system.js',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
 const assets={};
 for(const file of files){
   let bytes=readFileSync(new URL('../'+file,import.meta.url));
