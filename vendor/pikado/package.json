@@ -1,0 +1,41 @@
+{
+  "name": "pikado",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Free, open-source Photoshop alternative that runs in your browser. Layers, masks, PSD files, filters and adjustments \u2014 no install, no account, nothing uploaded except the optional Generative Fill you enable with your own API key.",
+  "license": "MIT",
+  "author": "Neiell Care L. Paradiang",
+  "homepage": "https://github.com/koneb71/pikado#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/koneb71/pikado.git"
+  },
+  "bugs": {
+    "url": "https://github.com/koneb71/pikado/issues"
+  },
+  "keywords": [
+    "image-editor",
+    "photo-editor",
+    "raster",
+    "vector",
+    "canvas",
+    "webgl",
+    "psd",
+    "layers",
+    "browser",
+    "offline"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "test": "vite --open /tests/"
+  },
+  "devDependencies": {
+    "vite": "^8.1.5"
+  },
+  "dependencies": {
+    "libheif-js": "1.23.5"
+  }
+}

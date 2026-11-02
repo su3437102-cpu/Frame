@@ -14,6 +14,15 @@ const state={version:1,objects:[],trash:[],camera:{x:0,y:0,z:1}};
 
 const makeEnv=()=>{const desk=new PersonalDesk({storage:new Store()});return {LOGIN_KEY:'test-only-random-key-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ',DESK:{idFromName:()=>'',get:()=>desk}}};
 const login=(env,key=env.LOGIN_KEY,origin='https://frame.example')=>worker.fetch(new Request('https://frame.example/auth/login',{method:'POST',headers:{Origin:origin},body:JSON.stringify({key})}),env,{});
+
+test('editor assets require login and allow only same-origin framing',async()=>{
+ const env=makeEnv();let reads=0;env.EDITOR_ASSETS={fetch:async()=>{reads++;return new Response('editor')}};
+ const url='https://frame.example/editor/index.html';
+ const denied=await worker.fetch(new Request(url),env,{});assert.notEqual(denied.status,200);assert.equal(reads,0);
+ const cookie=(await login(env)).headers.get('Set-Cookie');
+ const allowed=await worker.fetch(new Request(url,{headers:{Cookie:cookie}}),env,{});
+ assert.equal(await allowed.text(),'editor');assert.equal(allowed.headers.get('X-Frame-Options'),'SAMEORIGIN');assert.equal(allowed.headers.get('Cache-Control'),'private, no-store');
+});
 test('missing config fails closed and public login contains no app',async()=>{assert.equal((await worker.fetch(request(),{},{})).status,503);const r=await worker.fetch(new Request('https://frame.example/login'),{},{});assert.equal(r.status,200);assert.doesNotMatch(await r.text(),/cloud-sync.js/)});
 test('authentication, forged cookie, csrf, logout and secret rotation',async()=>{
  const env=makeEnv();assert.equal((await worker.fetch(request(),env,{})).status,401);

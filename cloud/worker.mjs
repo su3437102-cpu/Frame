@@ -13,9 +13,15 @@ export default {
       return env.DESK.get(env.DESK.idFromName('owner')).fetch(request);
     }
     if(!['GET','HEAD'].includes(request.method))return json({error:'Method not allowed'},405);
+    if(url.pathname.startsWith('/editor/')){
+      if(!env.EDITOR_ASSETS)return json({error:'Editor assets unavailable'},503);
+      const response=await env.EDITOR_ASSETS.fetch(request);
+      const headers=new Headers(response.headers);headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Cache-Control','private, no-store');headers.set('X-Content-Type-Options','nosniff');
+      return new Response(response.body,{status:response.status,headers});
+    }
     const asset=assets[url.pathname==='/'?'/index.html':url.pathname];
     if(!asset)return json({error:'Not found'},404);
-    return new Response(request.method==='HEAD'?null:Uint8Array.from(atob(asset.body),c=>c.charCodeAt(0)),{headers:{'Content-Type':asset.type,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY'}});
+    return new Response(request.method==='HEAD'?null:Uint8Array.from(atob(asset.body),c=>c.charCodeAt(0)),{headers:{'Content-Type':asset.type,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':url.pathname.startsWith('/editor/')?'SAMEORIGIN':'DENY'}});
   }
 };
 export class PersonalDesk {

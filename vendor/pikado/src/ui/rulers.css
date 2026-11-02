@@ -1,0 +1,41 @@
+/* Rulers overlaid on the top and left edges of the canvas area.
+
+   The ruler strips are canvas-drawn (see rulers.js, which resolves its ink from
+   the design tokens); this file owns their placement and the corner block. */
+
+.pk-ruler {
+  position: absolute;
+  z-index: 6;
+  display: block;
+  cursor: default;
+  touch-action: none;
+}
+
+.pk-ruler-h {
+  top: 0;
+  left: 20px;
+  right: 0;
+  height: 20px;
+  cursor: row-resize;
+}
+
+.pk-ruler-v {
+  top: 20px;
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  cursor: col-resize;
+}
+
+/* The corner is part of the same strip: same surface, hairline seams only. */
+.pk-ruler-corner {
+  position: absolute;
+  z-index: 7;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  background: var(--s1);
+  border-right: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+}

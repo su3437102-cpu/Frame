@@ -1,0 +1,69 @@
+/* Gradient tool — options-bar swatch and the preset picker dialog. */
+
+/* Scoped away from the stop swatch in src/ui/gradient-editor.css, which shares
+   the class name but is a .pk-color-swatch. */
+.pk-grad-swatch:not(.pk-color-swatch) {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  background: var(--s0);
+  border: 1px solid var(--hair-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  line-height: 0;
+  transition: border-color .12s ease;
+}
+
+.pk-grad-swatch:not(.pk-color-swatch):hover { border-color: var(--accent); }
+.pk-grad-swatch:not(.pk-color-swatch) canvas { display: block; border-radius: var(--r-xs); }
+
+.pk-pattern-select { min-width: 124px; }
+
+.pk-grad-dialog .pk-dialog-body { max-height: 60vh; overflow: auto; }
+
+.pk-grad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* Preset cards: hairline card, tinted plus an accent-coloured name when
+   picked — never a filled accent block. */
+.pk-grad-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px;
+  background: var(--s1);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  color: var(--text-dim);
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+
+.pk-grad-cell:hover { background: var(--s3); border-color: var(--hair-2); color: var(--text-hi); }
+
+.pk-grad-cell.selected {
+  background: var(--accent-dim);
+  border-color: var(--accent-ring);
+  color: var(--accent-hi);
+}
+
+.pk-grad-cell canvas {
+  display: block;
+  width: 100%;
+  height: 28px;
+  border-radius: var(--r-xs);
+  box-shadow: inset 0 0 0 1px var(--hair-2);
+}
+
+.pk-grad-name {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,12 @@
+Pikado
+Copyright (c) 2026 Neiell Care L. Paradiang. MIT License: LICENSE.txt
+Source: https://github.com/koneb71/pikado/tree/29f6d8902a91f089edc8b327ab311ffa44859023
+FrameLab integration modifications are included in vendor/pikado/src/framelab-bridge.js and src/main.js.
+
+libheif-js 1.23.5 (optional HEIC decoder)
+LGPL-3.0: libheif-LICENSE.txt
+Unmodified JavaScript/WASM decoder built from libheif and libde265.
+Source and build/relink instructions: https://github.com/catdad-experiments/libheif-js
+https://github.com/strukturag/libheif
+https://github.com/strukturag/libde265
+The decoder is a separately loaded JavaScript asset; it may be replaced with a compatible rebuilt version.

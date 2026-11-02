@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Pikado — Image Studio</title>
+    <meta name="description" content="Pikado — a browser-based raster and vector image studio." />
+    <meta name="theme-color" content="#0f0f13" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- iOS ignores the manifest's icons array, so it needs this to get a
+         home-screen icon. -->
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <!-- The mark: two overlapping planes with a knocked-out aperture. Kept inline
+         so the tab icon is right on first paint; src/ui/brand.js owns the source. -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22a%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22.85%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%237C6AF6%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%234B3BD6%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22b%22%20x1%3D%220%22%20y1%3D%221%22%20x2%3D%221%22%20y2%3D%220%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%235FDCEA%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%239B7CFF%22%2F%3E%3C%2FlinearGradient%3E%3Cmask%20id%3D%22m%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22%23fff%22%2F%3E%3Cpath%20d%3D%22M16%2010.4%20L21.6%2016%20L16%2021.6%20L10.4%2016z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fmask%3E%3C%2Fdefs%3E%3Cg%20mask%3D%22url(%23m)%22%3E%3Cpath%20d%3D%22M16%202.6%20L29.4%2016%20L16%2029.4%20L2.6%2016z%22%20fill%3D%22url(%23a)%22%2F%3E%3Cpath%20d%3D%22M16%202.6%20L29.4%2016%20L16%2016z%22%20fill%3D%22url(%23b)%22%20opacity%3D%22.92%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E" />
+  </head>
+  <body>
+    <div id="app" class="pk-app">
+      <header id="menubar" class="pk-menubar"></header>
+      <div id="optionsbar" class="pk-optionsbar"></div>
+      <div id="main" class="pk-main">
+        <aside id="toolbar" class="pk-toolbar"></aside>
+        <section id="workspace" class="pk-workspace">
+          <div id="tabbar" class="pk-tabbar"></div>
+          <div id="canvas-area" class="pk-canvas-area">
+            <canvas id="view" class="pk-view"></canvas>
+            <div id="canvas-overlay" class="pk-canvas-overlay"></div>
+          </div>
+          <div id="statusbar" class="pk-statusbar"></div>
+        </section>
+        <aside id="panels" class="pk-panels"></aside>
+      </div>
+      <div id="toasts" class="pk-toasts"></div>
+      <div id="busy" class="pk-busy" hidden><div class="pk-busy-box"><div class="pk-spinner"></div><span id="busy-label"></span></div></div>
+    </div>
+    <input id="file-input" type="file" multiple accept="image/*,.psd,.psb,.svg,.pkd,.heic,.heif,.hif,.icns" hidden />
+    <script type="module" src="/src/main.js"></script>
+    <script>
+      /*
+       * Self-heal a stale service worker.
+       *
+       * The worker caches the app shell, and `/assets/*` is served cache-first because
+       * a content hash means those bytes can never change. The failure mode that
+       * combination allows: if a cached `index.html` survives a deploy, it names asset
+       * hashes that no longer exist on the server. The module then fails to load and
+       * the page sits there — blank, with nothing in the console, and no way out,
+       * because every reload is answered from the same cache.
+       *
+       * That is the worst kind of failure for an app that keeps a user's work locally,
+       * so it gets an escape hatch: if the entry module has not booted shortly after
+       * load, drop the worker and its caches and reload once. `sessionStorage` makes it
+       * once — a genuinely broken build must show its error rather than reload forever.
+       *
+       * Only while online, and the asymmetry is deliberate. Offline, that cache is the
+       * only copy of the app there is; clearing it would turn a blank page into a page
+       * that cannot come back at all, and it would be clearing it at the one moment the
+       * network cannot replace it. A blank page offline recovers by itself the next time
+       * there is a network, because navigation is network-first. `onLine` is only
+       * trustworthy when false — true can mean a LAN with no route out — and false is
+       * the direction this needs.
+       *
+       * The user's documents are in IndexedDB (src/io/store.js), which the Cache API
+       * does not touch, so nothing below can lose work.
+       */
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          if (window.pikado || sessionStorage.getItem('pk-healed')) return;
+          if (!('serviceWorker' in navigator)) return;
+          if (navigator.onLine === false) return;
+          sessionStorage.setItem('pk-healed', '1');
+          console.warn('[pikado] the app did not start; clearing a stale service worker and reloading');
+          Promise.all([
+            navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister(); }));
+            }),
+            typeof caches !== 'undefined'
+              ? caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })
+              : null,
+          ]).catch(function () { /* reload regardless */ }).then(function () { location.reload(); });
+        }, 4000);
+      });
+    </script>
+    <noscript>Pikado needs JavaScript enabled.</noscript>
+  </body>
+</html>

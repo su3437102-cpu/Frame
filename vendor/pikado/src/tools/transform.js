@@ -1,0 +1,1226 @@
+import { app } from '../core/app.js';
+import {
+  isSmartLayer, getSmartTransform, getSmartPerspective, getSmartWarp, setSmartTransform,
+  toMatrix3, fromMatrix3, matrix3Multiply, invertMatrix3, applyMatrix3,
+  unitSquareToQuad, rectToQuad, identityWarp, evalWarp, drawMappedGrid,
+} from '../core/smart.js';
+import { createCanvas, cloneCanvas, clamp, deg2rad, rad2deg } from '../core/util.js';
+import { LayerType } from '../core/layer.js';
+import { snapRect, snapPoint, clearSnapLines } from '../core/snapping.js';
+import { OVERLAY } from '../ui/brand.js';
+import { cmd, sep } from '../ui/canvas-menu.js';
+
+/**
+ * The free-transform session.
+ *
+ * This is **not** a toolbar tool: it is a modal state stored on
+ * `app.transformSession` and driven by whichever tool is active (the Move tool
+ * forwards its pointer events here) plus the options bar, which reads and
+ * writes the numeric fields through `get/setTransformNumeric`.
+ *
+ * Model
+ * -----
+ * `params` describes an affine transform about a movable pivot:
+ *
+ *     M = T(tx,ty) · T(p) · R(angle) · K(skewX,skewY) · S(sx,sy) · T(-p)
+ *
+ * `quad` holds the four destination corners of `bounds` (TL, TR, BR, BL) and is
+ * what actually gets rendered. While the transform stays affine the quad is
+ * derived from `params`; distort/perspective drags set `freeform` and edit the
+ * quad directly. Warp mode replaces both with a 4×4 Bézier control mesh.
+ *
+ * Smart layers
+ * ------------
+ * Nothing in a session is ever baked into a smart layer's pixels — not scale,
+ * not perspective, not warp. `baseSmart[i]` records the layer's whole shape
+ * (affine matrix, projective row, warp grid) as it was when the session opened,
+ * and every render composes the session's own map onto that and hands the result
+ * to `setSmartTransform`, which re-renders from the embedded source. In warp mode
+ * the session's mesh is *the* mesh: for a smart layer it is initialised from the
+ * layer's stored grid mapped into document space, and mapped straight back
+ * through the inverse of its transform on every frame.
+ */
+
+const HIT = 7;        // handle hit radius in screen pixels
+const ROT_PAD = 26;   // ring outside a corner that starts a rotation
+
+/* ------------------------------------------------------------------ */
+/* Geometry helpers                                                    */
+/* ------------------------------------------------------------------ */
+
+function cornersOfRect(b) {
+  return [
+    { x: b.x, y: b.y },
+    { x: b.x + b.width, y: b.y },
+    { x: b.x + b.width, y: b.y + b.height },
+    { x: b.x, y: b.y + b.height },
+  ];
+}
+
+function edgeMidsOfRect(b) {
+  const c = cornersOfRect(b);
+  return [mid(c[0], c[1]), mid(c[1], c[2]), mid(c[2], c[3]), mid(c[3], c[0])];
+}
+
+function mid(a, b) {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+function applyM(m, p) {
+  return { x: m.a * p.x + m.c * p.y + m.e, y: m.b * p.x + m.d * p.y + m.f };
+}
+
+function pivotFor(s, pivotRel) {
+  const pr = pivotRel || s.pivotRel;
+  return { x: s.bounds.x + pr.x * s.bounds.width, y: s.bounds.y + pr.y * s.bounds.height };
+}
+
+/** Where the pivot currently sits in document space. */
+function pivotDest(s) {
+  if (s.warp) return evalWarp(s.warp.pts, s.pivotRel.x, s.pivotRel.y);
+  if (s.freeform) return bilinearQuad(s.quad, s.pivotRel.x, s.pivotRel.y);
+  const p = pivotFor(s);
+  return { x: p.x + s.params.tx, y: p.y + s.params.ty };
+}
+
+/** Full transform matrix for a parameter set. */
+function matrixFrom(s, params, pivotRel) {
+  const p = pivotFor(s, pivotRel);
+  const m = new DOMMatrix();
+  m.translateSelf(params.tx, params.ty);
+  m.translateSelf(p.x, p.y);
+  if (params.angle) m.rotateSelf(params.angle);
+  if (params.skewX || params.skewY) {
+    m.multiplySelf(new DOMMatrix([1, Math.tan(deg2rad(params.skewY)), Math.tan(deg2rad(params.skewX)), 1, 0, 0]));
+  }
+  m.scaleSelf(params.sx, params.sy);
+  m.translateSelf(-p.x, -p.y);
+  return m;
+}
+
+/** Everything except the scale — used to map a pointer back into source space. */
+function frameInverse(s, params, pivotRel) {
+  const p = pivotFor(s, pivotRel);
+  const m = new DOMMatrix();
+  m.translateSelf(params.tx, params.ty);
+  m.translateSelf(p.x, p.y);
+  if (params.angle) m.rotateSelf(params.angle);
+  if (params.skewX || params.skewY) {
+    m.multiplySelf(new DOMMatrix([1, Math.tan(deg2rad(params.skewY)), Math.tan(deg2rad(params.skewX)), 1, 0, 0]));
+  }
+  m.translateSelf(-p.x, -p.y);
+  return m.inverse();
+}
+
+function isAffineQuad(q) {
+  const ex = q[0].x + q[2].x - q[1].x - q[3].x;
+  const ey = q[0].y + q[2].y - q[1].y - q[3].y;
+  return Math.abs(ex) < 0.02 && Math.abs(ey) < 0.02;
+}
+
+function affineFromRectToQuad(b, q) {
+  const ux = (q[1].x - q[0].x) / b.width, uy = (q[1].y - q[0].y) / b.width;
+  const vx = (q[3].x - q[0].x) / b.height, vy = (q[3].y - q[0].y) / b.height;
+  return {
+    a: ux, b: uy, c: vx, d: vy,
+    e: q[0].x - ux * b.x - vx * b.y,
+    f: q[0].y - uy * b.x - vy * b.y,
+  };
+}
+
+function bilinearQuad(q, u, v) {
+  const tx = q[0].x + (q[1].x - q[0].x) * u, ty = q[0].y + (q[1].y - q[0].y) * u;
+  const bx = q[3].x + (q[2].x - q[3].x) * u, by = q[3].y + (q[2].y - q[3].y) * u;
+  return { x: tx + (bx - tx) * v, y: ty + (by - ty) * v };
+}
+
+/** Newton solve for the (u,v) that maps to `p` under `bilinearQuad`. */
+function inverseBilinear(q, p) {
+  let u = 0.5, v = 0.5;
+  for (let k = 0; k < 8; k++) {
+    const f = bilinearQuad(q, u, v);
+    const ex = f.x - p.x, ey = f.y - p.y;
+    if (Math.abs(ex) < 1e-6 && Math.abs(ey) < 1e-6) break;
+    const dux = (1 - v) * (q[1].x - q[0].x) + v * (q[2].x - q[3].x);
+    const duy = (1 - v) * (q[1].y - q[0].y) + v * (q[2].y - q[3].y);
+    const dvx = (1 - u) * (q[3].x - q[0].x) + u * (q[2].x - q[1].x);
+    const dvy = (1 - u) * (q[3].y - q[0].y) + u * (q[2].y - q[1].y);
+    const det = dux * dvy - dvx * duy;
+    if (Math.abs(det) < 1e-9) break;
+    u -= (ex * dvy - dvx * ey) / det;
+    v -= (dux * ey - ex * duy) / det;
+  }
+  return { x: u, y: v };
+}
+
+/* ------------------------------------------------------------------ */
+/* Mesh rasterisation                                                  */
+/* ------------------------------------------------------------------ */
+/* The triangle-patch resampler lives in core/smart.js (`drawMappedGrid`), which
+ * needs the very same thing to render a warped or perspective-transformed smart
+ * object. */
+
+/** Render `img` through the session's current shape into `ctx`. */
+function drawThrough(ctx, img, s) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  if (s.warp) {
+    const pts = s.warp.pts;
+    drawMappedGrid(ctx, img, s.bounds, 14, (u, v) => evalWarp(pts, u, v));
+    return;
+  }
+  if (isAffineQuad(s.quad)) {
+    const m = affineFromRectToQuad(s.bounds, s.quad);
+    if (!isFinite(m.a) || !isFinite(m.d) || Math.abs(m.a * m.d - m.b * m.c) < 1e-9) return;
+    ctx.save();
+    ctx.transform(m.a, m.b, m.c, m.d, m.e, m.f);
+    ctx.drawImage(img, 0, 0);
+    ctx.restore();
+    return;
+  }
+  const N = clamp(Math.round(Math.max(s.bounds.width, s.bounds.height) / 40), 6, 18);
+  const Q = unitSquareToQuad(s.quad);
+  drawMappedGrid(ctx, img, s.bounds, N, (u, v) => applyMatrix3(Q, u, v));
+}
+
+/* ------------------------------------------------------------------ */
+/* Session lifecycle                                                   */
+/* ------------------------------------------------------------------ */
+
+/** Recompute the quad from the affine parameters. */
+function syncFromParams(s) {
+  s.params.sx = Math.abs(s.params.sx) < 1e-4 ? (s.params.sx < 0 ? -1e-4 : 1e-4) : s.params.sx;
+  s.params.sy = Math.abs(s.params.sy) < 1e-4 ? (s.params.sy < 0 ? -1e-4 : 1e-4) : s.params.sy;
+  s.matrix = matrixFrom(s, s.params);
+  if (!s.freeform && !s.warp) s.quad = cornersOfRect(s.bounds).map((p) => applyM(s.matrix, p));
+}
+
+/** Best-fit affine for the current quad, so the numeric fields stay meaningful. */
+function syncFromQuad(s) {
+  const m = affineFromRectToQuad(s.bounds, s.quad);
+  s.matrix = new DOMMatrix([m.a, m.b, m.c, m.d, m.e, m.f]);
+}
+
+/**
+ * The whole non-destructive shape of a smart layer, or null for a raster one.
+ * @returns {{matrix:number[], perspective:number[], warp:object[][]|null,
+ *            sourceWidth:number, sourceHeight:number}|null}
+ */
+function smartShapeOf(layer) {
+  if (!isSmartLayer(layer)) return null;
+  return {
+    matrix: getSmartTransform(layer),
+    perspective: getSmartPerspective(layer),
+    warp: getSmartWarp(layer),
+    sourceWidth: layer.smart.sourceWidth,
+    sourceHeight: layer.smart.sourceHeight,
+  };
+}
+
+/** The session's own document→document map, as a row-major 3x3. */
+function sessionDelta3(s) {
+  if (s.freeform) return rectToQuad(s.bounds, s.quad);
+  const m = s.matrix;
+  return [m.a, m.c, m.e, m.b, m.d, m.f, 0, 0, 1];
+}
+
+function rasterLayersOf(list) {
+  const out = [];
+  const walk = (l) => {
+    if (l.type === LayerType.GROUP) {
+      for (const c of l.children || []) walk(c);
+      return;
+    }
+    if (l.canvas && !l.locked.all && !l.locked.pixels && !out.includes(l)) out.push(l);
+  };
+  for (const l of list) walk(l);
+  return out;
+}
+
+function unionBounds(layers, doc) {
+  let r = null;
+  for (const l of layers) {
+    const b = l.contentBounds();
+    if (!b) continue;
+    r = r ? {
+      x: Math.min(r.x, b.x), y: Math.min(r.y, b.y),
+      x2: Math.max(r.x2, b.x + b.width), y2: Math.max(r.y2, b.y + b.height),
+    } : { x: b.x, y: b.y, x2: b.x + b.width, y2: b.y + b.height };
+  }
+  if (!r) return { x: 0, y: 0, width: doc.width, height: doc.height };
+  return { x: r.x, y: r.y, width: Math.max(1, r.x2 - r.x), height: Math.max(1, r.y2 - r.y) };
+}
+
+/**
+ * Begin a free-transform session.
+ * @param {import('../core/document.js').PikaDocument} doc
+ * @param {{layers?:object[], mode?:'free'|'scale'|'rotate'|'skew'|'distort'|'perspective'|'warp'}} [opts]
+ * @returns {object|null} the session
+ */
+export function startTransform(doc, opts = {}) {
+  if (!doc) return null;
+  if (app.transformSession) commitTransform();
+
+  const layers = rasterLayersOf(opts.layers && opts.layers.length ? opts.layers : doc.selectedLayers());
+  if (!layers.length) {
+    app.toast('Select a pixel layer to transform.');
+    return null;
+  }
+
+  const bounds = unionBounds(layers, doc);
+  doc.beginEdit(layers);
+
+  const s = {
+    doc,
+    layers,
+    mode: opts.mode || 'free',
+    selectionMode: false,
+    baseCanvases: layers.map((l) => cloneCanvas(l.canvas)),
+    // A smart layer is transformed by composing maps, never by resampling its
+    // pixels, so repeated sessions cannot compound quality loss.
+    baseSmart: layers.map(smartShapeOf),
+    baseMasks: layers.map((l) => (l.mask && l.maskLinked ? cloneCanvas(l.mask) : null)),
+    baseSelection: null,
+    bounds,
+    params: { tx: 0, ty: 0, sx: 1, sy: 1, angle: 0, skewX: 0, skewY: 0 },
+    pivotRel: { x: 0.5, y: 0.5 },
+    matrix: new DOMMatrix(),
+    quad: cornersOfRect(bounds),
+    freeform: false,
+    warp: null,
+    drag: null,
+  };
+  app.transformSession = s;
+  syncFromParams(s);
+  if (s.mode === 'warp') initWarp(s);
+
+  installKeys();
+  // The Move tool is what forwards pointer events into the session.
+  if (!app.tool || app.tool.id !== 'move') app.setTool('move');
+  app.emit('tool-options', app.tool);
+  app.requestRender();
+  return s;
+}
+
+/** Transform the *selection outline* rather than pixels (Select > Transform Selection). */
+export function transformSelectionStart(doc) {
+  if (!doc) return null;
+  if (!doc.selection.active) {
+    app.toast('Make a selection first.');
+    return null;
+  }
+  if (app.transformSession) commitTransform();
+  const b = doc.selection.bounds() || { x: 0, y: 0, width: doc.width, height: doc.height };
+  const s = {
+    doc,
+    layers: [],
+    mode: 'free',
+    selectionMode: true,
+    baseCanvases: [],
+    baseMasks: [],
+    baseSelection: new Uint8ClampedArray(doc.selection.mask),
+    bounds: { x: b.x, y: b.y, width: Math.max(1, b.width), height: Math.max(1, b.height) },
+    params: { tx: 0, ty: 0, sx: 1, sy: 1, angle: 0, skewX: 0, skewY: 0 },
+    pivotRel: { x: 0.5, y: 0.5 },
+    matrix: new DOMMatrix(),
+    quad: cornersOfRect({ x: b.x, y: b.y, width: Math.max(1, b.width), height: Math.max(1, b.height) }),
+    freeform: false,
+    warp: null,
+    drag: null,
+  };
+  app.transformSession = s;
+  syncFromParams(s);
+  installKeys();
+  if (!app.tool || app.tool.id !== 'move') app.setTool('move');
+  app.emit('tool-options', app.tool);
+  app.requestRender();
+  return s;
+}
+
+export function isTransforming() {
+  return !!app.transformSession;
+}
+
+/**
+ * Canvas-menu entries for a live session. The Move tool shows these instead of
+ * its layer picker while a transform is in flight, which is what Photoshop does
+ * when you right-click inside the transform box.
+ *
+ * The mode rows are radio-like: `edit.transform.*` switches an existing session
+ * rather than starting a new one, so the current mode is ticked. Apply and
+ * Cancel have no commands of their own — they are the Enter/Escape keys.
+ *
+ * @returns {Array<object>}
+ */
+export function transformContextMenu() {
+  const s = app.transformSession;
+  if (!s) return [];
+  const mode = (id, m) => cmd(id, { checked: s.mode === m });
+  return [
+    { header: s.selectionMode ? 'Transform Selection' : 'Free Transform' },
+    mode('edit.transform.scale', 'scale'),
+    mode('edit.transform.rotate', 'rotate'),
+    mode('edit.transform.skew', 'skew'),
+    mode('edit.transform.distort', 'distort'),
+    mode('edit.transform.perspective', 'perspective'),
+    mode('edit.transform.warp', 'warp'),
+    sep(),
+    cmd('edit.transform.flip-h'),
+    cmd('edit.transform.flip-v'),
+    sep(),
+    { label: 'Apply', accel: 'Enter', run: () => commitTransform() },
+    { label: 'Cancel', accel: 'Esc', run: () => cancelTransform() },
+  ];
+}
+
+/**
+ * Push the session's current shape into one smart layer's payload.
+ * @returns {boolean} false when the maths degenerated (the caller then falls
+ *   back to the pixel path so the drag still does *something* visible)
+ */
+function renderSmartLayer(s, i) {
+  const l = s.layers[i];
+  const shape = s.baseSmart[i];
+  const H0 = toMatrix3(shape.matrix, shape.perspective);
+
+  if (s.warp) {
+    // The mesh already carries the whole session (initWarp seeded it from this
+    // layer's own grid through H0), so the affine part must not be applied twice.
+    const inv = invertMatrix3(H0);
+    const docPts = warpGridFor(s, i);
+    if (!inv || !docPts) return false;
+    const src = docPts.map((row) => row.map((p) => applyMatrix3(inv, p.x, p.y)));
+    return !!setSmartTransform(s.doc, l, shape.matrix, {
+      commit: false, perspective: shape.perspective, warp: src,
+    });
+  }
+
+  const split = fromMatrix3(matrix3Multiply(sessionDelta3(s), H0));
+  if (!split) return false;
+  return !!setSmartTransform(s.doc, l, split.matrix, {
+    commit: false, perspective: split.perspective, warp: shape.warp,
+  });
+}
+
+/** Re-draw every layer in the session through the current transform. */
+function renderSession(s) {
+  if (s.selectionMode) {
+    app.requestRender();
+    return;
+  }
+  for (let i = 0; i < s.layers.length; i++) {
+    const l = s.layers[i];
+    if (s.baseSmart && s.baseSmart[i]) {
+      if (renderSmartLayer(s, i)) continue;
+      if (!s.smartFallbackWarned) {
+        s.smartFallbackWarned = true;
+        app.toast('That transform collapses the Smart Object — falling back to its pixels.', 'warn');
+      }
+    }
+    const base = s.baseCanvases[i];
+    if (l.canvas && base) {
+      const c = l.canvas.getContext('2d');
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.clearRect(0, 0, l.canvas.width, l.canvas.height);
+      drawThrough(c, base, s);
+    }
+    const mbase = s.baseMasks[i];
+    if (l.mask && mbase) {
+      const c = l.mask.getContext('2d');
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.clearRect(0, 0, l.mask.width, l.mask.height);
+      drawThrough(c, mbase, s);
+      l.touchMask();
+    }
+  }
+  s.doc.touch('transform');
+}
+
+/** Bake the transform and record it in history. */
+export function commitTransform() {
+  const s = app.transformSession;
+  if (!s) return false;
+  app.transformSession = null;
+  removeKeys();
+
+  if (s.selectionMode) {
+    const doc = s.doc;
+    const src = createCanvas(doc.width, doc.height);
+    const sc = src.getContext('2d');
+    const img = new ImageData(doc.width, doc.height);
+    for (let p = 0, i = 3; p < s.baseSelection.length; p++, i += 4) img.data[i] = s.baseSelection[p];
+    sc.putImageData(img, 0, 0);
+
+    const out = createCanvas(doc.width, doc.height);
+    drawThrough(out.getContext('2d'), src, s);
+    const d = out.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, doc.width, doc.height).data;
+    const mask = new Uint8ClampedArray(doc.width * doc.height);
+    for (let p = 0, i = 3; p < mask.length; p++, i += 4) mask[p] = d[i];
+    doc.selection.set(mask);
+    doc.commit('Transform Selection');
+  } else {
+    s.doc.commit(s.warp ? 'Warp' : 'Free Transform');
+  }
+  app.emit('tool-options', app.tool);
+  app.requestRender();
+  return true;
+}
+
+/** Throw the transform away and put the cached pixels back. */
+export function cancelTransform() {
+  const s = app.transformSession;
+  if (!s) return false;
+  app.transformSession = null;
+  removeKeys();
+  if (!s.selectionMode) {
+    for (let i = 0; i < s.layers.length; i++) {
+      const l = s.layers[i];
+      const shape = s.baseSmart && s.baseSmart[i];
+      if (shape && isSmartLayer(l)) {
+        // Put the payload back, not just the pixels: the session edited the
+        // transform record itself, and a stale one would resurface on the next
+        // re-render.
+        setSmartTransform(s.doc, l, shape.matrix, {
+          commit: false, perspective: shape.perspective, warp: shape.warp,
+        });
+      } else if (s.baseCanvases[i]) {
+        l.canvas = cloneCanvas(s.baseCanvases[i]);
+      }
+      if (s.baseMasks[i]) { l.mask = cloneCanvas(s.baseMasks[i]); l.touchMask(); }
+    }
+    s.doc.touch('transform-cancel');
+  }
+  app.emit('tool-options', app.tool);
+  app.requestRender();
+  return true;
+}
+
+/* ------------------------------------------------------------------ */
+/* Warp mesh                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The document-space control grid to author for smart layer `i`: that layer's
+ * stored grid (or the neutral one) pushed through its transform *and* whatever
+ * the session has done so far. Mapping it straight back through the inverse on
+ * every frame is what makes the warp non-destructive.
+ */
+function smartWarpDocPts(s, i) {
+  const shape = s.baseSmart[i];
+  const base = shape.warp || identityWarp(shape.sourceWidth, shape.sourceHeight);
+  const H = matrix3Multiply(sessionDelta3(s), toMatrix3(shape.matrix, shape.perspective));
+  return base.map((row) => row.map((p) => applyMatrix3(H, p.x, p.y)));
+}
+
+/** The grid that drives smart layer `i`, or null when it has none. */
+function warpGridFor(s, i) {
+  const m = s.warp && s.warp.smart ? s.warp.smart[i] : null;
+  return m ? m.pts : null;
+}
+
+/**
+ * Every distinct control grid a warp session is editing: the visible one, plus
+ * one per smart layer whose box does not coincide with it. Deduplicated by
+ * identity, because the common single-smart-layer case shares one array.
+ */
+function warpGrids(s) {
+  if (!s.warp) return [];
+  const out = [s.warp.pts];
+  for (const m of s.warp.smart || []) {
+    if (m && !out.includes(m.pts)) out.push(m.pts);
+  }
+  return out;
+}
+
+function initWarp(s) {
+  const smartOnly = s.layers.length === 1 && s.baseSmart && s.baseSmart[0];
+  // A lone smart object warps its own box, so the handles the user drags are
+  // exactly the control points that get stored.
+  const pts = smartOnly ? smartWarpDocPts(s, 0) : (() => {
+    const grid = [];
+    for (let j = 0; j < 4; j++) {
+      const row = [];
+      for (let i = 0; i < 4; i++) row.push(bilinearQuad(s.quad, i / 3, j / 3));
+      grid.push(row);
+    }
+    return grid;
+  })();
+
+  s.warp = { pts, smart: null };
+  if (!s.baseSmart) return;
+  const smart = s.layers.map((_, i) => {
+    if (!s.baseSmart[i]) return null;
+    return { pts: smartOnly && i === 0 ? pts : smartWarpDocPts(s, i) };
+  });
+  if (smart.some(Boolean)) s.warp.smart = smart;
+}
+
+/** Switch an in-flight session between transform kinds. */
+export function setTransformMode(mode) {
+  const s = app.transformSession;
+  if (!s) return;
+  s.mode = mode;
+  if (mode === 'warp' && !s.warp) {
+    initWarp(s);
+    renderSession(s);
+  } else if (mode !== 'warp' && s.warp) {
+    // Collapse the mesh back to its corner quad.
+    s.quad = [s.warp.pts[0][0], s.warp.pts[0][3], s.warp.pts[3][3], s.warp.pts[3][0]].map((p) => ({ ...p }));
+    s.warp = null;
+    s.freeform = !isAffineQuad(s.quad);
+    if (s.freeform) syncFromQuad(s);
+    renderSession(s);
+  }
+  app.emit('tool-options', app.tool);
+  app.requestRender();
+}
+
+/* ------------------------------------------------------------------ */
+/* Numeric entry (driven by the options bar)                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @returns {null|{x,y,width,height,scaleX,scaleY,angle,skewX,skewY,pivotX,pivotY,mode,freeform,bounds}}
+ */
+export function getTransformNumeric() {
+  const s = app.transformSession;
+  if (!s) return null;
+  const p = pivotDest(s);
+  return {
+    x: Math.round(p.x * 100) / 100,
+    y: Math.round(p.y * 100) / 100,
+    width: Math.round(s.params.sx * 10000) / 100,
+    height: Math.round(s.params.sy * 10000) / 100,
+    scaleX: s.params.sx,
+    scaleY: s.params.sy,
+    angle: Math.round(s.params.angle * 100) / 100,
+    skewX: Math.round(s.params.skewX * 100) / 100,
+    skewY: Math.round(s.params.skewY * 100) / 100,
+    pivotX: s.pivotRel.x,
+    pivotY: s.pivotRel.y,
+    mode: s.mode,
+    freeform: !!(s.freeform || s.warp),
+    bounds: { ...s.bounds },
+  };
+}
+
+/**
+ * Apply numeric fields. Accepts any subset of
+ * `{x, y, width, height, scaleX, scaleY, angle, skewX, skewY, pivotX, pivotY}`
+ * where width/height are percentages.
+ */
+export function setTransformNumeric(obj) {
+  const s = app.transformSession;
+  if (!s || !obj) return;
+
+  if (obj.pivotX != null || obj.pivotY != null) {
+    if (s.freeform || s.warp) {
+      if (obj.pivotX != null) s.pivotRel.x = clamp(obj.pivotX, -2, 3);
+      if (obj.pivotY != null) s.pivotRel.y = clamp(obj.pivotY, -2, 3);
+    } else {
+      const before = applyM(matrixFrom(s, s.params), { x: s.bounds.x, y: s.bounds.y });
+      if (obj.pivotX != null) s.pivotRel.x = clamp(obj.pivotX, -2, 3);
+      if (obj.pivotY != null) s.pivotRel.y = clamp(obj.pivotY, -2, 3);
+      const after = applyM(matrixFrom(s, s.params), { x: s.bounds.x, y: s.bounds.y });
+      s.params.tx += before.x - after.x;
+      s.params.ty += before.y - after.y;
+    }
+  }
+
+  const prev = { ...s.params };
+  const pd0 = pivotDest(s);
+  const freeform = !!(s.freeform || s.warp);
+  if (obj.scaleX != null) s.params.sx = obj.scaleX;
+  else if (obj.width != null) s.params.sx = obj.width / 100;
+  if (obj.scaleY != null) s.params.sy = obj.scaleY;
+  else if (obj.height != null) s.params.sy = obj.height / 100;
+  if (obj.angle != null) s.params.angle = obj.angle;
+  if (obj.skewX != null) s.params.skewX = clamp(obj.skewX, -85, 85);
+  if (obj.skewY != null) s.params.skewY = clamp(obj.skewY, -85, 85);
+  if (obj.x != null) s.params.tx = freeform ? prev.tx + (obj.x - pd0.x) : obj.x - pivotFor(s).x;
+  if (obj.y != null) s.params.ty = freeform ? prev.ty + (obj.y - pd0.y) : obj.y - pivotFor(s).y;
+
+  if (freeform) {
+    // A distorted shape has no parameter decomposition, so apply the numeric
+    // change as a delta matrix on the points we already have.
+    applyDelta(s, matrixFrom(s, s.params).multiply(matrixFrom(s, prev).inverse()));
+  } else {
+    syncFromParams(s);
+  }
+  renderSession(s);
+  app.requestRender();
+}
+
+/** Push a document-space matrix through the quad or the warp mesh. */
+function applyDelta(s, m) {
+  const go = (p) => applyM(m, p);
+  if (s.warp) {
+    for (const g of warpGrids(s)) {
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) g[j][i] = go(g[j][i]);
+    }
+  } else {
+    s.quad = s.quad.map(go);
+    syncFromQuad(s);
+  }
+}
+
+/** Mirror the transform across the pivot. */
+export function flipTransform(axis) {
+  const s = app.transformSession;
+  if (!s) return;
+  if (s.warp || s.freeform) {
+    const d = pivotDest(s);
+    const m = axis === 'h'
+      ? new DOMMatrix([-1, 0, 0, 1, 2 * d.x, 0])
+      : new DOMMatrix([1, 0, 0, -1, 0, 2 * d.y]);
+    applyDelta(s, m);
+  } else {
+    if (axis === 'h') s.params.sx = -s.params.sx;
+    else s.params.sy = -s.params.sy;
+    syncFromParams(s);
+  }
+  renderSession(s);
+  app.emit('tool-options', app.tool);
+  app.requestRender();
+}
+
+/** Rotate the transform by `degrees` about the pivot. */
+export function rotateTransform(degrees) {
+  const s = app.transformSession;
+  if (!s || !degrees) return;
+  if (s.warp || s.freeform) {
+    const d = pivotDest(s);
+    const m = new DOMMatrix();
+    m.translateSelf(d.x, d.y);
+    m.rotateSelf(degrees);
+    m.translateSelf(-d.x, -d.y);
+    applyDelta(s, m);
+  } else {
+    s.params.angle += degrees;
+    syncFromParams(s);
+  }
+  renderSession(s);
+  app.emit('tool-options', app.tool);
+  app.requestRender();
+}
+
+/* ------------------------------------------------------------------ */
+/* Pointer interaction                                                 */
+/* ------------------------------------------------------------------ */
+
+function screenHandles(s, view) {
+  const q = s.quad.map((p) => view.toScreen(p.x, p.y));
+  return [q[0], q[1], q[2], q[3], mid(q[0], q[1]), mid(q[1], q[2]), mid(q[2], q[3]), mid(q[3], q[0])];
+}
+
+function pointInQuad(p, q) {
+  let inside = false;
+  for (let i = 0, j = 3; i < 4; j = i++) {
+    const a = q[i], b = q[j];
+    if ((a.y > p.y) !== (b.y > p.y) && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+function hitTest(s, e, view) {
+  const pt = { x: e.sx, y: e.sy };
+  const pd = pivotDest(s);
+  const pv = view.toScreen(pd.x, pd.y);
+  if (Math.hypot(pt.x - pv.x, pt.y - pv.y) <= HIT + 2) return { kind: 'pivot' };
+
+  if (s.warp) {
+    for (let j = 0; j < 4; j++) {
+      for (let i = 0; i < 4; i++) {
+        const p = view.toScreen(s.warp.pts[j][i].x, s.warp.pts[j][i].y);
+        if (Math.hypot(pt.x - p.x, pt.y - p.y) <= HIT) return { kind: 'warp', row: j, col: i };
+      }
+    }
+  }
+
+  const h = screenHandles(s, view);
+  for (let i = 0; i < h.length; i++) {
+    if (Math.hypot(pt.x - h[i].x, pt.y - h[i].y) <= HIT) {
+      return { kind: i < 4 ? 'corner' : 'edge', index: i < 4 ? i : i - 4 };
+    }
+  }
+  if (pointInQuad(pt, h.slice(0, 4))) return { kind: 'move' };
+  // Anywhere outside rotates, exactly like Photoshop.
+  for (let i = 0; i < 4; i++) {
+    if (Math.hypot(pt.x - h[i].x, pt.y - h[i].y) <= HIT + ROT_PAD) return { kind: 'rotate', index: i };
+  }
+  return { kind: 'rotate', index: 0 };
+}
+
+/** @returns {boolean} true when the session consumed the event */
+export function transformPointerDown(e, view) {
+  const s = app.transformSession;
+  if (!s) return false;
+  const hit = hitTest(s, e, view);
+  s.drag = {
+    ...hit,
+    startDoc: { x: e.x, y: e.y },
+    params: { ...s.params },
+    pivotRel: { ...s.pivotRel },
+    pivotDest: pivotDest(s),
+    quad: s.quad.map((p) => ({ ...p })),
+    warpBase: warpGrids(s).map((g) => g.map((r) => r.map((p) => ({ ...p })))),
+  };
+  return true;
+}
+
+export function transformPointerMove(e, view) {
+  const s = app.transformSession;
+  if (!s || !s.drag) return false;
+  const d = s.drag;
+  const primary = e.ctrlKey || e.metaKey;
+
+  switch (d.kind) {
+    case 'pivot': dragPivot(s, e); break;
+    case 'warp': dragWarp(s, e); break;
+    case 'rotate': dragRotate(s, e); break;
+    case 'move': dragMove(s, e); break;
+    case 'corner':
+      if (primary && e.altKey && e.shiftKey) dragPerspective(s, e);
+      else if (primary || s.mode === 'distort') dragDistort(s, e);
+      else if (s.mode === 'perspective') dragPerspective(s, e);
+      else dragScale(s, e, true);
+      break;
+    case 'edge':
+      if ((primary && e.shiftKey) || s.mode === 'skew') dragSkew(s, e);
+      else if (primary) dragDistortEdge(s, e);
+      else dragScale(s, e, false);
+      break;
+    default: return false;
+  }
+  renderSession(s);
+  app.requestRender();
+  return true;
+}
+
+export function transformPointerUp() {
+  const s = app.transformSession;
+  if (!s || !s.drag) return false;
+  s.drag = null;
+  clearSnapLines();
+  app.emit('tool-options', app.tool);
+  return true;
+}
+
+/* --- individual drag behaviours ----------------------------------- */
+
+/**
+ * Is the transform still square to the document?
+ *
+ * A guide is a line in document space. Once the box is rotated or skewed its
+ * edges are not, so snapping the cursor and rotating the result afterwards
+ * lands the edge somewhere near the guide instead of on it — worse than
+ * leaving it alone. Freeform and warp move points individually and never have
+ * a straight edge to offer.
+ */
+function squareToDoc(s) {
+  const p = s.params || {};
+  return !s.warp && !s.freeform && !p.angle && !p.skewX && !p.skewY;
+}
+
+/**
+ * The document-space rectangle the box currently covers, given a translation
+ * on top of the drag's starting parameters.
+ */
+function movedFrame(s, params, dx, dy) {
+  const m = matrixFrom(s, { ...params, tx: params.tx + dx, ty: params.ty + dy }, s.drag.pivotRel);
+  const pts = cornersOfRect(s.bounds).map((c) => applyM(m, c));
+  const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
+
+function dragMove(s, e) {
+  const d = s.drag;
+  let dx = e.x - d.startDoc.x, dy = e.y - d.startDoc.y;
+  if (e.shiftKey) {
+    if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0;
+  }
+  if (squareToDoc(s)) {
+    // Snap the box, not the cursor: sliding it left should let its right edge
+    // catch a guide just as readily as its left one.
+    const snap = snapRect(movedFrame(s, d.params, dx, dy), app.activeDoc, {
+      exclude: s.layers, event: e, axes: e.shiftKey ? (dx ? 'x' : 'y') : 'both',
+    });
+    dx += snap.dx;
+    dy += snap.dy;
+  }
+  if (s.warp) {
+    const grids = warpGrids(s);
+    for (let k = 0; k < grids.length; k++) {
+      const g = grids[k], b = d.warpBase[k];
+      if (!b) continue;
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {
+        g[j][i] = { x: b[j][i].x + dx, y: b[j][i].y + dy };
+      }
+    }
+    return;
+  }
+  if (s.freeform) {
+    s.quad = d.quad.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+    syncFromQuad(s);
+    return;
+  }
+  s.params.tx = d.params.tx + dx;
+  s.params.ty = d.params.ty + dy;
+  syncFromParams(s);
+}
+
+function dragRotate(s, e) {
+  const d = s.drag;
+  const cx = d.pivotDest.x, cy = d.pivotDest.y;
+  const a0 = Math.atan2(d.startDoc.y - cy, d.startDoc.x - cx);
+  const a1 = Math.atan2(e.y - cy, e.x - cx);
+  let delta = rad2deg(a1 - a0);
+  if (s.warp || s.freeform) {
+    const r = deg2rad(delta), cos = Math.cos(r), sin = Math.sin(r);
+    const rot = (pt) => ({
+      x: cx + (pt.x - cx) * cos - (pt.y - cy) * sin,
+      y: cy + (pt.x - cx) * sin + (pt.y - cy) * cos,
+    });
+    if (s.warp) {
+      const grids = warpGrids(s);
+      for (let k = 0; k < grids.length; k++) {
+        const g = grids[k], b = d.warpBase[k];
+        if (!b) continue;
+        for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) g[j][i] = rot(b[j][i]);
+      }
+    } else {
+      s.quad = d.quad.map(rot);
+      syncFromQuad(s);
+    }
+    return;
+  }
+  let deg = d.params.angle + delta;
+  if (e.shiftKey) deg = Math.round(deg / 15) * 15;
+  s.params.angle = deg;
+  syncFromParams(s);
+}
+
+function dragScale(s, e, isCorner) {
+  const d = s.drag;
+  const p = pivotFor(s, d.pivotRel);
+  const inv = frameInverse(s, d.params, d.pivotRel);
+  /*
+   * The handle you are pulling is what snaps. Ctrl is not the escape hatch
+   * here the way it is elsewhere — mid-transform it already means distort, so
+   * it never reaches this function. View > Snap is the way out, which is also
+   * how Photoshop behaves during a transform.
+   */
+  const at = squareToDoc(s) ? snapPoint(e.x, e.y, app.activeDoc, { exclude: s.layers }) : e;
+  const q = inv.transformPoint(new DOMPoint(at.x, at.y));
+  const src = isCorner ? cornersOfRect(s.bounds)[d.index] : edgeMidsOfRect(s.bounds)[d.index];
+  const anchor = isCorner
+    ? cornersOfRect(s.bounds)[(d.index + 2) % 4]
+    : edgeMidsOfRect(s.bounds)[(d.index + 2) % 4];
+
+  /*
+   * Measure the scale from whatever is actually staying put.
+   *
+   * Alt scales about the pivot. Without it the OPPOSITE handle is pinned (see
+   * the correction below), and the factor has to be measured from that handle
+   * or the two disagree: the pivot sits half way, so every distance from it is
+   * half the one that matters and the box travelled twice as far as the
+   * cursor. Dragging a corner of a 200x150 box in by 60x45 gave a scale of
+   * 0.4 — an 80x60 box — where the handle you are holding asks for 0.7.
+   */
+  const ref = e.altKey ? p : anchor;
+  const r0x = src.x - ref.x, r0y = src.y - ref.y;
+
+  let nsx = d.params.sx, nsy = d.params.sy;
+  const wantX = isCorner || d.index === 1 || d.index === 3;
+  const wantY = isCorner || d.index === 0 || d.index === 2;
+  if (wantX && Math.abs(r0x) > 1e-6) nsx = (q.x - ref.x) / r0x;
+  if (wantY && Math.abs(r0y) > 1e-6) nsy = (q.y - ref.y) / r0y;
+
+  if (e.shiftKey) {
+    const fx = d.params.sx ? nsx / d.params.sx : 1;
+    const fy = d.params.sy ? nsy / d.params.sy : 1;
+    const f = isCorner ? (Math.abs(fx) + Math.abs(fy)) / 2 : Math.abs(wantX ? fx : fy);
+    nsx = d.params.sx * f * (fx < 0 ? -1 : 1);
+    nsy = d.params.sy * f * (fy < 0 ? -1 : 1);
+  }
+
+  s.params.sx = nsx;
+  s.params.sy = nsy;
+  s.params.tx = d.params.tx;
+  s.params.ty = d.params.ty;
+
+  if (!e.altKey) {
+    // Keep the opposite handle pinned instead of scaling around the pivot.
+    const before = applyM(matrixFrom(s, d.params, d.pivotRel), anchor);
+    const after = applyM(matrixFrom(s, s.params, d.pivotRel), anchor);
+    s.params.tx += before.x - after.x;
+    s.params.ty += before.y - after.y;
+  }
+  syncFromParams(s);
+}
+
+function dragSkew(s, e) {
+  const d = s.drag;
+  const p = pivotFor(s, d.pivotRel);
+  const rot = deg2rad(d.params.angle);
+  const ex = { x: Math.cos(rot), y: Math.sin(rot) };
+  const ey = { x: -Math.sin(rot), y: Math.cos(rot) };
+  const dx = e.x - d.startDoc.x, dy = e.y - d.startDoc.y;
+  const lx = dx * ex.x + dy * ex.y;
+  const ly = dx * ey.x + dy * ey.y;
+  const srcMid = edgeMidsOfRect(s.bounds)[d.index];
+
+  s.params = { ...d.params };
+  if (d.index === 0 || d.index === 2) {
+    const arm = d.params.sy * (srcMid.y - p.y);
+    if (Math.abs(arm) > 1e-3) {
+      s.params.skewX = clamp(rad2deg(Math.atan(Math.tan(deg2rad(d.params.skewX)) + lx / arm)), -85, 85);
+    }
+  } else {
+    const arm = d.params.sx * (srcMid.x - p.x);
+    if (Math.abs(arm) > 1e-3) {
+      s.params.skewY = clamp(rad2deg(Math.atan(Math.tan(deg2rad(d.params.skewY)) + ly / arm)), -85, 85);
+    }
+  }
+  syncFromParams(s);
+}
+
+function dragDistort(s, e) {
+  const d = s.drag;
+  s.freeform = true;
+  s.quad = d.quad.map((p) => ({ ...p }));
+  s.quad[d.index] = { x: d.quad[d.index].x + (e.x - d.startDoc.x), y: d.quad[d.index].y + (e.y - d.startDoc.y) };
+  syncFromQuad(s);
+}
+
+function dragDistortEdge(s, e) {
+  const d = s.drag;
+  s.freeform = true;
+  const dx = e.x - d.startDoc.x, dy = e.y - d.startDoc.y;
+  s.quad = d.quad.map((p) => ({ ...p }));
+  const a = d.index, b = (d.index + 1) % 4;
+  s.quad[a] = { x: d.quad[a].x + dx, y: d.quad[a].y + dy };
+  s.quad[b] = { x: d.quad[b].x + dx, y: d.quad[b].y + dy };
+  syncFromQuad(s);
+}
+
+function dragPerspective(s, e) {
+  const d = s.drag;
+  s.freeform = true;
+  const dx = e.x - d.startDoc.x, dy = e.y - d.startDoc.y;
+  // The corner sharing the horizontal edge mirrors the horizontal motion.
+  const partner = [1, 0, 3, 2][d.index];
+  s.quad = d.quad.map((p) => ({ ...p }));
+  s.quad[d.index] = { x: d.quad[d.index].x + dx, y: d.quad[d.index].y + dy };
+  s.quad[partner] = { x: d.quad[partner].x - dx, y: d.quad[partner].y + dy };
+  syncFromQuad(s);
+}
+
+function dragPivot(s, e) {
+  if (s.warp || s.freeform) {
+    const q = s.warp
+      ? [s.warp.pts[0][0], s.warp.pts[0][3], s.warp.pts[3][3], s.warp.pts[3][0]]
+      : s.quad;
+    const uv = inverseBilinear(q, { x: e.x, y: e.y });
+    s.pivotRel = { x: clamp(uv.x, -2, 3), y: clamp(uv.y, -2, 3) };
+    return;
+  }
+  const inv = matrixFrom(s, s.params, s.pivotRel).inverse();
+  const src = inv.transformPoint(new DOMPoint(e.x, e.y));
+  const before = applyM(matrixFrom(s, s.params, s.pivotRel), { x: s.bounds.x, y: s.bounds.y });
+  s.pivotRel = {
+    x: clamp((src.x - s.bounds.x) / s.bounds.width, -2, 3),
+    y: clamp((src.y - s.bounds.y) / s.bounds.height, -2, 3),
+  };
+  const after = applyM(matrixFrom(s, s.params, s.pivotRel), { x: s.bounds.x, y: s.bounds.y });
+  s.params.tx += before.x - after.x;
+  s.params.ty += before.y - after.y;
+  syncFromParams(s);
+}
+
+function dragWarp(s, e) {
+  const d = s.drag;
+  const dx = e.x - d.startDoc.x, dy = e.y - d.startDoc.y;
+  // Corner points carry their two tangent handles so the corner stays rigid.
+  const isCornerPt = (d.row === 0 || d.row === 3) && (d.col === 0 || d.col === 3);
+  const grids = warpGrids(s);
+  for (let k = 0; k < grids.length; k++) {
+    const g = grids[k], b = d.warpBase[k];
+    if (!b) continue;
+    const move = (r, c) => { g[r][c] = { x: b[r][c].x + dx, y: b[r][c].y + dy }; };
+    move(d.row, d.col);
+    if (isCornerPt) {
+      move(d.row, d.col === 0 ? 1 : 2);
+      move(d.row === 0 ? 1 : 2, d.col);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Overlay                                                             */
+/* ------------------------------------------------------------------ */
+
+function strokeShape(ctx, pts, close = true) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  if (close) ctx.closePath();
+  ctx.stroke();
+}
+
+function handleBox(ctx, p, filled = true) {
+  const r = 4;
+  ctx.beginPath();
+  ctx.rect(p.x - r, p.y - r, r * 2, r * 2);
+  ctx.fillStyle = filled ? '#ffffff' : OVERLAY.accent;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.85)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+/**
+ * Draw the transform chrome. `ctx` is in screen space.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('../render/viewport.js').Viewport} view
+ */
+export function drawTransformOverlay(ctx, view) {
+  const s = app.transformSession;
+  if (!s) return;
+  ctx.save();
+  ctx.lineJoin = 'round';
+
+  if (s.warp) {
+    const N = 12;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,.45)';
+    for (let k = 0; k <= 3; k++) {
+      const rowPts = [], colPts = [];
+      for (let i = 0; i <= N; i++) {
+        const a = evalWarp(s.warp.pts, i / N, k / 3);
+        const b = evalWarp(s.warp.pts, k / 3, i / N);
+        rowPts.push(view.toScreen(a.x, a.y));
+        colPts.push(view.toScreen(b.x, b.y));
+      }
+      strokeShape(ctx, rowPts, false);
+      strokeShape(ctx, colPts, false);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.9)';
+    for (let k = 0; k <= 3; k++) {
+      const rowPts = [], colPts = [];
+      for (let i = 0; i <= N; i++) {
+        const a = evalWarp(s.warp.pts, i / N, k / 3);
+        const b = evalWarp(s.warp.pts, k / 3, i / N);
+        rowPts.push(view.toScreen(a.x, a.y));
+        colPts.push(view.toScreen(b.x, b.y));
+      }
+      ctx.setLineDash(k === 0 || k === 3 ? [] : [3, 3]);
+      strokeShape(ctx, rowPts, false);
+      strokeShape(ctx, colPts, false);
+    }
+    ctx.setLineDash([]);
+    // Tangent handles.
+    ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    const corners = [[0, 0], [0, 3], [3, 3], [3, 0]];
+    for (const [r, c] of corners) {
+      const a = view.toScreen(s.warp.pts[r][c].x, s.warp.pts[r][c].y);
+      for (const [r2, c2] of [[r, c === 0 ? 1 : 2], [r === 0 ? 1 : 2, c]]) {
+        const b = view.toScreen(s.warp.pts[r2][c2].x, s.warp.pts[r2][c2].y);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+    }
+    for (let j = 0; j < 4; j++) {
+      for (let i = 0; i < 4; i++) {
+        const p = view.toScreen(s.warp.pts[j][i].x, s.warp.pts[j][i].y);
+        const isCorner = (j === 0 || j === 3) && (i === 0 || i === 3);
+        if (isCorner) handleBox(ctx, p, true);
+        else {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = OVERLAY.accent;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,.9)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+  } else {
+    const h = screenHandles(s, view);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,.7)';
+    strokeShape(ctx, h.slice(0, 4));
+    ctx.strokeStyle = 'rgba(255,255,255,.95)';
+    ctx.setLineDash([4, 3]);
+    strokeShape(ctx, h.slice(0, 4));
+    ctx.setLineDash([]);
+    for (const p of h) handleBox(ctx, p, true);
+  }
+
+  // Pivot.
+  const p = pivotDest(s);
+  const pv = view.toScreen(p.x, p.y);
+  ctx.strokeStyle = 'rgba(0,0,0,.8)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(pv.x - 7, pv.y); ctx.lineTo(pv.x + 7, pv.y);
+  ctx.moveTo(pv.x, pv.y - 7); ctx.lineTo(pv.x, pv.y + 7);
+  ctx.stroke();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(pv.x, pv.y, 4, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/* ------------------------------------------------------------------ */
+/* Enter / Escape                                                      */
+/* ------------------------------------------------------------------ */
+
+let keysInstalled = false;
+
+function onKeyDown(e) {
+  if (!app.transformSession) return;
+  const t = e.target;
+  const editing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    e.stopPropagation();
+    commitTransform();
+  } else if (e.key === 'Escape' && !editing) {
+    e.preventDefault();
+    e.stopPropagation();
+    cancelTransform();
+  }
+}
+
+function installKeys() {
+  if (keysInstalled) return;
+  window.addEventListener('keydown', onKeyDown, true);
+  keysInstalled = true;
+}
+
+function removeKeys() {
+  if (!keysInstalled) return;
+  window.removeEventListener('keydown', onKeyDown, true);
+  keysInstalled = false;
+}
+
+/**
+ * The app clears the session when its document is closed or deactivated. The
+ * live preview is already rendered into the layer pixels at that point, so bake
+ * it rather than stranding a half-applied transform. `app.transformSession` is
+ * still set while the event fires, so commitTransform() can do its normal work.
+ */
+app.on('transform-session-ending', (s) => {
+  if (app.transformSession === s) commitTransform();
+  else removeKeys();
+});

@@ -1,0 +1,220 @@
+/* ==========================================================================
+   Layer Style dialog (src/effects/styles-dialog.js)
+   Two columns: the effect list on the left, the selected effect's form on
+   the right. The dialog body itself never scrolls — each column does.
+
+   The list uses the same row language as the Preferences category list: a
+   --r-sm row, a tint plus a solid accent bar when selected, and the effect
+   name promoted to --text-hi once the effect is switched on.
+   ========================================================================== */
+
+.pk-fx-dialog .pk-dialog-body {
+  padding: 0;
+  overflow: hidden;
+}
+
+.pk-fx-cols {
+  display: flex;
+  align-items: stretch;
+  height: min(62vh, 520px);
+  min-height: 320px;
+}
+
+/* ------------------------------------------------------------ left list */
+
+.pk-fx-list {
+  flex: 0 0 214px;
+  min-width: 0;
+  padding: 8px 8px;
+  background: var(--s1);
+  border-right: 1px solid var(--hair);
+  overflow-y: auto;
+}
+
+.pk-fx-listsep {
+  margin: 8px 6px;
+}
+
+.pk-fx-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: background .12s ease, color .12s ease;
+}
+
+.pk-fx-row:hover { background: var(--s3); color: var(--text); }
+
+.pk-fx-row.active {
+  background: var(--accent-dim);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.pk-fx-row.active .pk-fx-name { color: var(--text-hi); }
+
+/* Enabled effects read as live; disabled ones stay quiet. */
+.pk-fx-row.on .pk-fx-name { color: var(--text-hi); font-weight: 500; }
+
+.pk-fx-row .pk-check { flex: 0 0 auto; }
+.pk-fx-nocheck { flex: 0 0 13px; }
+.pk-fx-name { flex: 1 1 auto; min-width: 0; }
+
+/* ------------------------------------------------------------ right pane */
+
+.pk-fx-pane {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 14px 18px 22px;
+  overflow-y: auto;
+}
+
+.pk-fx-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 9px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--text-hi);
+  border-bottom: 1px solid var(--hair);
+}
+
+.pk-fx-reset {
+  height: 22px;
+  padding: 0 10px;
+  font-size: var(--fs-sm);
+  flex: 0 0 auto;
+}
+
+.pk-fx-enable {
+  margin-bottom: 14px;
+  color: var(--text-hi);
+}
+
+/* Section headings inside the pane get the shared micro-caps treatment. */
+.pk-fx-pane .pk-form-label {
+  margin-top: 6px;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* The caption sits to the left of the control rather than above it; the pane
+   is wide enough that the extra rows are worth the narrower field. */
+
+.pk-fx-pane .pk-field {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px 12px;
+}
+.pk-fx-pane .pk-field > label {
+  text-align: right;
+}
+.pk-fx-pane .pk-field > .pk-hint {
+  grid-column: 2;
+}
+
+/* Checkbox rows have no caption — indent them onto the control column. */
+.pk-fx-pane .pk-field.inline {
+  display: flex;
+  align-items: center;
+  padding-left: 128px;
+}
+
+.pk-fx-pane .pk-field.pk-custom > label {
+  align-self: start;
+  margin-top: 4px;
+}
+.pk-fx-pane .pk-custom-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* --------------------------------------------------------- gradient stops */
+
+.pk-fx-ramp {
+  display: block;
+  width: 100%;
+  height: 20px;
+  border: none;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px var(--hair-2), var(--sh-1);
+  background-image:
+    linear-gradient(45deg, #5e5e5e 25%, transparent 25%),
+    linear-gradient(-45deg, #5e5e5e 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #5e5e5e 75%),
+    linear-gradient(-45deg, transparent 75%, #5e5e5e 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+  background-color: #8c8c8c;
+}
+
+.pk-fx-stops {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.pk-fx-stop {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pk-fx-stop .pk-num { font-variant-numeric: tabular-nums; }
+
+.pk-fx-stop-color {
+  width: 46px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--hair-3);
+  border-radius: var(--r-xs);
+  box-shadow: var(--lift);
+  background: none;
+  cursor: pointer;
+  transition: border-color .12s ease;
+}
+
+.pk-fx-stop-color:hover { border-color: var(--accent); }
+
+.pk-fx-stop-del {
+  width: 22px;
+  height: 22px;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+}
+
+.pk-fx-add-stop {
+  height: 22px;
+  margin-top: 8px;
+  padding: 0 10px;
+  font-size: var(--fs-sm);
+  align-self: flex-start;
+}
+
+/* ------------------------------------------------------------- narrow */
+
+@media (max-width: 760px) {
+  .pk-fx-cols {
+    flex-direction: column;
+    height: min(70vh, 560px);
+  }
+  .pk-fx-list {
+    flex: 0 0 138px;
+    border-right: none;
+    border-bottom: 1px solid var(--hair);
+  }
+}
