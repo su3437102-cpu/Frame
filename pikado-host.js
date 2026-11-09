@@ -6,8 +6,11 @@ function openPikado(id){
  const o=state.objects.find(o=>o.id===id);if(!o)return;
  if(o.variant==='ps'&&!o.src){toast('请先将照片连接到 PS 模块');return}
  const record=pikaRecord(id),src=o.variant==='ps'?(o.psInputSrc||o.src):null;
+ const source=[...document.querySelectorAll('[data-id]')].find(el=>el.dataset.id===id);
+ const rect=source?.getBoundingClientRect();
  if(dialog.open)dialog.close();
  const panel=document.createElement('section');panel.id='pikadoPanel';panel.setAttribute('aria-label','Pikado 图像编辑器');
+ if(rect)panel.style.transformOrigin=Math.max(0,Math.min(innerWidth,rect.x+rect.width/2))+'px '+Math.max(0,Math.min(innerHeight,rect.y+rect.height/2))+'px';
  panel.innerHTML='<header><strong>FrameLab / PS</strong><span role="status">正在加载编辑器…</span><button type="button">保存并返回画布</button></header><iframe title="Pikado 图层编辑器" src="editor/index.html" allow="clipboard-read; clipboard-write"></iframe>';
  document.body.append(panel);document.body.classList.add('pikado-editing');renderCamera();
  const frame=panel.querySelector('iframe'),status=panel.querySelector('[role=status]'),button=panel.querySelector('button');
@@ -19,7 +22,7 @@ window.addEventListener('message',e=>{
  const s=pikaSession,m=e.data;if(!s||e.origin!==location.origin||e.source!==s.frame.contentWindow||m?.channel!=='framelab-pikado')return;
  if(m.type==='ready'){s.frame.contentWindow.postMessage({channel:'framelab-pikado',type:'open',session:s.token,...s.initial},location.origin);return}
  if(m.session!==s.token)return;
- if(m.type==='opened'){s.ready=true;s.status.textContent='编辑会自动回传画布';return}
+ if(m.type==='opened'){s.panel.classList.add('editor-ready');s.ready=true;s.status.textContent='编辑会自动回传画布';return}
  if(m.type==='error'){s.closing=false;s.ready=true;s.status.textContent='未保存：'+String(m.message).slice(0,160);return}
  if(m.type==='result'){
   if(typeof m.preview!=='string'||!/^data:image\/png;base64,[a-z0-9+/=]+$/i.test(m.preview)||typeof m.pkd!=='string'||!/^data:application\/x-pikado;base64,[a-z0-9+/=]+$/i.test(m.pkd))return;
