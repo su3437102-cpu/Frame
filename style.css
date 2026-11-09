@@ -71,3 +71,7 @@
 #pikadoPanel.editor-ready iframe{opacity:1}
 @keyframes ps-workspace-enter{from{opacity:0;transform:scale(.975)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){#pikadoPanel{animation:none}#pikadoPanel iframe{transition:none}}
+
+#pikadoPanel.editor-exiting{animation:ps-workspace-exit 180ms cubic-bezier(.4,0,1,1) both;pointer-events:none}
+@keyframes ps-workspace-exit{from{opacity:1;transform:none}to{opacity:0;transform:scale(.975)}}
+@media(prefers-reduced-motion:reduce){#pikadoPanel.editor-exiting{animation:none}}

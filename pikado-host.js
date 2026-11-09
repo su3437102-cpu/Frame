@@ -33,7 +33,15 @@ window.addEventListener('message',e=>{
   if(o.variant==='ps')o.src=m.preview;
   update();s.status.textContent='已回传画布 · 工程随桌面保存';
  }
- if(m.type==='flushed'&&s.closing){s.panel.remove();document.body.classList.remove('pikado-editing');pikaSession=null;renderCamera()}
+ if(m.type==='flushed'&&s.closing&&!s.exiting){
+  s.exiting=true;
+  const finish=()=>{if(pikaSession!==s)return;s.panel.remove();document.body.classList.remove('pikado-editing');pikaSession=null;renderCamera()};
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){finish();return}
+  s.panel.classList.add('editor-exiting');
+  s.panel.addEventListener('animationend',e=>{if(e.target===s.panel&&e.animationName==='ps-workspace-exit')finish()});
+  // Cleanup also runs if the tab is hidden or an animation event is interrupted.
+  setTimeout(finish,260);
+ }
 });
 const pikaBaseOpen=openObject;
 openObject=function(id){const o=state.objects.find(o=>o.id===id);if(o?.kind==='ps'){openPikado(id);return}if(o?.variant==='ps'&&o.src){modal('PS · 照片预览',`<img class="projectpreview" src="${esc(o.src)}" alt="PS 输出预览"><button class="primary" data-pikado="${esc(id)}">进入 Pikado 编辑</button>`);return}pikaBaseOpen(id)};
