@@ -1,0 +1,39 @@
+/* FrameLab shell. Image pixels, colour swatches and document rendering are untouched. */
+:root[data-framelab-theme] {
+ --r-xs:2px;--r-sm:3px;--r-md:4px;--r-lg:4px;--r-xl:6px;
+ --panel-w:270px;--toolbar-w:48px;--gap:5px;
+ --font:Inter,'Segoe UI','Microsoft YaHei',sans-serif;
+ --brand-grad:linear-gradient(var(--text-hi),var(--text-hi));
+ --sh-1:0 1px 3px #0000000d;--lift:inset 0 1px 0 #ffffff08;
+}
+:root[data-framelab-theme='light'] {
+ color-scheme:light;--s0:#eef0f0;--s1:#f7f8f8;--s2:#fff;--s3:#eceeee;--s4:#e2e5e5;--s5:#d3d7d7;
+ --void:#e4e6e6;--hair:#00000012;--hair-2:#00000020;--hair-3:#00000035;
+ --text-hi:#24282c;--text:#42484e;--text-dim:#6b7278;--text-faint:#858d93;
+ --accent:#30363c;--accent-hi:#24282c;--accent-lo:#41474d;
+ --accent-dim:#24282c10;--accent-ring:#24282c65;
+ --sh-2:0 6px 18px #00000018;--sh-3:0 12px 38px #00000024;
+}
+:root[data-framelab-theme='dark'] {
+ color-scheme:dark;--s0:#181a1c;--s1:#202224;--s2:#252729;--s3:#303335;--s4:#3b3e40;--s5:#484b4d;
+ --void:#151719;--hair:#ffffff12;--hair-2:#ffffff20;--hair-3:#ffffff35;
+ --text-hi:#eff0f1;--text:#d0d3d5;--text-dim:#a0a6ab;--text-faint:#7c848a;
+ --accent:#e5e7e9;--accent-hi:#fff;--accent-lo:#bfc5ca;
+ --accent-dim:#ffffff12;--accent-ring:#ffffff70;
+}
+:root[data-framelab-theme] .pk-menubar {height:38px;padding-inline:10px;}
+:root[data-framelab-theme] .pk-brand {font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--text-hi);margin-right:12px;white-space:nowrap;}
+:root[data-framelab-theme] .pk-optionsbar {min-height:36px;border-top:1px solid var(--hair);}
+:root[data-framelab-theme] .pk-toolbar {padding:8px 3px;gap:3px;overflow-x:hidden;}
+:root[data-framelab-theme] .pk-tool {width:34px;height:32px;border:1px solid transparent;transition:transform 140ms ease,box-shadow 140ms ease,background 140ms ease;}
+:root[data-framelab-theme] .pk-tool.active {background:var(--s2);border-color:var(--hair-2);color:var(--text-hi);transform:translate(2px,-1px);box-shadow:0 3px 7px #00000028;}
+:root[data-framelab-theme] .pk-tool svg {width:16px;height:16px;stroke-width:1.6;}
+:root[data-framelab-theme] .pk-tool-corner {width:3px;height:3px;}
+:root[data-framelab-theme] .pk-btn.primary {color:var(--s0);}
+:root[data-framelab-theme] ::-webkit-scrollbar-thumb {background:var(--hair-3);border:3px solid transparent;background-clip:padding-box;}
+:root[data-framelab-theme] .pk-pgroup {box-shadow:none;}
+:root[data-framelab-theme] .pk-pgroup-head {height:31px;background:var(--s1);}
+:root[data-framelab-theme] .pk-tabbar {height:32px;}
+@media(max-width:760px){:root[data-framelab-theme]{--panel-w:210px;--toolbar-w:44px;--gap:3px;}:root[data-framelab-theme] .pk-brand{display:none;}:root[data-framelab-theme] .pk-menu-btn{padding-inline:6px;}}
+@media(max-width:520px){:root[data-framelab-theme]{--panel-w:154px;}:root[data-framelab-theme] .pk-doc-title{display:none;}}
+@media(prefers-reduced-motion:reduce){:root[data-framelab-theme] .pk-tool{transition:none;}}

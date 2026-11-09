@@ -1,3 +1,4 @@
+import { uiLabel } from '../framelab-labels.js';
 import { el } from '../core/util.js';
 import { app } from '../core/app.js';
 import { icon } from './icons.js';
@@ -47,7 +48,7 @@ export function buildMenubar(rootEl) {
   rootEl.replaceChildren();
 
   rootEl.appendChild(
-    el('div.pk-brand', { title: `${BRAND.name} — ${BRAND.tagline}`, html: brandLock({ size: 21, wordSize: 15 }) })
+    el('div.pk-brand', { title: `${BRAND.name} — ${BRAND.tagline}`, text: 'FrameLab / PS' })
   );
 
   bar.menus = el('nav.pk-menus', { role: 'menubar' });
@@ -94,7 +95,7 @@ function renderTopLevel() {
     if (!entry || !entry.label) return;
     const btn = el('button.pk-menu-btn', {
       type: 'button',
-      text: entry.label,
+      text: uiLabel(entry.label),
       'aria-haspopup': 'true',
       onclick: () => (bar.openIndex === i ? closeAll() : openTop(i)),
       onmouseenter: () => {
@@ -313,7 +314,7 @@ function commandItem(id) {
     return null;
   }
   return {
-    label: labelOf(id),
+    label: uiLabel(labelOf(id)),
     accel: formatAccel(cmd.accel),
     checked: isChecked(id),
     enabled: isEnabled(id),

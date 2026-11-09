@@ -4,6 +4,7 @@ import {savePKD,loadPKD} from './io/pkd.js';
 import {getComposite} from './render/compositor.js';
 import {decodeImage} from './io/decode.js';
 
+document.documentElement.dataset.framelabTheme = 'light';
 // Private, same-origin FrameLab protocol. The standalone editor is unaffected.
 if(parent!==window){
  let session=null,loading=false,timer,serial=Promise.resolve(),sourceLayerId=null;
@@ -19,10 +20,12 @@ if(parent!==window){
  for(const event of ['doc-change','doc-structure','history-change','doc-resize','active-doc'])app.on(event,queue);
  window.addEventListener('message',e=>{
   const m=e.data;if(e.origin!==location.origin||e.source!==parent||m?.channel!=='framelab-pikado')return;
+  if(m.type==='theme'){document.documentElement.dataset.framelabTheme=m.theme==='dark'?'dark':'light';return}
   if(m.type==='flush'){clearTimeout(timer);serial=serial.then(snapshot).then(()=>send('flushed')).catch(err=>send('error',{message:err.message}));return}
   if(m.type!=='open'||typeof m.session!=='string')return;
   serial=serial.then(async()=>{
    loading=true;session=m.session;
+   document.documentElement.dataset.framelabTheme=m.theme==='dark'?'dark':'light';
    try{
     for(const doc of [...app.docs])app.closeDocument(doc);
     let doc;sourceLayerId=m.sourceLayerId||null;

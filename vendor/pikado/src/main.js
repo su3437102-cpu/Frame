@@ -273,3 +273,5 @@ function prefetchLazyChunks() {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
+
+import './framelab-ui.css';

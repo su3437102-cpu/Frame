@@ -1,3 +1,4 @@
+import { uiLabel } from '../framelab-labels.js';
 import { el } from '../core/util.js';
 import { app } from '../core/app.js';
 import { icon } from './icons.js';
@@ -84,6 +85,8 @@ function makeGroupButton(group) {
     ].filter(Boolean));
     btn.classList.toggle('active', !!app.tool && app.tool.group === group.id);
     btn.dataset.tool = tool.id;
+    btn.setAttribute('aria-label', uiLabel(tool.name));
+    btn.setAttribute('aria-pressed', String(!!app.tool && app.tool.group === group.id));
   };
   painters.set(group.id, paint);
   paint();
@@ -154,7 +157,7 @@ function openFlyout(group, btn) {
       },
     },
       el('span.pk-flyout-ico', { html: icon(tool.icon || tool.id, { size: 16 }) }),
-      el('span.pk-flyout-name', { text: tool.name }),
+      el('span.pk-flyout-name', { text: uiLabel(tool.name) }),
       tool.shortcut ? el('span.pk-flyout-key', { text: tool.shortcut.toUpperCase() }) : null
     );
     if (app.tool && app.tool.id === tool.id) item.classList.add('active');
@@ -192,7 +195,7 @@ function showTooltip(anchor, tool) {
   if (flyout) return;
   hideTooltip();
   tooltip = el('div.pk-tooltip', {},
-    el('span', { text: tool.name }),
+    el('span', { text: uiLabel(tool.name) }),
     tool.shortcut ? el('span.pk-tooltip-key', { text: tool.shortcut.toUpperCase() }) : null
   );
   document.body.appendChild(tooltip);

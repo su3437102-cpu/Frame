@@ -8,11 +8,11 @@ function openPikado(id){
  const record=pikaRecord(id),src=o.variant==='ps'?(o.psInputSrc||o.src):null;
  if(dialog.open)dialog.close();
  const panel=document.createElement('section');panel.id='pikadoPanel';panel.setAttribute('aria-label','Pikado 图像编辑器');
- panel.innerHTML='<header><strong>PS · Pikado</strong><span role="status">正在加载编辑器…</span><button type="button">保存并返回画布</button></header><iframe title="Pikado 图层编辑器" src="editor/index.html" allow="clipboard-read; clipboard-write"></iframe>';
+ panel.innerHTML='<header><strong>FrameLab / PS</strong><span role="status">正在加载编辑器…</span><button type="button">保存并返回画布</button></header><iframe title="Pikado 图层编辑器" src="editor/index.html" allow="clipboard-read; clipboard-write"></iframe>';
  document.body.append(panel);document.body.classList.add('pikado-editing');renderCamera();
  const frame=panel.querySelector('iframe'),status=panel.querySelector('[role=status]'),button=panel.querySelector('button');
  pikaSession={id,token:crypto.randomUUID(),panel,frame,status,src,ready:false,closing:false};
- pikaSession.initial={src:src?new URL(src,location.href).href:null,pkd:record?.pkd,sourceLayerId:record?.sourceLayerId,replaceSource:!!record&&record.inputSrc!==src,name:o.name};
+ pikaSession.initial={theme:state.theme,src:src?new URL(src,location.href).href:null,pkd:record?.pkd,sourceLayerId:record?.sourceLayerId,replaceSource:!!record&&record.inputSrc!==src,name:o.name};
  button.onclick=()=>{if(!pikaSession.ready){toast('编辑器仍在加载，请稍候');return}pikaSession.closing=true;status.textContent='正在保存工程…';frame.contentWindow.postMessage({channel:'framelab-pikado',type:'flush'},location.origin)};
 }
 window.addEventListener('message',e=>{
@@ -38,3 +38,5 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-pikado]');
 const pikaBaseZone=zoneHTML;
 zoneHTML=function(o){if(o.kind==='ps')return '<p>导入素材，在 Pikado 中进行图层编辑。</p><button data-pikado="zone-ps">打开 PS 母台</button><small>子台与母台使用同一个编辑器，各自保留工程。</small>';return pikaBaseZone(o)};
 render();
+
+new MutationObserver(()=>{if(pikaSession?.ready)pikaSession.frame.contentWindow.postMessage({channel:'framelab-pikado',type:'theme',theme:state.theme},location.origin)}).observe(document.body,{attributes:true,attributeFilter:['class']});

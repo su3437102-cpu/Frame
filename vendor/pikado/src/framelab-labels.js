@@ -1,0 +1,3 @@
+// UI labels only: never translate user document content.
+const labels={File:'文件',Edit:'编辑',Image:'图像',Layer:'图层',Type:'文字',Select:'选择',Filter:'滤镜',View:'视图',Window:'窗口',Help:'帮助',Layers:'图层',Channels:'通道',Paths:'路径',History:'历史',Properties:'属性',Color:'颜色',Swatches:'色板',Navigator:'导航','Move Tool':'移动工具','Brush Tool':'画笔工具','Eraser Tool':'橡皮擦','Crop Tool':'裁剪工具','Hand Tool':'抓手工具','Zoom Tool':'缩放工具','Pen Tool':'钢笔工具','Gradient Tool':'渐变工具','Eyedropper Tool':'吸管工具','Rectangular Marquee Tool':'矩形选框','Lasso Tool':'套索工具','New…':'新建…','Open…':'打开…',Save:'保存','Save As…':'另存为…',Undo:'撤销',Redo:'重做',Export:'导出'};
+export const uiLabel=value=>labels[value]||value;

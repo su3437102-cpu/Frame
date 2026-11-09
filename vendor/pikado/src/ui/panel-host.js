@@ -1,3 +1,4 @@
+import { uiLabel } from '../framelab-labels.js';
 import { el, clamp } from '../core/util.js';
 import { icon } from './icons.js';
 import './panels/panels.css';
@@ -14,10 +15,10 @@ import './panels/panels.css';
  * persisted in `localStorage` under `pikado.panels`.
  */
 
-const STORAGE_KEY = 'pikado.panels';
+const STORAGE_KEY = 'framelab.pikado.panels.v1';
 
 /** Vertical order of the known groups; unknown groups are appended. */
-const GROUP_ORDER = ['top', 'mid', 'bottom'];
+const GROUP_ORDER = ['top', 'bottom', 'mid'];
 /**
  * Default share of the dock height each group receives.
  *
@@ -77,7 +78,7 @@ const savePrefs = (() => {
 function groupPrefs(gid) {
   let g = prefs.groups[gid];
   if (!g) {
-    g = { collapsed: false, active: null, weight: GROUP_WEIGHT[gid] || 1 };
+    g = { collapsed: gid === 'mid', active: null, weight: GROUP_WEIGHT[gid] || 1 };
     prefs.groups[gid] = g;
   }
   if (typeof g.weight !== 'number' || !isFinite(g.weight) || g.weight <= 0) g.weight = GROUP_WEIGHT[gid] || 1;
@@ -120,7 +121,7 @@ export function registerPanel(def) {
   if (!def || !def.id) throw new Error('registerPanel: a panel needs an id');
   const p = {
     id: def.id,
-    title: def.title || def.id,
+    title: uiLabel(def.title || def.id),
     icon: def.icon || 'properties',
     group: def.group || 'bottom',
     order: def.order == null ? 100 : def.order,

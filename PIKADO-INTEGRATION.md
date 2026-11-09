@@ -27,3 +27,6 @@
 `node --test ps-system.test.mjs pikado-host.test.mjs cloud/test.mjs` 验证连线、工程回传、消息来源校验、编辑器访问控制及既有同步认证。
 
 实际浏览器已检查：载入照片、新增图层、隐藏背景后子台变透明、保存退出、重开后保留两个图层及显隐状态；恢复背景后再次保存。完整 Photoshop 功能兼容性没有逐项验收。
+
+## FrameLab editor UI — 2026-11-09
+Neutral light/dark theme follows desktop; vector tool rail, compact panel styling, layer-first dock and collapsed colour group. Common menu and tool labels translated; advanced labels remain English. Original editing engine and PKD format unchanged. Browser visual and interactive QA pending: no browser connected in this session.
