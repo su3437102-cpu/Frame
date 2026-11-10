@@ -1,4 +1,12 @@
 'use strict';
+// LAN HTTP exposes getRandomValues, but not the secure-context randomUUID API.
+// Install the UUID fallback before any canvas or PS creation handlers run.
+if(typeof crypto.randomUUID!=='function')crypto.randomUUID=function(){
+ const bytes=crypto.getRandomValues(new Uint8Array(16));
+ bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;
+ const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+ return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], KEY='framelab:r11:v1:desk', RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const paths={note:'M5 3h14v18H5Z M8 8h8 M8 12h8 M8 16h5',link:'M10 14l4-4 M9 15l-2 2a4 4 0 0 1-5-5l5-5a4 4 0 0 1 5 0 M15 9l2-2a4 4 0 0 1 5 5l-5 5a4 4 0 0 1-5 0',todo:'M3 6l2 2 3-4 M11 6h10 M3 13l2 2 3-4 M11 13h10 M11 20h10',line:'M3 19 21 5 M14 5h7v7',board:'M3 4h18v16H3Z M3 8h18 M8 8v12',column:'M5 3h14v18H5Z M5 8h14 M8 12h8 M8 16h8',image:'M3 4h18v16H3Z M3 17l6-6 4 4 3-3 5 5 M15 8h.01',upload:'M12 16V3 M7 8l5-5 5 5 M4 15v6h16v-6',trash:'M4 6h16 M9 6V3h6v3 M6 6l1 15h10l1-15 M10 10v7 M14 10v7',map:'M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2Z M9 3v16 M15 5v16',work:'M3 7h18v14H3Z M8 7V3h8v4 M3 12h18',grip:'M9 6h.01 M15 6h.01 M9 12h.01 M15 12h.01 M9 18h.01 M15 18h.01'};
 const icon=n=>n==='line'?'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="19" r="2.5"/><path d="M7 17 17 7m-5 0h5v5 M17 3h4v4"/></svg>':`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[n]||paths.board}"/></svg>`;
