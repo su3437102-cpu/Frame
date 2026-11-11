@@ -1,5 +1,5 @@
 import {readFileSync,writeFileSync,mkdirSync,cpSync} from 'node:fs';
-const files=['index.html','app.js','style.css','context-ui.js','context-ui.css','interactions.js','cloud-sync.js','ps-system.js','pikado-host.js',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
+const files=['index.html','app.js','style.css','context-ui.js','task-board.js','context-ui.css','interactions.js','cloud-sync.js','ps-system.js','pikado-host.js',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
 const assets={};
 for(const file of files){
   let bytes=readFileSync(new URL('../'+file,import.meta.url));

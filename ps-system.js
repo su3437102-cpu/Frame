@@ -1,5 +1,5 @@
 // Canvas-only PS prototype; existing project records remain untouched.
-function createPSNode(p){checkpoint();const o={id:crypto.randomUUID(),type:'image',variant:'ps',name:'PS',src:'',x:p?.x??100,y:p?.y??100,w:280,h:220,r:0,z:Math.max(0,...state.objects.map(o=>o.z||0))+1};state.objects.push(o);selected=new Set([o.id]);update()}
+function createPSNode(p){checkpoint();const o={id:crypto.randomUUID(),type:'image',parentBoardId:state.activeBoardId||null,variant:'ps',name:'PS',src:'',x:p?.x??100,y:p?.y??100,w:280,h:220,r:0,z:Math.max(0,...state.objects.map(o=>o.z||0))+1};state.objects.push(o);selected=new Set([o.id]);update()}
 function syncPSPreviews(){
  const byId=new Map(state.objects.map(o=>[o.id,o])),visited=new Set(),active=new Set();
  function visit(o){if(visited.has(o.id))return o.src||'';if(active.has(o.id))return '';active.add(o.id);const edge=(state.connections||[]).filter(e=>e.to===o.id&&byId.get(e.from)?.type==='image').at(-1),source=edge&&byId.get(edge.from);o.src=source?(source.variant==='ps'?visit(source):source.src||''):'';o.psInputSrc=o.src;const edit=state.pikadoProjects?.[o.id];if(edit&&o.psInputSrc)o.src=edit.preview;active.delete(o.id);visited.add(o.id);return o.src}

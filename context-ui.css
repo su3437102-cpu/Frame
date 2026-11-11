@@ -41,3 +41,23 @@
 .board .object-meta{justify-content:center}
 @media(max-width:600px){#contextRail{display:none}#contextPopover{left:12px;width:260px;max-width:calc(100vw - 24px)}}
 @media(prefers-reduced-motion:reduce){.context-tool i,.tool-glyph{transition:none!important}}
+/* finesse: component refinement — live tasks and nested board navigation. */
+.object.todo .inner.live-todo{height:auto;min-height:74px;padding:16px 18px;overflow:visible}
+.live-todo h3{outline:none;cursor:text;margin:0 0 10px}
+.live-task{display:flex;align-items:flex-start;gap:8px;min-height:28px;padding-left:calc(var(--indent,0)*16px)}
+.live-task input,.draft-check{appearance:none;flex:0 0 14px;width:14px;height:14px;margin:5px 0 0;border:1.5px solid #999;border-radius:2px;background:transparent;position:relative;cursor:pointer;transition:background 140ms,border-color 140ms}
+.live-task input:checked{background:var(--ink);border-color:var(--ink)}
+.live-task input:checked:after{content:'';position:absolute;left:3px;top:0;width:4px;height:8px;border:solid var(--surface);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.task-editor{flex:1;min-width:0;min-height:25px;line-height:25px;outline:none;cursor:text;white-space:pre-wrap;overflow-wrap:anywhere;transition:color 160ms,opacity 160ms}
+.task-editor:empty:before{content:attr(data-placeholder);color:var(--muted);opacity:.5;pointer-events:none}
+.live-task.is-done .task-editor{text-decoration:line-through;color:var(--muted);opacity:.65}
+.live-task [data-remove-task]{opacity:0;padding:0 2px;line-height:25px;color:var(--muted);transition:opacity 140ms}
+.live-task:hover [data-remove-task],.live-task:focus-within [data-remove-task]{opacity:1}
+.task-draft{opacity:.7}.task-draft:focus-within{opacity:1}
+.todo-footer{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:8px;min-height:14px;font-size:10px;color:var(--muted)}
+.todo-footer button{padding:0;color:var(--muted);font-size:10px;text-decoration:underline}
+#boardNavigation{display:flex;align-items:center;gap:8px;overflow:auto;min-width:0;white-space:nowrap}
+#boardNavigation[hidden],.topbar h1[hidden]{display:none!important}
+#boardNavigation button{padding:5px 3px;white-space:nowrap;font-size:12px}
+#boardNavigation [aria-current]{font-weight:600}
+@media(prefers-reduced-motion:reduce){.live-task input,.task-editor,.live-task [data-remove-task]{transition:none}}
