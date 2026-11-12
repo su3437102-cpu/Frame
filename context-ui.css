@@ -1,4 +1,10 @@
 /* Context tools inherit FrameLab's restrained rail, surfaces and fixed screen sizing. */
+/* PS previews sit inside a clean mount, with a slightly deeper lower margin. */
+.object.image>.inner.ps-node{padding:12px 12px 18px;gap:8px;background:var(--surface)}
+.object.image .ps-node .ps-title{height:20px;min-height:20px;padding:0;gap:8px;align-items:center;overflow:hidden}
+.object.image .ps-node .ps-title span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.object.image .ps-node>img{display:block;width:100%;height:0;flex:1 1 0;min-height:0;object-fit:contain}
+.object.image .ps-node>small{flex:none;min-height:14px;line-height:14px;padding:0;font-size:10px}
 .toolbar{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
 .toolbar [hidden]{display:none!important}
 .toolbar .tool-active .tool-glyph{transform:none;box-shadow:0 1px 2px #0002}
