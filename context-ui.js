@@ -4,6 +4,24 @@ $('.toolbar').append(contextRail);
 const contextPopover=document.createElement('section');contextPopover.id='contextPopover';contextPopover.hidden=true;
 contextPopover.setAttribute('aria-label','对象工具选项');document.body.append(contextPopover);
 let inlineEdit=null,contextKey='',contextBackId=null,textRange=null;
+let railMode='create',railAnimations=[],railOutgoing=null;
+function prepareRailTransition(nextMode){
+ if(nextMode===railMode)return ()=>{};
+ const previousMode=railMode;railMode=nextMode;
+ railAnimations.forEach(a=>a.cancel());railAnimations=[];railOutgoing?.remove();railOutgoing=null;
+ if(RM)return ()=>{};
+ const rail=document.querySelector('aside.toolbar'),rect=rail.getBoundingClientRect();
+ if(!rect.width||!rect.height)return ()=>{};
+ const outgoing=rail.cloneNode(true);railOutgoing=outgoing;
+ outgoing.removeAttribute('id');outgoing.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+ outgoing.classList.add('rail-transition-copy');outgoing.setAttribute('aria-hidden','true');outgoing.inert=true;
+ Object.assign(outgoing.style,{position:'fixed',left:rect.left+'px',top:rect.top+'px',width:rect.width+'px',height:rect.height+'px',bottom:'auto',pointerEvents:'none',zIndex:'190',margin:'0'});
+ document.body.append(outgoing);outgoing.scrollTop=rail.scrollTop;
+ const returning=({create:1,object:2,text:3}[nextMode]<{create:1,object:2,text:3}[previousMode]);
+ const exit=outgoing.animate([{opacity:1,translate:'0 0'},{opacity:0,translate:(returning?'6px':'-6px')+' 0'}],{duration:130,easing:'ease-out',fill:'forwards'});
+ exit.finished.then(()=>{outgoing.remove();if(railOutgoing===outgoing)railOutgoing=null}).catch(()=>outgoing.remove());railAnimations.push(exit);
+ return ()=>{const targets=nextMode==='create'?[$('#tools'),$('.toolbottom')]:[contextRail];for(const el of targets)railAnimations.push(el.animate([{opacity:0,translate:(returning?'-6px':'6px')+' 0'},{opacity:1,translate:'0 0'}],{duration:180,easing:'cubic-bezier(.2,.7,.2,1)'}))};
+}
 const contextPaths={back:'M15 5 8 12l7 7 M8 12h13',color:'M4 4h16v16H4Z M4 8h16',tag:'M3 3h9l9 9-9 9-9-9Z M7 7h.01',reaction:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M8 14q4 5 8 0 M8 9h.01 M16 9h.01',comment:'M4 4h16v13h-8l-5 4v-4H4Z M7 8h10 M7 12h6',more:'M5 12h.01 M12 12h.01 M19 12h.01',edit:'m5 16 11-11 3 3-11 11-4 1Z',text:'M4 5h16 M12 5v15 M8 20h8',bold:'M7 4h6a4 4 0 0 1 0 8H7V4 M7 12h7a4 4 0 0 1 0 8H7v-8',italic:'M11 4h8 M5 20h8 M15 4 9 20',strike:'M17 6q-8-6-10 1c-1 3 11 5 10 9-1 5-10 5-12 1 M3 12h18',underline:'M6 4v8a6 6 0 0 0 12 0V4 M4 21h16',bullets:'M4 6h.01 M4 12h.01 M4 18h.01 M9 6h12 M9 12h12 M9 18h12',ordered:'M3 4h1v5 M3 13q4-1 0 4v2h3 M9 6h12 M9 12h12 M9 18h12',align:'M3 5h18 M6 10h12 M3 15h18 M6 20h12',code:'m8 6-6 6 6 6 m8-12 6 6-6 6 M14 3l-4 18',size:'M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5',download:'M12 3v12 M7 10l5 5 5-5 M4 17v4h16v-4',replace:'M4 9a8 8 0 0 1 14-4l2 2 M20 3v4h-4 M20 15a8 8 0 0 1-14 4l-2-2 M4 21v-4h4',unlink:'M9 15l-2 2a4 4 0 0 1-5-5l4-4 M15 9l2-2a4 4 0 0 1 5 5l-4 4 M3 3l18 18',eye:'M2 12q10-14 20 0-10 14-20 0 M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0'};
 function contextIcon(name){return contextPaths[name]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${contextPaths[name]}"/></svg>`:icon(name)}
 function contextButton(action,label,glyph=action,compact=false){return `<button type="button" class="context-tool${compact?' compact':''}" data-context="${action}" title="${esc(label)}" aria-label="${esc(label)}"><i>${contextIcon(glyph)}</i>${compact?'':`<span>${esc(label)}</span>`}</button>`}
@@ -14,8 +32,9 @@ function syncContextRail(){
  if(contextBackId&&contextBackId!==o?.id)contextBackId=null;
  const mode=inlineEdit?'text':o&&contextBackId!==o.id?'object':'create';
  const key=mode+':'+(o?.id||'');if(key===contextKey)return;contextKey=key;closeContextPopover();
+ const enterRail=prepareRailTransition(mode);
  $('#tools').hidden=mode!=='create';$('.toolbottom').hidden=mode!=='create';contextRail.hidden=mode==='create';
- if(mode==='create'){contextRail.replaceChildren();return}
+ if(mode==='create'){contextRail.replaceChildren();enterRail();return}
  let html=contextButton('back',mode==='text'?'返回对象工具':'返回创建工具','back');
  if(mode==='text'){
   html+=contextButton('text-style','文字样式','text');
@@ -28,7 +47,7 @@ function syncContextRail(){
   html+=contextButton('color',o.type==='image'?'色条':'颜色','color')+contextButton('labels','标签','tag')+contextButton('reactions','反应','reaction')+contextButton('comments','评论','comment')+contextButton('more','更多','more');
  }
  contextRail.innerHTML=html;contextRail.dataset.level=mode==='text'?'3':'2';
- if(!RM)contextRail.animate([{opacity:.2,translate:'-5px 0'},{opacity:1,translate:'0 0'}],{duration:160,easing:'ease-out'});
+ enterRail();
 }
 // Only a small, explicit rich-text vocabulary may enter the saved document.
 function safeNoteHTML(html){
