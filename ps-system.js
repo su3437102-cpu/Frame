@@ -21,6 +21,6 @@ objectHTML=function(o){if(o.variant!=='ps')return psBaseHTML(o);return `<div cla
 const psBaseOpen=openObject;
 openObject=function(id){const o=state.objects.find(o=>o.id===id);if(o?.variant==='ps'){if(o.src)modal('PS · 照片预览',`<img class="projectpreview" src="${esc(o.src)}" alt="连接照片的预览">`);else toast('将照片连线到 PS 模块，即可显示照片');return}psBaseOpen(id)};
 const psBaseDelete=actions.delete;
-actions.delete=function(){const nodes=state.objects.filter(o=>selected.has(o.id)&&o.variant==='ps'&&o.src);if(!nodes.length)return psBaseDelete();checkpoint();const frozen=new Set(nodes.map(o=>o.id));nodes.forEach(o=>{delete o.variant;o.frozen=true});state.connections=(state.connections||[]).filter(e=>!frozen.has(e.to));const removed=state.objects.filter(o=>selected.has(o.id)&&!frozen.has(o.id));state.trash.push(...removed);state.objects=state.objects.filter(o=>!removed.includes(o));selected.clear();update()};
+actions.delete=function(){if(!state.objects.some(o=>selected.has(o.id)&&o.variant==='ps'))return psBaseDelete();checkpoint();const removed=state.objects.filter(o=>selected.has(o.id));state.trash.push(...removed);state.objects=state.objects.filter(o=>!selected.has(o.id));state.connections=(state.connections||[]).filter(e=>!selected.has(e.from)&&!selected.has(e.to));selected.clear();update();toast('已移到回收站，可撤销或恢复')};
 const psBaseRender=render;
 render=function(){syncPSPreviews();psBaseRender()};render();
