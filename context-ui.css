@@ -7,6 +7,15 @@
 .object.image .ps-node>small{flex:none;min-height:14px;line-height:14px;padding:0;font-size:10px}
 .object.image>.inner:not(.ps-node)>img{object-fit:contain}
 #dialog .projectpreview{display:block;width:auto;height:auto;max-width:100%;max-height:70vh;margin:0 auto;object-fit:contain;background:transparent}
+#dialog.image-preview-dialog{box-sizing:border-box;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);padding:16px 20px 20px;overflow:hidden}
+#dialog.image-preview-dialog .dialoghead{margin:0 0 12px;padding:0;gap:16px}
+#dialog.image-preview-dialog .dialoghead h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}
+#dialog.image-preview-dialog .dialoghead button{flex:none;width:34px;height:34px;min-height:34px}
+#dialog.image-preview-dialog #dialogbody{display:flex;flex-direction:column;align-items:stretch;gap:12px;min-height:0}
+#dialog.image-preview-dialog .projectpreview{flex:none;max-height:none;max-width:100%;margin:0 auto}
+#dialog.image-preview-dialog #dialogbody>.primary{align-self:flex-end;margin:0;min-height:36px}
+#dialog.image-preview-dialog .dialogcopy{margin:0;font-size:12px}
+#dialog.image-preview-dialog .dialogactions{margin:0;flex-wrap:wrap;gap:8px}
 .toolbar{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
 .toolbar [hidden]{display:none!important}
 .toolbar .tool-active .tool-glyph{transform:none;box-shadow:0 1px 2px #0002}
