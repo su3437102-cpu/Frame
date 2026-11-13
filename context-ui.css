@@ -40,6 +40,10 @@
 .context-tool[aria-pressed="true"] i{color:var(--surface);background:var(--ink)}
 #contextPopover{position:fixed;z-index:180;left:calc(var(--rail) + 8px);top:calc(var(--top) + 34px);width:238px;max-width:calc(100vw - var(--rail) - 18px);max-height:calc(100dvh - var(--top) - 50px);overflow:auto;padding:12px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;box-shadow:0 6px 22px var(--shadow);font-size:12px}
 #contextPopover[hidden]{display:none}
+/* Keep connector feedback crisp and screen-sized at every canvas zoom. */
+#connections .edge-selected .edge-line{stroke-width:2.2}
+#connections .edge-selected .bend-handle{stroke:var(--ink);stroke-width:2}
+#connections g:hover .bend-handle{stroke:var(--ink);stroke-width:2}
 #contextPopover header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
 #contextPopover header button{font-size:18px;padding:0 6px}#contextPopover label{display:block;margin:8px 0;line-height:1.6}
 #contextPopover input:not([type="color"]),#contextPopover textarea,#contextPopover select{display:block;width:100%;padding:7px;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:3px}

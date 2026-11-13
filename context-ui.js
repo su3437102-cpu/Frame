@@ -26,7 +26,15 @@ const contextPaths={back:'M15 5 8 12l7 7 M8 12h13',color:'M4 4h16v16H4Z M4 8h16'
 function contextIcon(name){return contextPaths[name]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${contextPaths[name]}"/></svg>`:icon(name)}
 function contextButton(action,label,glyph=action,compact=false){return `<button type="button" class="context-tool${compact?' compact':''}" data-context="${action}" title="${esc(label)}" aria-label="${esc(label)}"><i>${contextIcon(glyph)}</i>${compact?'':`<span>${esc(label)}</span>`}</button>`}
 function contextObject(){return selected.size===1?state.objects.find(o=>selected.has(o.id)):null}
-function closeContextPopover(){contextPopover.hidden=true;contextPopover.replaceChildren()}
+let popoverAnimation=null,popoverClosing=false;
+function closeContextPopover(){
+ if(contextPopover.hidden||popoverClosing)return;
+ popoverAnimation?.cancel();popoverClosing=true;contextPopover.inert=true;
+ const finish=()=>{contextPopover.hidden=true;contextPopover.replaceChildren();popoverClosing=false;popoverAnimation=null};
+ if(RM){finish();return}
+ const animation=contextPopover.animate([{opacity:1,translate:'0 0'},{opacity:0,translate:'-4px 0'}],{duration:120,easing:'ease-out'});
+ popoverAnimation=animation;animation.finished.then(finish).catch(()=>{});
+}
 function syncContextRail(){
  const o=contextObject();if(inlineEdit&&(!o||o.id!==inlineEdit.id))finishInline(false);
  if(contextBackId&&contextBackId!==o?.id)contextBackId=null;
@@ -102,10 +110,24 @@ function startInline(o){
 function finishInline(redraw=true){if(!inlineEdit)return;storeInline();inlineEdit.el.contentEditable='false';inlineEdit.el.closest('.object')?.classList.remove('inline-editing');inlineEdit=null;textRange=null;contextKey='';if(redraw)render()}
 desk.addEventListener('pointerdown',e=>{if(e.target.closest('[contenteditable="true"]')){e.stopImmediatePropagation();return}if(inlineEdit)finishInline(false)},true);
 desk.addEventListener('dblclick',e=>{const el=e.target.closest('.object'),o=el&&state.objects.find(x=>x.id===el.dataset.id);if(o&&['note','todo','column'].includes(o.type)&&!e.target.closest('button,input')){e.preventDefault();e.stopImmediatePropagation();startInline(o)}},true);
-document.addEventListener('keydown',e=>{const o=contextObject();if(inlineEdit||dialog.open||e.target.closest('input,textarea,[contenteditable="true"]'))return;if(o&&['note','todo','column'].includes(o.type)&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.length===1){e.preventDefault();e.stopImmediatePropagation();startInline(o);document.execCommand('insertText',false,e.key);storeInline()}},true);
+document.addEventListener('keydown',e=>{
+ if(dialog.open)return;
+ if(e.key==='Escape'&&!contextPopover.hidden&&!popoverClosing){e.preventDefault();e.stopImmediatePropagation();const focused=contextPopover.contains(document.activeElement);closeContextPopover();if(focused)(inlineEdit?.el||contextRail.querySelector('button'))?.focus();return}
+ // Nested rich-text spans must never forward Delete/arrows/Space to the desktop.
+ if(e.target.closest('input,textarea,select,[contenteditable="true"]'))return;
+ if(inlineEdit)return;
+ const command=e.ctrlKey||e.metaKey,key=e.key.toLowerCase();
+ if(command&&!e.shiftKey&&!e.altKey&&key==='a'){e.preventDefault();e.stopImmediatePropagation();selected=new Set(visibleObjects().map(o=>o.id));edgeSelected=null;selectionUI();renderConnections();return}
+ if(command&&!e.shiftKey&&!e.altKey&&key==='u'){e.preventDefault();e.stopImmediatePropagation();if(state.activeBoardId){const board=state.objects.find(o=>o.id===state.activeBoardId);enterBoard(board?.parentBoardId||null)}return}
+ const o=contextObject();if(o&&['note','todo','column'].includes(o.type)&&!command&&!e.altKey&&e.key.length===1){e.preventDefault();e.stopImmediatePropagation();startInline(o);document.execCommand('insertText',false,e.key);storeInline()}
+},true);
 function formatText(command,value){if(!inlineEdit)return;inlineEdit.el.focus();if(textRange){getSelection().removeAllRanges();getSelection().addRange(textRange)}document.execCommand(command,false,value);storeInline();rememberTextSelection();for(const b of contextRail.querySelectorAll('[data-context]')){const c=b.dataset.context;if(['bold','italic','underline','strikeThrough','insertUnorderedList','insertOrderedList'].includes(c))b.setAttribute('aria-pressed',String(document.queryCommandState(c)))}}
 function changeObject(mutator){const o=contextObject();if(!o)return;checkpoint();mutator(o);update()}
-function showContextPopover(title,content){contextPopover.innerHTML=`<header><strong>${esc(title)}</strong><button type="button" data-context="close-pop" aria-label="关闭选项">×</button></header>${content}`;contextPopover.hidden=false}
+function showContextPopover(title,content){
+ popoverAnimation?.cancel();popoverAnimation=null;popoverClosing=false;contextPopover.inert=false;
+ contextPopover.innerHTML=`<header><strong>${esc(title)}</strong><button type="button" data-context="close-pop" aria-label="关闭选项">×</button></header>${content}`;contextPopover.hidden=false;
+ if(!RM)popoverAnimation=contextPopover.animate([{opacity:0,translate:'-4px 0'},{opacity:1,translate:'0 0'}],{duration:160,easing:'cubic-bezier(.2,.7,.2,1)'});
+}
 const contextColors=['#ffffff','#e9edef','#f6dfe3','#f5d8bb','#f8edb7','#cfe7b7','#c6e1dc','#c9dced','#d9cdef','#24282c'];
 function swatchGrid(action){return `<div class="context-colors">${contextColors.map(c=>`<button type="button" data-${action}="${c}" style="background:${c}" aria-label="颜色 ${c}"></button>`).join('')}</div>`}
 function downloadObject(o){if(!o?.src)return toast('连接照片后才有可保存的输出');const ext=o.src.startsWith('data:image/png')?'png':'jpg';download(o.src,(o.variant==='ps'?'PS-output':o.name)+'.'+ext)}
