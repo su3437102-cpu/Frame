@@ -77,4 +77,24 @@ const boardBaseContext=handleContext;handleContext=function(action){const o=cont
 const taskBoardBaseEdit=actions.edit;actions.edit=function(){const o=contextObject();if(o?.type==='todo'){startInline(o);return}if(o?.type==='board'){enterBoard(o.id);return}taskBoardBaseEdit()};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-board-open],[data-board-up]');if(!b)return;if(b.hasAttribute('data-board-up')){const o=state.objects.find(o=>o.id===state.activeBoardId);enterBoard(o?.parentBoardId||null)}else enterBoard(b.dataset.boardOpen)});
 const taskBoardBaseRender=render;render=function(){if(state.activeBoardId&&!state.objects.some(o=>o.id===state.activeBoardId&&o.type==='board'))state.activeBoardId=null;taskBoardBaseRender();world.querySelectorAll('.object.todo').forEach(card=>{const o=state.objects.find(o=>o.id===card.dataset.id);fitTodo(card,o)});renderBoardNav()};
+function canvasRow(id,name,objects,isRoot=false){
+ const photos=objects.filter(o=>o.type==='image'),cover=photos.find(o=>o.src);
+ const parent=!isRoot&&state.objects.find(o=>o.id===state.objects.find(x=>x.id===id)?.parentBoardId);
+ return `<button class="listrow canvas-row" ${isRoot?'data-canvas-root="true"':`data-canvas-id="${esc(id)}"`}>
+ ${cover?`<img src="${esc(cover.src)}" alt="">`:'<span class="canvas-cover">▦</span>'}
+ <span><strong>${esc(name)}</strong><small>${parent?`${esc(parent.name)} · `:''}${photos.length} 个照片项目 · ${objects.length} 个内容</small></span><small>画布 ›</small></button>`;
+}
+actions.boards=function(){
+ const canvases=state.objects.filter(o=>o.type==='board');
+ const rootPhotos=state.objects.filter(o=>(o.parentBoardId||null)===null);
+ const root=canvasRow('root','Visual Exploration',rootPhotos,true);
+ const rows=canvases.map(board=>canvasRow(board.id,board.name,state.objects.filter(o=>o.parentBoardId===board.id))).join('');
+ modal('My boards',`<p class="dialogcopy">每个画布独立保存自己的照片项目和内容。选择画布进入桌面。</p><section class="canvas-list">${root}${rows||'<p class="canvas-empty">还没有子画布。新建一个画布来整理独立项目。</p>'}</section><div class="dialogactions"><button class="primary" data-create-canvas>＋ 新建画布</button></div>`);
+};
+document.addEventListener('click',e=>{
+ const root=e.target.closest('[data-canvas-root]');if(root){e.preventDefault();enterBoard(null);return}
+ const canvas=e.target.closest('[data-canvas-id]');if(canvas){enterBoard(canvas.dataset.canvasId);return}
+ if(e.target.closest('[data-create-canvas]')){modal('新建画布',`<label class="field">画布名称<input id="canvasName" maxlength="80" value="新画布" autofocus></label><div class="dialogactions"><button class="primary" data-save-canvas>创建并进入</button></div>`);$('#canvasName').select();return}
+ if(e.target.closest('[data-save-canvas]')){const name=$('#canvasName').value.trim()||'新画布';const board=add('board',{name,w:160,h:130});dialog.close();enterBoard(board.id)}
+});
 render();

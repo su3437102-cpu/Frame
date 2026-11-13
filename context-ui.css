@@ -45,6 +45,14 @@
 #connections .edge-selected .bend-handle{stroke:var(--ink);stroke-width:2}
 #connections g:hover .bend-handle{stroke:var(--ink);stroke-width:2}
 #contextPopover header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+#dialog .canvas-list{max-height:min(62vh,680px);overflow:auto;border-top:1px solid var(--line)}
+#dialog .canvas-row{min-height:74px}
+#dialog .canvas-row strong,#dialog .canvas-row small{display:block}
+#dialog .canvas-row strong{font-weight:500;color:var(--ink);margin-bottom:5px}
+#dialog .canvas-row>small{white-space:nowrap}
+#dialog .canvas-cover{width:62px;height:45px;display:grid;place-items:center;background:var(--bg);font-size:25px;color:var(--muted)}
+#dialog .canvas-empty{padding:20px 10px;color:var(--muted);font-size:13px}
+@media(max-width:900px){.topbar .myboards{display:inline-flex!important}}
 #contextPopover header button{font-size:18px;padding:0 6px}#contextPopover label{display:block;margin:8px 0;line-height:1.6}
 #contextPopover input:not([type="color"]),#contextPopover textarea,#contextPopover select{display:block;width:100%;padding:7px;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:3px}
 #contextPopover button{padding:7px;white-space:normal;text-align:left;min-height:30px}#contextPopover p{margin:8px 0;line-height:1.5}
