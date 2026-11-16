@@ -1,0 +1,196 @@
+{
+  "device": "CPU / 4 threads",
+  "torch": "2.15.0+cpu",
+  "interpolation_identity_max_error": 1.1920928955078125e-07,
+  "weights_sha256": {
+    "adaint.pth": "bca51f280f148b1edaa71a863e6f57a78668162e2cc35fcd93b5a8c1ed81eacf",
+    "classifier.pth": "bae9865395625ecae58cfe86147e521093bb1e29e7b2544e02adb238b8035021",
+    "luts.pth": "c1bb2bc4b7239c1a7e96159f5923123ba796b1fceb0b8c3132b423ea825b821a"
+  },
+  "samples": [
+    {
+      "name": "adaint-demo.jpg",
+      "size": [
+        1600,
+        1064
+      ],
+      "source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-26\\referenced-chatgpt-conversation-this-is-an-2\\work\\ai-color-evaluation\\sources\\adaint-demo.jpg",
+      "results": {
+        "3dlut": {
+          "median_ms": 91.9,
+          "clipped_channels_pct": 0.128,
+          "mean_absolute_change": 0.1243
+        },
+        "adaint": {
+          "median_ms": 141.4,
+          "clipped_channels_pct": 0.0,
+          "mean_absolute_change": 0.1189
+        }
+      }
+    },
+    {
+      "name": "photo-0.jpg",
+      "size": [
+        1000,
+        596
+      ],
+      "source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-26\\referenced-chatgpt-conversation-this-is-an-2\\work\\Frame-cloud\\assets\\photo-0.jpg",
+      "results": {
+        "3dlut": {
+          "median_ms": 34.1,
+          "clipped_channels_pct": 3.427,
+          "mean_absolute_change": 0.0687
+        },
+        "adaint": {
+          "median_ms": 49.3,
+          "clipped_channels_pct": 0.28,
+          "mean_absolute_change": 0.0655
+        }
+      }
+    },
+    {
+      "name": "photo-1.jpg",
+      "size": [
+        1000,
+        667
+      ],
+      "source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-26\\referenced-chatgpt-conversation-this-is-an-2\\work\\Frame-cloud\\assets\\photo-1.jpg",
+      "results": {
+        "3dlut": {
+          "median_ms": 39.7,
+          "clipped_channels_pct": 8.951,
+          "mean_absolute_change": 0.0724
+        },
+        "adaint": {
+          "median_ms": 55.0,
+          "clipped_channels_pct": 0.0,
+          "mean_absolute_change": 0.0828
+        }
+      }
+    },
+    {
+      "name": "photo-2.jpg",
+      "size": [
+        1000,
+        666
+      ],
+      "source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-26\\referenced-chatgpt-conversation-this-is-an-2\\work\\Frame-cloud\\assets\\photo-2.jpg",
+      "results": {
+        "3dlut": {
+          "median_ms": 38.6,
+          "clipped_channels_pct": 10.741,
+          "mean_absolute_change": 0.0631
+        },
+        "adaint": {
+          "median_ms": 53.5,
+          "clipped_channels_pct": 5.922,
+          "mean_absolute_change": 0.066
+        }
+      }
+    },
+    {
+      "name": "photo-3.jpg",
+      "size": [
+        1000,
+        667
+      ],
+      "source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-26\\referenced-chatgpt-conversation-this-is-an-2\\work\\Frame-cloud\\assets\\photo-3.jpg",
+      "results": {
+        "3dlut": {
+          "median_ms": 43.8,
+          "clipped_channels_pct": 9.78,
+          "mean_absolute_change": 0.0773
+        },
+        "adaint": {
+          "median_ms": 58.8,
+          "clipped_channels_pct": 0.0,
+          "mean_absolute_change": 0.062
+        }
+      }
+    },
+    {
+      "name": "photo-4.jpg",
+      "size": [
+        1000,
+        667
+      ],
+      "source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-26\\referenced-chatgpt-conversation-this-is-an-2\\work\\Frame-cloud\\assets\\photo-4.jpg",
+      "results": {
+        "3dlut": {
+          "median_ms": 44.1,
+          "clipped_channels_pct": 7.71,
+          "mean_absolute_change": 0.0816
+        },
+        "adaint": {
+          "median_ms": 55.4,
+          "clipped_channels_pct": 0.019,
+          "mean_absolute_change": 0.0825
+        }
+      }
+    },
+    {
+      "name": "photo-5.jpg",
+      "size": [
+        1000,
+        667
+      ],
+      "source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-26\\referenced-chatgpt-conversation-this-is-an-2\\work\\Frame-cloud\\assets\\photo-5.jpg",
+      "results": {
+        "3dlut": {
+          "median_ms": 37.7,
+          "clipped_channels_pct": 12.838,
+          "mean_absolute_change": 0.063
+        },
+        "adaint": {
+          "median_ms": 57.1,
+          "clipped_channels_pct": 1.561,
+          "mean_absolute_change": 0.0593
+        }
+      }
+    },
+    {
+      "name": "photo-6.jpg",
+      "size": [
+        969,
+        1600
+      ],
+      "source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-26\\referenced-chatgpt-conversation-this-is-an-2\\work\\Frame-cloud\\assets\\photo-6.jpg",
+      "results": {
+        "3dlut": {
+          "median_ms": 82.2,
+          "clipped_channels_pct": 8.337,
+          "mean_absolute_change": 0.0589
+        },
+        "adaint": {
+          "median_ms": 127.9,
+          "clipped_channels_pct": 11.033,
+          "mean_absolute_change": 0.047
+        }
+      }
+    },
+    {
+      "name": "photo-7.jpg",
+      "size": [
+        1000,
+        664
+      ],
+      "source": "C:\\Users\\Administrator\\Documents\\Codex\\2026-10-26\\referenced-chatgpt-conversation-this-is-an-2\\work\\Frame-cloud\\assets\\photo-7.jpg",
+      "results": {
+        "3dlut": {
+          "median_ms": 37.2,
+          "clipped_channels_pct": 4.736,
+          "mean_absolute_change": 0.154
+        },
+        "adaint": {
+          "median_ms": 53.8,
+          "clipped_channels_pct": 0.143,
+          "mean_absolute_change": 0.2011
+        }
+      }
+    }
+  ],
+  "scalar_interpolation_max_error": {
+    "3dlut": 1.7912626143479216e-06,
+    "adaint": 7.149137672968209e-07
+  }
+}

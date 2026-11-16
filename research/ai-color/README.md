@@ -24,7 +24,7 @@
 ## 本机结果
 
 - 对照页：`http://192.168.3.4:4311/design/ai-color/index.html`
-- 本机：`http://127.0.0.1:4313/design/ai-color/index.html`
+- 本机：`http://127.0.0.1:4311/design/ai-color/index.html`
 - 完整输出保存在工作区 `outputs/AI-Color-Evaluation/`，包括原图、两套输出和 JSON 数值报告。
 - 独立 Python 环境：`C:/Users/Administrator/.codex/envs/r11-ai/`。
 - 本轮只完成模型评估；画布 AI 调色子台与云端推理尚未接入。
