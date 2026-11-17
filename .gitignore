@@ -8,3 +8,5 @@ dist/
 vendor/*.zip
 
 .cloud-assets/
+
+ai-web/ort*

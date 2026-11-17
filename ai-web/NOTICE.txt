@@ -1,0 +1,13 @@
+AdaInt predictor converted to ONNX from ImCharlesY/AdaInt official sRGB checkpoint.
+Source commit: 5678851339dff90becb09c3dec41e7214207ccbc
+Original checkpoint SHA256: bca51f280f148b1edaa71a863e6f57a78668162e2cc35fcd93b5a8c1ed81eacf
+Source: https://github.com/ImCharlesY/AdaInt
+Code license: Apache-2.0 (ADAINT-LICENSE.txt).
+Modification: extracted inference classes, exported predictor to ONNX opset 17;
+adaptive LUT interpolation implemented in JavaScript. No training performed.
+Evaluation/training-data limitations remain documented in research/ai-color/README.md.
+
+ONNX Runtime Web 1.24.3, Microsoft contributors, MIT license.
+https://github.com/microsoft/onnxruntime
+Runtime files are copied from the pinned npm package during build.
+License: ONNX-RUNTIME-LICENSE.txt.

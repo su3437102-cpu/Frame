@@ -1,5 +1,6 @@
+import '../build-ai.mjs';
 import {readFileSync,writeFileSync,mkdirSync,cpSync} from 'node:fs';
-const files=['index.html','app.js','ai-color.js','style.css','context-ui.js','task-board.js','image-layout.js','context-ui.css','interactions.js','cloud-sync.js','ps-system.js','pikado-host.js',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
+const files=['index.html','app.js','ai-color.js','ai-browser.js','style.css','context-ui.js','task-board.js','image-layout.js','context-ui.css','interactions.js','cloud-sync.js','ps-system.js','pikado-host.js',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
 const assets={};
 for(const file of files){
   let bytes=readFileSync(new URL('../'+file,import.meta.url));
@@ -14,3 +15,5 @@ console.log('Cloud build: '+files.length+' approved runtime files; no test data,
 
 mkdirSync(new URL('../.cloud-assets/editor/',import.meta.url),{recursive:true});
 cpSync(new URL('../editor/',import.meta.url),new URL('../.cloud-assets/editor/',import.meta.url),{recursive:true});
+
+cpSync(new URL('../ai-web/',import.meta.url),new URL('../.cloud-assets/ai-web/',import.meta.url),{recursive:true});

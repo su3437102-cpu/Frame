@@ -13,7 +13,7 @@ export default {
       return env.DESK.get(env.DESK.idFromName('owner')).fetch(request);
     }
     if(!['GET','HEAD'].includes(request.method))return json({error:'Method not allowed'},405);
-    if(url.pathname.startsWith('/editor/')){
+    if(url.pathname.startsWith('/editor/')||url.pathname.startsWith('/ai-web/')){
       if(!env.EDITOR_ASSETS)return json({error:'Editor assets unavailable'},503);
       const response=await env.EDITOR_ASSETS.fetch(request);
       const headers=new Headers(response.headers);headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Cache-Control','private, no-store');headers.set('X-Content-Type-Options','nosniff');

@@ -18,5 +18,8 @@
     "pixelmatch": "8.0.0",
     "pngjs": "7.0.0",
     "wrangler": "4.155.0"
+  },
+  "dependencies": {
+    "onnxruntime-web": "1.24.3"
   }
 }
