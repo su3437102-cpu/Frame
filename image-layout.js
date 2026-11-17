@@ -3,7 +3,7 @@ function imageFrameHeight(width,ratio,isPS){return isPS?Math.max(1,width-24)*rat
 function fitDecodedImage(img){
  const card=img.closest('#world .object.image');if(!card||!img.naturalWidth||!img.naturalHeight)return false;
  const o=state.objects.find(item=>item.id===card.dataset.id);if(!o||img.getAttribute('src')!==o.src)return false;
- const ratio=img.naturalHeight/img.naturalWidth,h=imageFrameHeight(o.w,ratio,o.variant==='ps');
+ const ratio=img.naturalHeight/img.naturalWidth,h=imageFrameHeight(o.w,ratio,['ps','ai'].includes(o.variant));
  const changed=Math.abs(o.h-h)>.1||o.imageRatio!==ratio;o.imageRatio=ratio;o.h=h;card.style.height=h+'px';return changed;
 }
 document.addEventListener('load',e=>{if(e.target instanceof HTMLImageElement&&fitDecodedImage(e.target)){renderConnections();drawMap();save()}},true);

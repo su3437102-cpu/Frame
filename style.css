@@ -93,3 +93,6 @@
  #dialog[open]::backdrop{background:rgba(0,0,0,0)}
 }
 @media(prefers-reduced-motion:reduce){#dialog,#popover,#selectionbar,#minimap,#dialog::backdrop{transition:none!important;scale:1}}
+
+/* finesse component: AI color, existing workbench tokens */
+.ai-node{padding:0 12px 12px!important}.ai-node img{width:100%;object-fit:contain;flex:1;min-height:0}.ai-node .ps-title{margin:0 -2px}.ai-node small{padding:8px 0 0}#aiStrength{accent-color:var(--ink)}.dialogactions button:disabled{opacity:.5;cursor:not-allowed}.dialogactions button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
