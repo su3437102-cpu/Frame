@@ -12,7 +12,7 @@ function openPikado(id){
  if(dialog.open)dialog.close();
  const panel=document.createElement('section');panel.id='pikadoPanel';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label','Pikado 图像编辑器');
  if(rect)panel.style.transformOrigin=Math.max(0,Math.min(innerWidth,rect.x+rect.width/2))+'px '+Math.max(0,Math.min(innerHeight,rect.y+rect.height/2))+'px';
- panel.innerHTML=`<header tabindex="-1"><strong>Pikado</strong><span role="status">正在准备编辑器…</span><button type="button" data-editor-cancel>返回画布</button><button type="button" data-editor-save disabled>保存并返回画布</button></header><div class="editor-placeholder" aria-hidden="true">${preview?`<img src="${esc(preview)}" alt="">`:''}</div><iframe title="Pikado 图层编辑器" src="editor/index.html" allow="clipboard-read; clipboard-write" tabindex="-1"></iframe>`;
+ panel.innerHTML=`<header tabindex="-1"><strong>FrameLab / PS</strong><span role="status">正在加载编辑器…</span><button type="button" data-editor-cancel>返回画布</button><button type="button" data-editor-save disabled>保存并返回画布</button></header><div class="editor-placeholder" aria-hidden="true">${preview?`<img src="${esc(preview)}" alt="">`:''}</div><iframe title="Pikado 图层编辑器" src="editor/index.html" allow="clipboard-read; clipboard-write" tabindex="-1"></iframe>`;
  document.body.append(panel);document.body.classList.add('pikado-editing');
  $$('[data-workspace-region]').forEach(element=>element.inert=true);
  panel.querySelector('header').focus({preventScroll:true});renderCamera();
@@ -61,7 +61,7 @@ const pikaBaseOpen=openObject;
 openObject=function(id){const o=state.objects.find(o=>o.id===id);if(o?.kind==='ps'){openPikado(id);return}if(o?.variant==='ps'&&o.src){modal('PS · 照片预览',`<img class="projectpreview" src="${esc(o.src)}" alt="PS 输出预览"><button class="primary" data-pikado="${esc(id)}">进入 Pikado 编辑</button>`);return}pikaBaseOpen(id)};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-pikado]');if(b)openPikado(b.dataset.pikado)});
 const pikaBaseZone=zoneHTML;
-zoneHTML=function(o){if(o.kind==='ps')return '<p>导入素材，在 Pikado 中进行图层编辑。</p><button data-pikado="zone-ps">打开 Pikado 工作台</button><small>可保存独立工程，也可以从照片连接 PS 子台。</small>';return pikaBaseZone(o)};
+zoneHTML=function(o){if(o.kind==='ps')return '<p>导入素材，在 Pikado 中进行图层编辑。</p><button data-pikado="zone-ps">打开 PS 母台</button><small>子台与母台使用同一个编辑器，各自保留工程。</small>';return pikaBaseZone(o)};
 render();
 
 new MutationObserver(()=>{if(pikaSession?.ready)pikaSession.frame.contentWindow.postMessage({channel:'framelab-pikado',type:'theme',theme:state.theme},location.origin)}).observe(document.body,{attributes:true,attributeFilter:['class']});

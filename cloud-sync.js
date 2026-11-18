@@ -293,7 +293,7 @@ actions.more=()=>{
 };
 actions.people=()=>modal('个人云端工作空间',`<p class="dialogcopy">仅所有者可登录。布局、工作预览和可编辑工程可在个人设备间同步。上传照片会生成压缩工作预览，请单独保存原片。</p><p class="dialogcopy">${assetStorage?'云端素材与布局分开保存。':'当前云端使用整份桌面快照，单次同步上限 8 MiB。'}</p>`);
 actions.help=actions.people;
-actions.share=()=>modal('个人备份','<p class="dialogcopy">备份包含布局、工作预览和可编辑工程。建议妥善保存导出的文件。</p><div class="dialogactions">'+button('导出桌面备份','export')+button('导入备份','import')+'</div>');
+actions.share=()=>modal('个人备份','<p class="dialogcopy">本工作空间不提供公开分享。导出的备份包含照片与布局，请妥善保存。</p><div class="dialogactions">'+button('导出桌面备份','export')+button('导入备份','import')+'</div>');
 
 window.addEventListener('beforeunload',event=>{
   if(!leaving&&dirty&&(storageFailure||storedGeneration<generation)){

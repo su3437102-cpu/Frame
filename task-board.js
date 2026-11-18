@@ -59,7 +59,7 @@ function renderBoardNav(){
  let nav=$('#boardNavigation');if(!nav){nav=document.createElement('nav');nav.id='boardNavigation';nav.setAttribute('aria-label','画板层级');$('.topbar h1').after(nav)}
  const path=boardPath(state.activeBoardId);$('.topbar h1').hidden=!!path.length;
  nav.hidden=!path.length;nav.innerHTML=path.length?'<button type="button" data-board-up aria-label="返回上级画板">←</button>'+path.map((b,i)=>`<button type="button" data-board-open="${esc(b.id)}" ${i===path.length-1?'aria-current="page"':''}>${esc(b.name)}</button>`).join('<span>/</span>'):'';
- desk.setAttribute('aria-label',path.length?path.at(-1).name+' · 子画布':'无限桌面');$('#minimap span').textContent=path.at(-1)?.name||'摄影探索';
+ desk.setAttribute('aria-label',path.length?path.at(-1).name+' · 子画布':'无限桌面');$('#minimap span').textContent=path.at(-1)?.name||'Visual Exploration';
 }
 function boardFromLocation(){
  const match=location.hash.match(/^#board=(.+)$/);
@@ -153,9 +153,9 @@ function canvasRow(id,name,objects,isRoot=false){
 actions.boards=function(){
  const canvases=state.objects.filter(o=>o.type==='board');
  const rootPhotos=state.objects.filter(o=>(o.parentBoardId||null)===null);
- const root=canvasRow('root','摄影探索',rootPhotos,true);
+ const root=canvasRow('root','Visual Exploration',rootPhotos,true);
  const rows=canvases.map(board=>canvasRow(board.id,board.name,state.objects.filter(o=>o.parentBoardId===board.id))).join('');
- modal('我的画板',`<p class="dialogcopy">每个画布独立保存自己的照片项目和内容。选择画布进入桌面。</p><section class="canvas-list">${root}${rows||'<p class="canvas-empty">还没有子画布。新建一个画布来整理独立项目。</p>'}</section><div class="dialogactions"><button class="primary" data-create-canvas>＋ 新建画布</button></div>`);
+ modal('My boards',`<p class="dialogcopy">每个画布独立保存自己的照片项目和内容。选择画布进入桌面。</p><section class="canvas-list">${root}${rows||'<p class="canvas-empty">还没有子画布。新建一个画布来整理独立项目。</p>'}</section><div class="dialogactions"><button class="primary" data-create-canvas>＋ 新建画布</button></div>`);
 };
 document.addEventListener('click',e=>{
  const root=e.target.closest('[data-canvas-root]');if(root){e.preventDefault();enterBoard(null);return}

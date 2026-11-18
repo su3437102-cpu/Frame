@@ -32,11 +32,11 @@ window.addEventListener('blur',cancelConnection);
 document.addEventListener('keydown',e=>{if(dialog.open||e.target.closest('input,textarea,select,[contenteditable="true"]'))return;if(e.key==='Escape'&&(connecting||edgeSelected||paletteDrag||activeTool)){e.preventDefault();e.stopImmediatePropagation();edgeSelected=null;cancelConnection();cancelPalette();chooseTool(null);return}if(edgeSelected&&(e.key==='Delete'||e.key==='Backspace')){e.preventDefault();e.stopImmediatePropagation();checkpoint();state.connections=(state.connections||[]).filter(a=>a.id!==edgeSelected);edgeSelected=null;update()}},true);
 function chooseTool(type){activeTool=type;desk.classList.toggle('placing-tool',!!type);$('#boardEmpty').classList.toggle('is-placing',!!type);$$('.palette-tool').forEach(b=>{let active=b.dataset.tool===type;b.classList.toggle('tool-active',active);b.setAttribute('aria-pressed',String(active))})}
 function createTool(type,p){if(type==='ps'){createPSNode(p);return}if(type==='templates'){actions.templates();return}if(type==='line'){connecting={from:null};desk.classList.add('connecting');toast('依次点击两个对象，或拖动照片右上角的连接手柄');return}if(type==='image'){actions.upload(p);return}let extra=p?{x:p.x,y:p.y}:{};if(type==='note')Object.assign(extra,{h:54,text:'Start typing…'});if(type==='board')Object.assign(extra,{w:140,h:120});if(type==='todo')Object.assign(extra,{w:260,h:96,text:'',taskItems:[],todoTitle:false});if(type==='comment'){type='note';Object.assign(extra,{variant:'comment',name:'Comment',text:'双击输入评论',w:240,h:80})}if(type==='table'){type='note';Object.assign(extra,{variant:'table',name:'Table',text:'标题  |  内容\n项目  |  待填写',w:280,h:120})}return add(type,extra)}
-const palette=[['note','便签'],['todo','待办'],['line','连线'],['board','子画板'],['column','栏目'],['ps','PS'],['templates','模板'],['image','添加照片']];
+const palette=[['note','Note'],['todo','To-do'],['line','Line'],['board','Board'],['column','Column'],['ps','PS'],['templates','模板'],['image','Add image']];
 actions.templates=()=>modal('从模板开始',zoneHTML({kind:'templates'}));
 paths.ps='M4 3h16v18H4Z M8 16V8h4a3 3 0 0 1 0 6H8 M16 10h-2';paths.templates='M3 3h8v8H3Z M15 3h6v8h-6Z M3 15h8v6H3Z M15 15h6v6h-6Z';
 paths.board='M5 5h4v4H5Z M15 5h4v4h-4Z M5 15h4v4H5Z M15 15h4v4h-4Z';paths.column='M3 3h18v18H3Z M3 8h18';paths.comment='M3 3h18v15h-8l-5 4v-4H3Z M7 7h10 M7 11h8';paths.table='M2 3h20v18H2Z M2 9h20 M2 15h20 M9 3v18 M16 3v18';
-$('#tools').innerHTML=palette.map(([t,label])=>`<button class="palette-tool" data-tool="${t}" title="${label} · 点击或拖入画布" aria-pressed="false"><i class="tool-glyph glyph-${t}">${icon(t)}</i><span>${label}</span></button>`).join('');
+$('#tools').innerHTML=palette.map(([t,label])=>`<button class="palette-tool" data-tool="${t}" title="拖到桌面创建 ${label}" aria-pressed="false"><i class="tool-glyph glyph-${t}">${icon(t)}</i><span>${label}</span></button>`).join('');
 function cancelPalette(){const p=paletteDrag;paletteDrag=null;$('#paletteGhost')?.remove();p?.button?.classList.remove('tool-dragging');if(p?.button?.hasPointerCapture(p.pointerId))p.button.releasePointerCapture(p.pointerId)}
 function palettePreview(type){
  if(type==='line')return {w:180,h:40,html:'<svg viewBox="0 0 180 40"><path d="M8 30L166 10m-10-4 10 4-8 8"/><circle cx="87" cy="20" r="4"/></svg>'};
@@ -110,7 +110,7 @@ $('#tools').addEventListener('click',event=>{
   return;
  }
  chooseTool(activeTool===type?null:type);
- if(activeTool)toast('点击画布放置'+button.textContent.trim()+'，Esc 取消');
+ if(activeTool)toast('点击画布放置 '+button.textContent.trim()+'，Esc 取消');
 });
 desk.addEventListener('pointerdown',event=>{
  placementStart=activeTool&&event.button===0&&!space&&!event.target.closest('.object,button,[data-edge]')?{x:event.clientX,y:event.clientY}:null;
@@ -121,7 +121,7 @@ desk.addEventListener('click',event=>{
  if(Math.hypot(event.clientX-start.x,event.clientY-start.y)<5)placeTool(activeTool,point(event));
 });
 const baseObjectHTML=objectHTML;
-objectHTML=function(o){if(o.type==='image')return `<div class="inner"><img src="${esc(o.src)}" alt="摄影项目" draggable="false"></div>`;if(o.type==='board')return `<div class="inner board-cutout"><span class="board-symbol"></span><h3>${esc(o.name)}</h3><small>${state.objects.filter(item=>item.parentBoardId===o.id).length} 张卡片</small></div>`;if(o.type==='todo')return `<div class="inner todo-card"><h3>${esc(o.name)}</h3><div class="task-list">${(o.text||'收集参考\n挑选照片\n整理思路').split('\n').map((t,i)=>`<label class="task ${o.done?.includes(i)?'is-done':''}"><input type="checkbox" data-task="${i}" ${o.done?.includes(i)?'checked':''}><span>${esc(t)}</span></label>`).join('')}</div></div>`;if(o.variant==='table')return `<div class="inner"><table class="data-table">${(o.text||'').split('\n').map(row=>`<tr>${row.split('|').map(cell=>`<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</table></div>`;if(o.variant==='comment')return `<div class="inner"><p class="comment-card">${esc(o.text)}</p></div>`;return baseObjectHTML(o)};
+objectHTML=function(o){if(o.type==='image')return `<div class="inner"><img src="${esc(o.src)}" alt="摄影项目" draggable="false"></div>`;if(o.type==='board')return `<div class="inner board-cutout"><span class="board-symbol"></span><h3>${esc(o.name)}</h3><small>${state.objects.filter(item=>item.parentBoardId===o.id).length} cards</small></div>`;if(o.type==='todo')return `<div class="inner todo-card"><h3>${esc(o.name)}</h3><div class="task-list">${(o.text||'收集参考\n挑选照片\n整理思路').split('\n').map((t,i)=>`<label class="task ${o.done?.includes(i)?'is-done':''}"><input type="checkbox" data-task="${i}" ${o.done?.includes(i)?'checked':''}><span>${esc(t)}</span></label>`).join('')}</div></div>`;if(o.variant==='table')return `<div class="inner"><table class="data-table">${(o.text||'').split('\n').map(row=>`<tr>${row.split('|').map(cell=>`<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</table></div>`;if(o.variant==='comment')return `<div class="inner"><p class="comment-card">${esc(o.text)}</p></div>`;return baseObjectHTML(o)};
 desk.addEventListener('pointerdown',e=>{if(e.target.closest('.task'))e.stopImmediatePropagation()},true);
 desk.addEventListener('dblclick',e=>{if(e.target.closest('.task'))e.stopImmediatePropagation()},true);
 document.addEventListener('change',e=>{if(e.target.matches('[data-task]'))e.target.closest('.task').classList.toggle('is-done',e.target.checked)});

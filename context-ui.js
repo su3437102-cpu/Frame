@@ -43,14 +43,14 @@ function syncContextRail(){
  const enterRail=prepareRailTransition(mode);
  $('#tools').hidden=mode!=='create';$('.toolbottom').hidden=mode!=='create';contextRail.hidden=mode==='create';
  if(mode==='create'){contextRail.replaceChildren();enterRail();return}
- let html=contextButton('back',mode==='text'?'返回对象工具':'创建工具','back');
+ let html=contextButton('back',mode==='text'?'返回对象工具':'返回创建工具','back');
  if(mode==='text'){
   html+=contextButton('text-style','文字样式','text');
   for(const [command,label,glyph] of [['bold','粗体','bold'],['italic','斜体','italic'],['strikeThrough','删除线','strike'],['underline','下划线','underline'],['insertUnorderedList','项目列表','bullets'],['insertOrderedList','编号列表','ordered'],['align','对齐','align'],['code','代码块','code'],['link','文字链接','link']])html+=contextButton(command,label,glyph,true);
  }else{
   if(o.variant==='ai')html+=contextButton('ai-edit','调色设置','ai')+contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
   else if(o.variant==='ps')html+=contextButton('ps-edit','进入编辑','ps')+contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
-  else if(o.type==='image')html+=contextButton('preview','大图预览','eye')+contextButton('replace','替换照片','replace')+contextButton('size','尺寸','size')+contextButton('to-ps','连接 PS','ps')+contextButton('to-ai','AI 调色','ai')+contextButton('download','下载预览','download');
+  else if(o.type==='image')html+=contextButton('preview','大图预览','eye')+contextButton('replace','替换照片','replace')+contextButton('size','尺寸','size')+contextButton('to-ps','连接 PS','ps')+contextButton('to-ai','AI 调色','ai')+contextButton('download','下载','download');
   else if(o.type==='zone')html+=contextButton('open-zone','打开功能','edit');
   else html+=contextButton('edit','编辑内容','edit');
   html+=contextButton('color',o.type==='image'?'色条':'颜色','color')+contextButton('labels','标签','tag')+contextButton('reactions','反应','reaction')+contextButton('comments','评论','comment')+contextButton('more','更多','more');
@@ -76,8 +76,8 @@ function safeNoteHTML(html){
 const contextBaseHTML=objectHTML;
 objectHTML=function(o){
  let html=o.type==='note'?`<div class="inner"><div class="note-text" data-placeholder="开始输入…">${o.richText&&o.richTextPlain===o.text?safeNoteHTML(o.richText):esc(o.text==='Start typing…'?'':o.text||'').replace(/\n/g,'<br>')}</div></div>`:contextBaseHTML(o);
- if(o.type==='column'&&o.richText&&o.richTextPlain===o.text)html=`<div class="inner"><h3>${esc(o.name)}</h3><div class="columnline"></div><div class="note-text">${safeNoteHTML(o.richText)}</div></div>`;
- if(o.type==='todo'&&Array.isArray(o.richTasks)&&o.richTextPlain===o.text)html=`<div class="inner todo-card"><h3>${esc(o.name)}</h3><div class="task-list">${o.richTasks.map((line,i)=>`<label class="task ${o.done?.includes(i)?'is-done':''}"><input type="checkbox" data-task="${i}" ${o.done?.includes(i)?'checked':''}><span>${safeNoteHTML(line)}</span></label>`).join('')}</div></div>`;
+ if(o.type==='column'&&o.richText&&o.richTextPlain===o.text)html=`<div class="inner"><h3>${esc(objectName(o))}</h3><div class="columnline"></div><div class="note-text">${safeNoteHTML(o.richText)}</div></div>`;
+ if(o.type==='todo'&&Array.isArray(o.richTasks)&&o.richTextPlain===o.text)html=`<div class="inner todo-card"><h3>${esc(objectName(o))}</h3><div class="task-list">${o.richTasks.map((line,i)=>`<label class="task ${o.done?.includes(i)?'is-done':''}"><input type="checkbox" data-task="${i}" ${o.done?.includes(i)?'checked':''}><span>${safeNoteHTML(line)}</span></label>`).join('')}</div></div>`;
  return html;
 };
 function applyContextDecorations(){
@@ -103,7 +103,7 @@ function startInline(o){
  if(inlineEdit?.id===o.id)return;if(inlineEdit)finishInline(false);checkpoint();selected=new Set([o.id]);contextBackId=null;
  const card=world.querySelector(`[data-id="${CSS.escape(o.id)}"]`);let el=card.querySelector('.note-text');
  if(!el){el=document.createElement('div');el.className='note-text';if(o.richText&&o.richTextPlain===o.text)el.innerHTML=safeNoteHTML(o.richText);else el.textContent=o.text||'';const inner=card.querySelector('.inner');if(o.type==='column'){inner.querySelectorAll('.sample').forEach(n=>n.remove());inner.append(el)}else inner.replaceChildren(el)}
- el.contentEditable='true';el.setAttribute('role','textbox');el.setAttribute('aria-label','编辑'+o.name);el.setAttribute('aria-multiline','true');el.setAttribute('spellcheck','false');card.classList.add('inline-editing');
+ el.contentEditable='true';el.setAttribute('role','textbox');el.setAttribute('aria-label','编辑'+objectName(o));el.setAttribute('aria-multiline','true');el.setAttribute('spellcheck','false');card.classList.add('inline-editing');
  inlineEdit={id:o.id,el};el.addEventListener('input',storeInline);el.addEventListener('paste',e=>{e.preventDefault();document.execCommand('insertText',false,e.clipboardData.getData('text/plain'))});
  el.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();finishInline(true)}if(e.key==='Tab'){e.preventDefault();document.execCommand(e.shiftKey?'outdent':'indent');storeInline()}});
  selectionUI();el.focus();const range=document.createRange();range.selectNodeContents(el);range.collapse(false);getSelection().removeAllRanges();getSelection().addRange(range);rememberTextSelection();
@@ -150,7 +150,7 @@ function handleContext(action){
  if(action==='add-comment'){const text=$('#contextComment').value.trim();if(text)changeObject(o=>{(o.comments??=[]).push({text,createdAt:new Date().toISOString()})});handleContext('comments');return}
  if(action==='more'){showContextPopover('更多',`<div class="context-options"><button data-context="rename">重命名</button><button data-context="duplicate">复制</button><button data-context="front">置顶</button><button data-context="delete">移到回收站</button></div>`);return}
  if(['duplicate','front','delete'].includes(action)){closeContextPopover();actions[action]();return}
- if(action==='rename'){showContextPopover('重命名',`<label>名称<input id="contextName" value="${esc(o.name)}" maxlength="120"></label><button data-context="save-name">保存</button>`);return}
+ if(action==='rename'){showContextPopover('重命名',`<label>名称<input id="contextName" value="${esc(objectName(o))}" maxlength="120"></label><button data-context="save-name">保存</button>`);return}
  if(action==='save-name'){const name=$('#contextName').value.trim();if(name)changeObject(o=>o.name=name);closeContextPopover();return}
  if(action==='preview'){openObject(o.id);return}
  if(action==='replace'){actions.replace();return}
@@ -162,7 +162,7 @@ function handleContext(action){
  if(action==='disconnect'){changeObject(o=>{state.connections=(state.connections||[]).filter(e=>e.to!==o.id)});return}
  if(action==='connect'){connecting={from:o.id};desk.classList.add('connecting');toast('点击一张照片作为输入');return}
  if(action==='to-ps'){const sourceId=o.id;createPSNode({x:o.x+o.w+80,y:o.y});connectPS(sourceId,[...selected][0]);return}
- if(action==='open-zone'){if(o.kind==='ps')openPikado(o.id);else modal(o.name,zoneHTML(o));return}
+ if(action==='open-zone'){if(o.kind==='ps')openPikado(o.id);else modal(objectName(o),zoneHTML(o));return}
 }
 function applyObjectColor(value){const key=$('#colorTarget')?.value||'cardColor';changeObject(o=>{if(value==='default'||(key==='colorStrip'&&value==='transparent'))delete o[key];else o[key]=value})}
 for(const root of [contextRail,contextPopover]){
