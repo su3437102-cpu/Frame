@@ -90,3 +90,7 @@
 #boardNavigation button{padding:5px 3px;white-space:nowrap;font-size:12px}
 #boardNavigation [aria-current]{font-weight:600}
 @media(prefers-reduced-motion:reduce){.live-task input,.task-editor,.live-task [data-remove-task]{transition:none}}
+
+.toolbar .tool-active .tool-glyph{background:var(--ink);color:var(--surface);box-shadow:0 0 0 2px var(--ink)}
+.toolbar .context-tool[data-context="back"]{height:42px;margin-bottom:6px}
+.context-tool[data-context="back"] span{display:block}

@@ -59,26 +59,92 @@ function renderBoardNav(){
  let nav=$('#boardNavigation');if(!nav){nav=document.createElement('nav');nav.id='boardNavigation';nav.setAttribute('aria-label','画板层级');$('.topbar h1').after(nav)}
  const path=boardPath(state.activeBoardId);$('.topbar h1').hidden=!!path.length;
  nav.hidden=!path.length;nav.innerHTML=path.length?'<button type="button" data-board-up aria-label="返回上级画板">←</button>'+path.map((b,i)=>`<button type="button" data-board-open="${esc(b.id)}" ${i===path.length-1?'aria-current="page"':''}>${esc(b.name)}</button>`).join('<span>/</span>'):'';
- desk.setAttribute('aria-label',path.length?path.at(-1).name+' · 子画布':'无限桌面');$('#minimap span').textContent=path.at(-1)?.name||'Visual Exploration';
+ desk.setAttribute('aria-label',path.length?path.at(-1).name+' · 子画布':'无限桌面');$('#minimap span').textContent=path.at(-1)?.name||'摄影探索';
 }
-function enterBoard(id){
- if(id&&!state.objects.some(o=>o.id===id&&o.type==='board'))return;
- const board=id&&state.objects.find(o=>o.id===id);
- if(board?.text&&!board.boardContentMigrated){checkpoint();state.objects.push({id:crypto.randomUUID(),type:'note',name:'画板原有内容',text:board.text,parentBoardId:id,x:70,y:70,w:260,h:160,z:1,r:0});board.boardContentMigrated=true}
- if(inlineEdit)finishInline(false);cancelAnimationFrame(viewFrame);cancelPalette();connecting=null;gesture=null;edgeSelected=null;desk.classList.remove('connecting');
- state.boardCameras??={};state.boardCameras[state.activeBoardId||'root']={...state.camera};state.activeBoardId=id||null;state.camera={...(state.boardCameras[id||'root']||{x:70,y:60,z:1})};
- selected.clear();contextBackId=null;contextKey='';closeContextPopover();if(dialog.open)dialog.close();render();save();
- if(!RM)world.animate([{opacity:0,translate:'0 8px'},{opacity:1,translate:'0 0'}],{duration:200,easing:'ease-out'});
+function boardFromLocation(){
+ const match=location.hash.match(/^#board=(.+)$/);
+ if(match){try{return decodeURIComponent(match[1])}catch{}}
+ return null;
 }
+function writeBoardLocation(id,mode){
+ const hash=id?'#board='+encodeURIComponent(id):'';
+ if(location.hash!==hash){
+  const url=new URL(location.href);url.hash=hash;
+  history[mode](null,'',url);
+ }
+}
+function replaceBoardLocation(){writeBoardLocation(boardPath(state.activeBoardId).at(-1)?.id||null,'replaceState')}
+function applyBoardLocation({keepMissing=false,interactive=false}={}){
+ const id=boardFromLocation();
+ if(id&&!state.objects.some(object=>object.id===id&&object.type==='board')){
+  if(!keepMissing){writeBoardLocation(null,'replaceState');toast('此画板已移除或不在当前工作空间')}
+  enterBoard(null,{historyMode:null,interactive,persist:false});
+ }else enterBoard(id,{historyMode:null,interactive,persist:interactive});
+}
+function canvasObject(id){return world.querySelector(`[data-id="${CSS.escape(id)}"]`)}
+function focusCanvasObject(id){
+ const target=id&&canvasObject(id);
+ if(target&&desk.clientWidth){
+  target.focus({preventScroll:true});
+  if(!RM)target.animate([{outlineColor:'var(--selected)'},{outlineColor:'transparent'}],{duration:380,easing:'ease-out'});
+ }else if(desk.clientWidth)desk.focus({preventScroll:true});
+ else $('.mobiletabs .active')?.focus({preventScroll:true});
+}
+let boardAnimations=[];
+function enterBoard(id,{historyMode='pushState',interactive=true,persist=true}={}){
+ const board=id&&state.objects.find(object=>object.id===id&&object.type==='board');
+ if(id&&!board)return;
+ const previous=state.activeBoardId||null;
+ const switching=previous!==(id||null);
+ const previousPath=boardPath(previous);
+ const previousChild=previousPath[previousPath.findIndex(item=>item.id===id)+1];
+ const returning=switching&&previous&&(!id||previousPath.some(item=>item.id===id));
+ const source=switching&&id&&!RM&&interactive?canvasObject(id)?.getBoundingClientRect():null;
+ let migrated=false;
+ if(board?.text&&!board.boardContentMigrated){
+  checkpoint();
+  state.objects.push({id:crypto.randomUUID(),type:'note',name:'画板原有内容',text:board.text,parentBoardId:id,x:70,y:70,w:260,h:160,z:1,r:0});
+  board.boardContentMigrated=true;migrated=true;
+ }
+ if(switching){
+  if(inlineEdit)finishInline(false);
+  cancelAnimationFrame(viewFrame);cancelPalette();chooseTool(null);cancelConnection();gesture=null;edgeSelected=null;
+  desk.classList.remove('panning','space');space=false;$('#marquee').hidden=true;
+  state.boardCameras??={};
+  Object.defineProperty(state.boardCameras,previous||'root',{value:{...state.camera},writable:true,enumerable:true,configurable:true});
+  state.activeBoardId=id||null;
+  const key=id||'root';
+  state.camera=Object.hasOwn(state.boardCameras,key)?{...state.boardCameras[key]}:id?{x:70,y:60,z:1}:initialCanvasCamera();
+  selected.clear();contextBackId=null;contextKey='';closeContextPopover();
+ }
+ if(interactive&&dialog.open)dialog.close();
+ if(historyMode)writeBoardLocation(id,historyMode);
+ render();
+ if(persist&&(switching||migrated))save();
+ if(!interactive||!switching)return;
+ boardAnimations.forEach(animation=>animation.cancel());boardAnimations=[];
+ if(!RM){
+  const bounds=desk.getBoundingClientRect();
+  const horizontal=source?Math.max(-16,Math.min(16,(source.x+source.width/2-bounds.x-bounds.width/2)*.05)):0;
+  const vertical=returning?-8:8;
+  for(const layer of [world,$('#connections')].filter(Boolean)){
+   boardAnimations.push(layer.animate([{opacity:.35,translate:`${horizontal}px ${vertical}px`},{opacity:1,translate:'0 0'}],{duration:200,easing:'cubic-bezier(.2,.7,.2,1)'}));
+  }
+ }
+ focusCanvasObject(returning?previousChild?.id:null);
+}
+window.addEventListener('hashchange',()=>applyBoardLocation({interactive:true}));
+$('.skip').addEventListener('click',event=>{event.preventDefault();focusCanvasObject(null)});
 const boardBaseOpen=openObject;openObject=function(id){const o=state.objects.find(o=>o.id===id);if(o?.type==='board'){enterBoard(id);return}if(o&&(o.parentBoardId||null)!==(state.activeBoardId||null))enterBoard(o.parentBoardId);boardBaseOpen(id)};
 const boardBaseLocate=locate;locate=function(id){const o=state.objects.find(o=>o.id===id);if(o&&(o.parentBoardId||null)!==(state.activeBoardId||null))enterBoard(o.parentBoardId);boardBaseLocate(id)};
-const boardBaseHome=actions.home;actions.home=function(){if(state.activeBoardId)enterBoard(null);else boardBaseHome()};
+actions.home=()=>cameraTo(state.activeBoardId?{x:70,y:60,z:1}:initialCanvasCamera());
+actions.root=()=>enterBoard(null);
 const boardBaseContext=handleContext;handleContext=function(action){const o=contextObject();if(action==='edit'&&o?.type==='board'){enterBoard(o.id);return}boardBaseContext(action)};
 const taskBoardBaseEdit=actions.edit;actions.edit=function(){const o=contextObject();if(o?.type==='todo'){startInline(o);return}if(o?.type==='board'){enterBoard(o.id);return}taskBoardBaseEdit()};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-board-open],[data-board-up]');if(!b)return;if(b.hasAttribute('data-board-up')){const o=state.objects.find(o=>o.id===state.activeBoardId);enterBoard(o?.parentBoardId||null)}else enterBoard(b.dataset.boardOpen)});
-const taskBoardBaseRender=render;render=function(){if(state.activeBoardId&&!state.objects.some(o=>o.id===state.activeBoardId&&o.type==='board'))state.activeBoardId=null;taskBoardBaseRender();world.querySelectorAll('.object.todo').forEach(card=>{const o=state.objects.find(o=>o.id===card.dataset.id);fitTodo(card,o)});renderBoardNav()};
+const taskBoardBaseRender=render;render=function(){if(state.activeBoardId&&!state.objects.some(o=>o.id===state.activeBoardId&&o.type==='board'))state.activeBoardId=null;taskBoardBaseRender();world.querySelectorAll('.object.todo').forEach(card=>{const o=state.objects.find(o=>o.id===card.dataset.id);fitTodo(card,o)});renderBoardNav();$('#boardEmpty').hidden=visibleObjects().length>0};
 function canvasRow(id,name,objects,isRoot=false){
- const photos=objects.filter(o=>o.type==='image'),cover=photos.find(o=>o.src);
+ const photos=objects.filter(o=>o.type==='image'&&!o.variant),cover=photos.find(o=>o.src);
  const parent=!isRoot&&state.objects.find(o=>o.id===state.objects.find(x=>x.id===id)?.parentBoardId);
  return `<button class="listrow canvas-row" ${isRoot?'data-canvas-root="true"':`data-canvas-id="${esc(id)}"`}>
  ${cover?`<img src="${esc(cover.src)}" alt="">`:'<span class="canvas-cover">▦</span>'}
@@ -87,9 +153,9 @@ function canvasRow(id,name,objects,isRoot=false){
 actions.boards=function(){
  const canvases=state.objects.filter(o=>o.type==='board');
  const rootPhotos=state.objects.filter(o=>(o.parentBoardId||null)===null);
- const root=canvasRow('root','Visual Exploration',rootPhotos,true);
+ const root=canvasRow('root','摄影探索',rootPhotos,true);
  const rows=canvases.map(board=>canvasRow(board.id,board.name,state.objects.filter(o=>o.parentBoardId===board.id))).join('');
- modal('My boards',`<p class="dialogcopy">每个画布独立保存自己的照片项目和内容。选择画布进入桌面。</p><section class="canvas-list">${root}${rows||'<p class="canvas-empty">还没有子画布。新建一个画布来整理独立项目。</p>'}</section><div class="dialogactions"><button class="primary" data-create-canvas>＋ 新建画布</button></div>`);
+ modal('我的画板',`<p class="dialogcopy">每个画布独立保存自己的照片项目和内容。选择画布进入桌面。</p><section class="canvas-list">${root}${rows||'<p class="canvas-empty">还没有子画布。新建一个画布来整理独立项目。</p>'}</section><div class="dialogactions"><button class="primary" data-create-canvas>＋ 新建画布</button></div>`);
 };
 document.addEventListener('click',e=>{
  const root=e.target.closest('[data-canvas-root]');if(root){e.preventDefault();enterBoard(null);return}
@@ -97,4 +163,5 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-create-canvas]')){modal('新建画布',`<label class="field">画布名称<input id="canvasName" maxlength="80" value="新画布" autofocus></label><div class="dialogactions"><button class="primary" data-save-canvas>创建并进入</button></div>`);$('#canvasName').select();return}
  if(e.target.closest('[data-save-canvas]')){const name=$('#canvasName').value.trim()||'新画布';const board=add('board',{name,w:160,h:130});dialog.close();enterBoard(board.id)}
 });
+$('#dialogbody').addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.id==='canvasName'){$('[data-save-canvas]').click();event.preventDefault()}});
 render();

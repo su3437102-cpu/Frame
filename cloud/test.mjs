@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker,{PersonalDesk} from './worker.mjs';
+import {digestMedia,mediaReference} from '../desk-media.js';
 class Store{
   values=new Map();queue=Promise.resolve();
   get(k){return Promise.resolve(Array.isArray(k)?new Map(k.map(x=>[x,this.values.get(x)])):this.values.get(k))}
@@ -12,7 +13,10 @@ const ctx={access:{getIdentity:async()=>({email:'owner@example.com'})}};
 const request=(method='GET',body,origin='https://frame.example')=>new Request('https://frame.example/api/desk',{method,headers:{Origin:origin,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
 const state={version:1,objects:[],trash:[],camera:{x:0,y:0,z:1}};
 
-const makeEnv=()=>{const desk=new PersonalDesk({storage:new Store()});return {LOGIN_KEY:'test-only-random-key-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ',DESK:{idFromName:()=>'',get:()=>desk}}};
+const makeEnv=bucket=>{
+ const desk=new PersonalDesk({storage:new Store()},{DESK_MEDIA:bucket});
+ return {LOGIN_KEY:'test-only-random-key-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ',DESK_MEDIA:bucket,DESK:{idFromName:()=>'',get:()=>desk}};
+};
 const login=(env,key=env.LOGIN_KEY,origin='https://frame.example')=>worker.fetch(new Request('https://frame.example/auth/login',{method:'POST',headers:{Origin:origin},body:JSON.stringify({key})}),env,{});
 
 test('editor assets require login and allow only same-origin framing',async()=>{
@@ -53,4 +57,33 @@ test('large multi-part snapshots round trip and shrink',async()=>{
 });
 test('size limits and invalid state rejected',async()=>{
   const desk=new PersonalDesk({storage:new Store()});assert.equal((await desk.fetch(request('PUT',{revision:0,state:{}}))).status,400);assert.equal((await desk.fetch(request('PUT',{revision:0,state:{...state,text:'x'.repeat(9*1024*1024)}}))).status,413);
+});
+
+test('cloud media survives a legacy desk upgrade and requires a verified upload',async()=>{
+ const objects=new Map();
+ const bucket={
+  async put(key,value){objects.set(key,value)},
+  async get(key){return objects.has(key)?{body:objects.get(key)}:null},
+ };
+ const env=makeEnv(bucket);
+ const cookie=(await login(env)).headers.get('Set-Cookie');
+ const headers={Cookie:cookie,Origin:'https://frame.example'};
+ const get=path=>worker.fetch(new Request('https://frame.example'+path,{headers}),env,{});
+ const put=(path,value,type)=>worker.fetch(new Request('https://frame.example'+path,{method:'PUT',headers:{...headers,'Content-Type':type},body:value}),env,{});
+ const save=(revision,state)=>put('/api/desk',JSON.stringify({revision,state}),'application/json');
+ const image='data:image/png;base64,AAAA';
+ const digest=await digestMedia(image);
+ const path='/api/desk-media/'+digest;
+ const legacy={...state,objects:[{id:'photo',src:image}]};
+ assert.equal((await save(0,legacy)).status,200);
+ assert.deepEqual((await (await get('/api/desk')).json()).state,legacy);
+ const migrated={...state,objects:[{id:'photo',src:mediaReference(digest)}],trash:[{id:'deleted-photo',src:mediaReference(digest)}]};
+ assert.equal((await save(1,migrated)).status,400);
+ assert.equal((await put(path,'data:image/png;base64,BBBB','text/plain')).status,400);
+ assert.equal((await put(path,image,'text/plain')).status,200);
+ assert.equal((await save(1,migrated)).status,200);
+ assert.deepEqual(await (await get('/api/desk')).json(),{revision:2,state:migrated,assetStorage:true});
+ assert.equal(await (await get(path)).text(),image);
+ assert.equal((await worker.fetch(new Request('https://frame.example'+path),env,{})).status,401);
+ assert.equal(objects.size,1);
 });

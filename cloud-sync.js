@@ -1,25 +1,327 @@
-'use strict';
-(()=>{
-  const META=KEY+':sync';let revision=0,ready=false,busy=false,conflict=false,timer,dirty=false;
-  try{const m=JSON.parse(localStorage.getItem(META)||'{}');revision=m.revision||0;dirty=!!m.dirty}catch{}
-  const badge=document.createElement('button');badge.textContent='正在连接云端…';badge.style.cssText='font:inherit;border:0;background:transparent;color:inherit;cursor:pointer';$('#saveState').replaceWith(badge);badge.id='saveState';
-  function meta(){try{localStorage.setItem(META,JSON.stringify({revision,dirty}))}catch{}}
-  function status(text){badge.textContent=text}
-  function persist(){try{localStorage.setItem(KEY,snapshot())}catch{status('本机存储已满，请导出备份')}meta()}
-  async function api(method='GET',body){const r=await fetch('/api/desk',{method,redirect:'error',headers:{'Content-Type':'application/json',...(method==='GET'&&ready&&!dirty?{'If-None-Match':String(revision)}:{})},body:body?JSON.stringify(body):undefined});if(r.status===304)return null;let data;try{data=await r.json()}catch{throw Error('登录已失效，请刷新后重新登录')}if(!r.ok){const e=Error(data.error||'云端连接失败');e.status=r.status;throw e}return data}
-  function apply(data){state=validate(data.state);revision=data.revision;dirty=false;selected.clear();undo=[];redo=[];render();persist();status('已与云端同步')}
-  function showConflict(){conflict=true;status('存在同步冲突 · 点击处理');modal('保留两台设备的修改','<p class="dialogcopy">云端已有新版本。本机修改仍保留，请先下载本机备份，再载入云端；需要的内容可随后整理导入。</p><div class="dialogactions"><button id="cloudExport">导出本机备份</button><button id="cloudLoad" disabled>已备份，载入云端</button></div>');$('#cloudExport').onclick=()=>{exportBackup();$('#cloudLoad').disabled=false};$('#cloudLoad').onclick=async()=>{try{const data=await api();if(data?.state){apply(data);conflict=false;dialog.close()}}catch(e){toast(e.message)}}}
-  async function push(){if(!ready||busy||conflict||!dirty)return;busy=true;const text=snapshot();status('正在同步…');try{const data=await api('PUT',{revision,state:JSON.parse(text)});revision=data.revision;dirty=snapshot()!==text;persist();status(dirty?'仍有待同步修改':'已与云端同步')}catch(e){if(e.status===409)showConflict();else status('待同步 · 点击重试：'+e.message)}finally{busy=false;if(dirty&&!conflict)timer=setTimeout(push,15000)}}
-  save=function(){dirty=true;persist();status('修改已保留，等待同步…');clearTimeout(timer);timer=setTimeout(push,1200)};
-  badge.onclick=()=>conflict?showConflict():push();
-  actions.people=()=>modal('个人云端工作空间','<p class="dialogcopy">仅所有者可登录。照片与布局保存到云端，在你的设备间同步。云端桌面上限 8MB，照片使用应用压缩后的预览图；请单独保存原片。</p>');
-  actions.share=()=>modal('个人备份','<p class="dialogcopy">本工作空间不提供公开分享。导出的备份包含照片与布局，请妥善保存。</p><div class="dialogactions">'+button('导出桌面备份','export')+button('导入备份','import')+'</div>');
-  actions.help=actions.people;
-  const oldMore=actions.more;actions.more=()=>{oldMore();$('#popover').insertAdjacentHTML('beforeend','<hr><button id="cloudLogout">退出登录</button>');$('#cloudLogout').onclick=()=>{if(dirty){toast('仍有未同步修改，请先同步或导出备份');return}window.cloudLoggingOut=true;localStorage.removeItem(KEY);localStorage.removeItem(META);fetch('/auth/logout',{method:'POST'}).then(()=>location.href='/login').catch(()=>location.href='/login')}};
-  window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
-  window.addEventListener('online',push);
-  // Read before writing: never overwrite an existing cloud desk with seeded demo content.
-  async function start(){busy=true;try{const data=await api();if(data.state){if(dirty&&revision!==data.revision){ready=true;showConflict()}else if(dirty){ready=true}else apply(data)}else{revision=0;dirty=true}ready=true;meta()}catch(e){status('尚未连接云端：'+e.message)}finally{busy=false;if(ready&&dirty&&!conflict)push()}}
-  start();
-  setInterval(async()=>{if(!ready){start();return}if(document.hidden||busy||gesture||dialog.open||conflict)return;if(dirty){push();return}busy=true;try{const data=await api();if(data?.state){if(dirty)showConflict();else apply(data)}}catch(e){status('云端暂不可用 · 本机修改会保留')}finally{busy=false}},30000);
-})();
+import {deskMediaSlots,digestMedia,forEachMedia,mediaReference,referenceDigest} from './desk-media.js';
+
+let revision=0, ready=false, busy=false, conflict=false, dirty=false, expired=false;
+let initialized=false, leaving=false, assetStorage=false, generation=0, storedGeneration=0;
+let syncTimer, storageTimer, storageFailure=false;
+let syncMessage='正在连接云端…';
+const mediaCache=new Map();
+const saveStatus=$('#saveState'),mobileBadge=$('#mobileSync');
+const badge=document.createElement('button');
+badge.type='button';
+saveStatus.replaceChildren(badge);
+
+function showStatus(message=syncMessage) {
+  syncMessage=message;
+  const text=storageFailure?`${message} · 设备保存失败，请导出备份`:message;
+  if(badge.textContent!==text)badge.textContent=text;
+  badge.title=text;
+  if(mobileBadge.textContent!==text)mobileBadge.textContent=text;
+}
+
+async function storeDesk() {
+  clearTimeout(storageTimer);
+  const current=generation;
+  try {
+    await deviceStore.write({snapshot:snapshot(),revision,dirty});
+    storedGeneration=Math.max(storedGeneration,current);
+    storageFailure=false;
+    if(syncMessage==='待同步 · 保存到此设备中…'&&generation===current)syncMessage='仅保存到此设备 · 等待同步';
+    return true;
+  } catch {
+    storageFailure=true;
+    return false;
+  } finally {
+    showStatus();
+  }
+}
+
+async function fetchCloud(path, options={}) {
+  const response=await fetch(path,{...options,redirect:'error',signal:AbortSignal.timeout(45000)});
+  if(response.ok||response.status===304)return response;
+  const result=await response.json().catch(()=>null);
+  const error=new Error(result?.error||'云端暂不可用，请重试');
+  error.status=response.status;
+  throw error;
+}
+
+async function api(method='GET', body, cached=false) {
+  const headers=method==='PUT'?{'Content-Type':'application/json'}:{};
+  if(cached)headers['If-None-Match']=String(revision);
+  const response=await fetchCloud('/api/desk',{method,headers,body:body?JSON.stringify(body):undefined});
+  return response.status===304?null:response.json();
+}
+
+async function packedState(text) {
+  const next=JSON.parse(text);
+  if(!assetStorage)return next;
+  const slots=deskMediaSlots(next).filter(slot=>slot.data.startsWith('data:'));
+  const uploads=new Map();
+  for(const {data} of slots)uploads.set(data,mediaCache.get(data));
+  await forEachMedia(uploads.keys(),async value=>{
+    if(uploads.get(value))return;
+    const digest=await digestMedia(value);
+    await fetchCloud('/api/desk-media/'+digest,{method:'PUT',headers:{'Content-Type':'text/plain'},body:value});
+    uploads.set(value,digest);
+    mediaCache.set(value,digest);
+  });
+  for(const {record,key,data} of slots)record[key]=mediaReference(uploads.get(data));
+  for(const value of mediaCache.keys())if(!uploads.has(value))mediaCache.delete(value);
+  return next;
+}
+
+async function unpackedState(wireState) {
+  const existing=new Map([...mediaCache].map(([value,digest])=>[digest,value]));
+  const slots=deskMediaSlots(wireState).flatMap(slot=>{
+    const digest=referenceDigest(slot.data);
+    return digest===null?[]:[{...slot,digest}];
+  });
+  const media=new Map();
+  await forEachMedia(new Set(slots.map(slot=>slot.digest)),async digest=>{
+    const value=existing.get(digest)??await (await fetchCloud('/api/desk-media/'+digest)).text();
+    media.set(digest,value);
+  });
+  mediaCache.clear();
+  for(const {record,key,digest} of slots){
+    const value=media.get(digest);
+    record[key]=value;
+    mediaCache.set(value,digest);
+  }
+  return validate(wireState);
+}
+
+function scheduleSync(delay=1200) {
+  clearTimeout(syncTimer);
+  if(!expired&&!conflict&&!leaving)syncTimer=setTimeout(retrySync,delay);
+}
+
+saveCloud=function(){
+  if(!initialized||leaving)return;
+  dirty=true;
+  generation++;
+  clearTimeout(storageTimer);
+  storageTimer=setTimeout(storeDesk,150);
+  if(!conflict&&!expired)showStatus('待同步 · 保存到此设备中…');
+  scheduleSync();
+};
+
+function markConflict() {
+  conflict=true;
+  showStatus('存在同步冲突 · 点击处理');
+}
+
+function onSyncError(error) {
+  if(error.status===409){markConflict();return}
+  if(error.status===401){
+    expired=true;
+    showStatus('登录已过期 · 点击重新登录');
+    return;
+  }
+  showStatus(dirty?'待同步 · 点击重试':'云端暂不可用 · 点击重试');
+  badge.title=(error.status?error.message:'无法连接云端，请检查网络。')+(storageFailure?' · 设备保存失败，请导出备份':'');
+  if(error.status===413)showStatus(error.message+' · 点击重试');
+}
+
+function adopt(next, nextRevision) {
+  const previousBoard=boardFromLocation();
+  const previousCamera=initialized&&previousBoard===(state.activeBoardId||null)?{...state.camera}:null;
+  state=next;
+  if(previousCamera){
+    if(previousBoard===(state.activeBoardId||null))state.camera=previousCamera;
+    else state.boardCameras={...state.boardCameras,[previousBoard||'root']:previousCamera};
+  }
+  revision=nextRevision;
+  dirty=false;
+  selected.clear();undo=[];redo=[];
+  applyBoardLocation();
+}
+
+async function push() {
+  if(!ready||busy||conflict||!dirty||leaving||expired)return;
+  busy=true;
+  const text=snapshot(), sending=generation;
+  showStatus('正在同步…');
+  try {
+    const packed=await packedState(text);
+    if(leaving)return;
+    const data=await api('PUT',{revision,state:packed});
+    revision=data.revision;
+    dirty=generation!==sending;
+    showStatus(dirty?'有新修改待同步':'已与云端同步');
+    await storeDesk();
+  } catch(error) { onSyncError(error); }
+  finally {
+    busy=false;
+    if(dirty) scheduleSync(15000);
+  }
+}
+
+async function refresh() {
+  if(busy||conflict||leaving||expired)return;
+  busy=true;
+  try {
+    const data=await api('GET',null,ready&&!dirty);
+    if(!data){showStatus('已与云端同步');return}
+    assetStorage=!!data.assetStorage;
+    if(dirty&&revision!==data.revision){markConflict();return}
+    if(!dirty&&data.state){
+      const next=await unpackedState(data.state);
+      if(dirty){if(revision!==data.revision)markConflict();return}
+      if(gesture||inlineEdit||pikaSession||dialog.open)return;
+      adopt(next,data.revision);
+      showStatus('已与云端同步');
+      await storeDesk();
+    } else if (!data.state&&!dirty) {
+      applyBoardLocation();
+      showStatus('云端工作空间 · 尚无已同步修改');
+    }
+    ready=true;
+  } catch(error) { onSyncError(error); }
+  finally {
+    busy=false;
+    if(!initialized){
+      initialized=true;
+      openWorkspace();
+    }
+    if(ready&&dirty)scheduleSync(0);
+  }
+}
+
+function retrySync() {
+  if(expired||conflict||leaving)return;
+  if(ready&&dirty)push();
+  else refresh();
+}
+
+function copyWorkspace(next, local) {
+  if(next.objects.length+local.objects.length+1>2000)throw new Error('合并后超过工作台容量，请先导出备份再载入云端');
+  const boardId=crypto.randomUUID();
+  const entries=[...local.objects,...local.trash];
+  const ids=new Map(entries.filter(object=>object&&typeof object.id==='string').map(object=>[object.id,crypto.randomUUID()]));
+  const copy=object=>({...object,id:ids.get(object.id),parentBoardId:ids.get(object.parentBoardId)||boardId});
+  const edges=local.connections.filter(edge=>ids.has(edge.from)&&ids.has(edge.to)).map(edge=>({...edge,id:crypto.randomUUID(),from:ids.get(edge.from),to:ids.get(edge.to)}));
+  if(next.connections.length+edges.length>4000)throw new Error('合并后连线过多，请先导出备份再载入云端');
+  const currentBoard=next.objects.find(object=>object.id===boardFromLocation()&&object.type==='board');
+  const parentBoardId=currentBoard?.id||null;
+  const cameraKey=parentBoardId||'root';
+  const camera=parentBoardId===(next.activeBoardId||null)?next.camera:next.boardCameras?.[cameraKey]||initialCanvasCamera();
+  const {x,y,z}=camera;
+  const card={id:boardId,type:'board',name:'本机工作空间副本',parentBoardId,x:(desk.clientWidth*.48-x)/z,y:(desk.clientHeight*.22-y)/z,w:160,h:130,r:0,z:1};
+  const projects=Object.fromEntries(Object.entries(local.pikadoProjects||{}).filter(([id])=>ids.has(id)).map(([id,project])=>[ids.get(id),project]));
+  const localRoot=local.activeBoardId?(local.boardCameras?.root||initialCanvasCamera()):local.camera;
+  const cameras=Object.fromEntries(Object.entries(local.boardCameras||{}).filter(([id])=>ids.has(id)).map(([id,value])=>[ids.get(id),value]));
+  if(ids.has(local.activeBoardId))cameras[ids.get(local.activeBoardId)]=local.camera;
+  next.objects.push(card,...local.objects.map(copy));
+  next.trash.push(...local.trash.filter(object=>object&&ids.has(object.id)).map(copy));
+  next.connections.push(...edges);
+  next.pikadoProjects={...next.pikadoProjects,...projects};
+  next.boardCameras={...next.boardCameras,...cameras,[boardId]:localRoot};
+  return boardId;
+}
+
+function showConflict() {
+  modal('处理同步冲突',`<p class="dialogcopy">云端有较新的修改。你可以把设备上的内容保留为独立子画板，或先导出备份再载入云端。</p>
+    <div class="dialogactions"><button class="primary" id="cloudCopy">保留为独立画板</button><button id="cloudReplace">导出备份并载入云端</button></div><p id="cloudConflictStatus" role="status"></p>`);
+  const keep=$('#cloudCopy'), replace=$('#cloudReplace'), status=$('#cloudConflictStatus');
+  async function resolveConflict(keepLocal) {
+    if(!keepLocal)exportBackup();
+    keep.disabled=replace.disabled=true;
+    status.textContent='正在读取云端版本…';
+    try {
+      const data=await api();
+      const next=await unpackedState(data.state||seed());
+      const copy=keepLocal?copyWorkspace(next,validate(JSON.parse(snapshot()))):null;
+      if(!dialog.open||!status.isConnected)return;
+      assetStorage=!!data.assetStorage;
+      ready=true;conflict=false;
+      dialog.close();
+      adopt(next,data.revision);
+      if(copy){enterBoard(copy);save();await storeDesk()}
+      else{showStatus('已与云端同步');await storeDesk()}
+      toast(copy?'设备上的内容已保留为独立画板':'已载入云端版本');
+    } catch(error) {
+      if(error.status===401)onSyncError(error);
+      status.textContent=error.message||'无法载入云端版本，请重试';
+    } finally { keep.disabled=replace.disabled=false; }
+  }
+  keep.onclick=()=>resolveConflict(true);
+  replace.onclick=()=>resolveConflict(false);
+}
+
+async function loginAgain() {
+  const destination='/login'+location.hash;
+  if(!dirty||await storeDesk()){location.assign(destination);return}
+  modal('重新登录',`<p class="dialogcopy">设备保存失败，离开前请导出当前修改。</p><button class="primary" id="exportRelogin">导出备份并重新登录</button>`);
+  $('#exportRelogin').onclick=()=>{exportBackup();location.assign(destination)};
+}
+
+badge.onclick=()=>{
+  if(expired)loginAgain();
+  else if(conflict)showConflict();
+  else if(storageFailure&&!dirty)storeDesk();
+  else retrySync();
+};
+
+function showLogout() {
+  modal('退出登录',`<p class="dialogcopy">${dirty?'仍有未同步修改。退出前可以先导出一份完整备份。':'退出后会清除这台设备上的工作空间缓存。'}</p>
+    <div class="dialogactions"><button class="primary" id="confirmLogout">${dirty?'导出备份后退出':'退出登录'}</button></div><p id="logoutStatus" role="status"></p>`);
+  const button=$('#confirmLogout'), status=$('#logoutStatus');
+  button.onclick=async()=>{
+    if(dirty)exportBackup();
+    leaving=true;
+    button.disabled=true;
+    status.textContent='正在退出…';
+    clearTimeout(syncTimer);clearTimeout(storageTimer);
+    try {
+      await fetchCloud('/auth/logout',{method:'POST'});
+    } catch {
+      leaving=false;
+      if(dirty)await storeDesk();
+      status.textContent='退出未完成。请检查网络并重试。';
+      button.disabled=false;
+      return;
+    }
+    try{await deviceStore.clear()}catch{try{sessionStorage.setItem('frame-device-clear-pending','1')}catch{}}
+    location.replace('/login');
+  };
+}
+
+const localMore=actions.more;
+actions.more=()=>{
+  localMore();
+  $('#popover').insertAdjacentHTML('beforeend','<hr><button id="cloudLogout">退出登录</button>');
+  $('#cloudLogout').onclick=showLogout;
+};
+actions.people=()=>modal('个人云端工作空间',`<p class="dialogcopy">仅所有者可登录。布局、工作预览和可编辑工程可在个人设备间同步。上传照片会生成压缩工作预览，请单独保存原片。</p><p class="dialogcopy">${assetStorage?'云端素材与布局分开保存。':'当前云端使用整份桌面快照，单次同步上限 8 MiB。'}</p>`);
+actions.help=actions.people;
+actions.share=()=>modal('个人备份','<p class="dialogcopy">备份包含布局、工作预览和可编辑工程。建议妥善保存导出的文件。</p><div class="dialogactions">'+button('导出桌面备份','export')+button('导入备份','import')+'</div>');
+
+window.addEventListener('beforeunload',event=>{
+  if(!leaving&&dirty&&(storageFailure||storedGeneration<generation)){
+    event.preventDefault();event.returnValue='';
+  }
+});
+window.addEventListener('online',retrySync);
+setInterval(()=>{
+  if(!document.hidden&&!gesture&&!inlineEdit&&!dialog.open&&!pikaSession)retrySync();
+},30000);
+mobileBadge.hidden=false;mobileBadge.onclick=()=>badge.click();
+
+try {
+  if(sessionStorage.getItem('frame-device-clear-pending')){
+    await deviceStore.clear();
+    sessionStorage.removeItem('frame-device-clear-pending');
+  }
+  const record=await deviceStore.read();
+  if(record){
+    state=validate(JSON.parse(record.snapshot));
+    revision=record.revision||0;dirty=!!record.dirty;
+    applyBoardLocation({keepMissing:true});
+    initialized=true;
+    showStatus(dirty?'仅保存到此设备 · 等待同步':'正在核对云端版本…');
+    openWorkspace();
+    if(record.legacy)await storeDesk();
+  }
+} catch {
+  storageFailure=true;
+}
+refresh();
