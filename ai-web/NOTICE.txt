@@ -11,3 +11,11 @@ ONNX Runtime Web 1.24.3, Microsoft contributors, MIT license.
 https://github.com/microsoft/onnxruntime
 Runtime files are copied from the pinned npm package during build.
 License: ONNX-RUNTIME-LICENSE.txt.
+
+Photo workbench preset recipes: OpenStill Originals, CC0-1.0.
+https://github.com/haon-v2/OpenStill/blob/main/Resources/LUTs/originals.json
+
+Browser subject selection: Google MediaPipe Tasks Vision 0.10.32 and Magic Touch, Apache-2.0.
+https://github.com/google-ai-edge/mediapipe
+https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite
+See MEDIAPIPE-LICENSE.txt.

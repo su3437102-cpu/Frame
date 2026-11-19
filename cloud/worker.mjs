@@ -1,4 +1,4 @@
-import assets from '../dist/assets.mjs';
+import assets,{buildId} from '../dist/assets.mjs';
 import {authenticate,loginPage} from './auth.mjs';
 import {deskMediaSlots,digestMedia,mediaDigest,mediaTypes,referenceDigest} from '../desk-media.js';
 const json=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -56,7 +56,10 @@ export default {
   async fetch(request,env,ctx){
     const url=new URL(request.url);
     const auth=await authenticate(request,env);
-    if(auth instanceof Response)return auth;
+    if(auth instanceof Response){
+      if(url.pathname==='/login'&&request.method==='GET')auth.headers.set('X-FrameLab-Build',buildId);
+      return auth;
+    }
     if(url.pathname==='/api/me')return json({email:'个人工作空间'});
     if(url.pathname.startsWith('/api/desk-media/'))return deskMedia(request,url,env);
     if(url.pathname==='/api/desk'){

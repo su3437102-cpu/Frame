@@ -10,3 +10,4 @@ vendor/*.zip
 .cloud-assets/
 
 ai-web/ort*
+ai-web/mediapipe/

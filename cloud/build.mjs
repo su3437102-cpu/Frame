@@ -1,6 +1,7 @@
 import '../build-ai.mjs';
+import {createHash} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdirSync,cpSync} from 'node:fs';
-const files=['index.html','app.js','ai-color.js','ai-browser.js','style.css','context-ui.js','task-board.js','image-layout.js','context-ui.css','interactions.js','cloud-sync.js','desk-media.js','device-store.js','ps-system.js','pikado-host.js',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
+const files=['index.html','app.js','ai-color.js','ai-browser.js','style.css','grade-workbench.css','context-ui.js','task-board.js','image-layout.js','context-ui.css','interactions.js','cloud-sync.js','desk-media.js','device-store.js','ps-system.js','pikado-host.js',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
 const assets={};
 for(const file of files){
   let bytes=readFileSync(new URL('../'+file,import.meta.url));
@@ -8,8 +9,14 @@ for(const file of files){
   if(file==='app.js') bytes=Buffer.from(bytes.toString().replace("KEY='framelab:r11:v1:desk'","KEY='framelab:r11:cloud:v1:desk'").replace("if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./sw.js').catch(()=>{});",''));
   assets['/'+file]={body:bytes.toString('base64'),type:file.endsWith('.png')?'image/png':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.txt')?'text/plain; charset=utf-8':file.endsWith('.json')||file.endsWith('.webmanifest')?'application/json':file.endsWith('.jpg')?'image/jpeg':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8'};
 }
+const serialized=JSON.stringify(assets);
+const fingerprint=createHash('sha256').update(serialized);
+for(const file of ['grade-workbench.mjs','grade-worker.mjs','grade-recipes.mjs','grade-mask.mjs','magic-touch.tflite']){
+  fingerprint.update(readFileSync(new URL('../ai-web/'+file,import.meta.url)));
+}
+const buildId=fingerprint.digest('hex').slice(0,16);
 mkdirSync(new URL('../dist/',import.meta.url),{recursive:true});
-writeFileSync(new URL('../dist/assets.mjs',import.meta.url),'export default '+JSON.stringify(assets)+';');
+writeFileSync(new URL('../dist/assets.mjs',import.meta.url),`export const buildId=${JSON.stringify(buildId)};\nexport default ${serialized};`);
 console.log('Cloud build: '+files.length+' approved runtime files; no test data, credentials or R10 files.');
 
 mkdirSync(new URL('../.cloud-assets/editor/',import.meta.url),{recursive:true});

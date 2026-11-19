@@ -166,7 +166,7 @@ async function refresh() {
     if(!dirty&&data.state){
       const next=await unpackedState(data.state);
       if(dirty){if(revision!==data.revision)markConflict();return}
-      if(gesture||inlineEdit||pikaSession||dialog.open)return;
+      if(gesture||inlineEdit||pikaSession||document.querySelector('dialog[open]'))return;
       adopt(next,data.revision);
       showStatus('已与云端同步');
       await storeDesk();
@@ -302,7 +302,7 @@ window.addEventListener('beforeunload',event=>{
 });
 window.addEventListener('online',retrySync);
 setInterval(()=>{
-  if(!document.hidden&&!gesture&&!inlineEdit&&!dialog.open&&!pikaSession)retrySync();
+  if(!document.hidden&&!gesture&&!inlineEdit&&!pikaSession&&!document.querySelector('dialog[open]'))retrySync();
 },30000);
 mobileBadge.hidden=false;mobileBadge.onclick=()=>badge.click();
 

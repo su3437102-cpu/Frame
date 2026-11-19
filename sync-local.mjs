@@ -1,14 +1,26 @@
 import './build-ai.mjs';
-import {mkdirSync,copyFileSync,cpSync,existsSync} from 'node:fs';
+import {mkdirSync,cpSync,existsSync} from 'node:fs';
 const target=new URL('../../outputs/FrameLab-R11/',import.meta.url);
 const backup=new URL('../../outputs/R11-before-sync-'+new Date().toISOString().replace(/[:.]/g,'-')+'/',import.meta.url);
-mkdirSync(backup,{recursive:true});mkdirSync(target,{recursive:true});
-for(const name of ['device-store.js','app.js','ai-color.js','ai-browser.js','ai-service.mjs','ai-worker.py','interactions.js','ps-system.js','pikado-host.js','context-ui.js','task-board.js','image-layout.js','context-ui.css','style.css','index.html','sw.js','server.mjs','PIKADO-INTEGRATION.md']){
- if(existsSync(new URL(name,target)))copyFileSync(new URL(name,target),new URL(name,backup));
- copyFileSync(new URL(name,import.meta.url),new URL(name,target));
-}
-if(existsSync(new URL('editor/',target)))cpSync(new URL('editor/',target),new URL('editor/',backup),{recursive:true});
-cpSync(new URL('./editor/',import.meta.url),new URL('editor/',target),{recursive:true});
-console.log('Local and LAN runtime updated:',target.pathname);
+const paths=[
+  'assets/', 'editor/', 'ai-web/', 'device-store.js', 'app.js', 'ai-color.js', 'ai-browser.js',
+  'ai-service.mjs', 'ai-worker.py', 'interactions.js', 'ps-system.js', 'pikado-host.js',
+  'context-ui.js', 'task-board.js', 'image-layout.js', 'context-ui.css', 'style.css',
+  'grade-workbench.css', 'server.mjs', 'Start-R11.cmd', 'AI-COLOR-INTEGRATION.md',
+  'PIKADO-INTEGRATION.md', 'sw.js', 'index.html',
+];
 
-cpSync(new URL('./ai-web/',import.meta.url),new URL('ai-web/',target),{recursive:true});
+mkdirSync(target,{recursive:true});
+const existing=paths.filter(name=>existsSync(new URL(name,target)));
+if(existing.length){
+  mkdirSync(backup,{recursive:true});
+  for(const name of existing)cpSync(new URL(name,target),new URL(name,backup),{recursive:true});
+}
+
+for(const name of paths){
+  cpSync(new URL(name,import.meta.url),new URL(name,target),{
+    recursive:true,
+    filter:source=>!source.endsWith('.test.mjs'),
+  });
+}
+console.log('Local runtime files prepared:',target.pathname);
