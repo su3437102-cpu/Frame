@@ -37,7 +37,7 @@ check('reload persistence',await page.getByText('Persistent note content',{exact
 check('theme persists',await page.locator('body').evaluate(e=>e.classList.contains('dark')));
 await page.locator('.myboards').click();await page.locator('[data-create-canvas]').click();
 await page.locator('#canvasName').fill('QA 空画板');await page.locator('#canvasName').press('Enter');
-check('empty board shows creation actions',await page.locator('#boardEmpty').isVisible());
+check('empty board leaves the canvas clear and creation toolbar available',await page.locator('#desk').isVisible()&&await page.locator('#desk #boardEmpty, #world .object').count()===0&&await page.locator('#tools [data-tool="note"]').isVisible());
 const boardUrl=page.url();
 await page.locator('#tools [data-tool="note"]').press('Enter');
 check('keyboard creates in the active board',await page.locator('#world .note').count()===1);

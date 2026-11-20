@@ -94,3 +94,65 @@
 .toolbar .tool-active .tool-glyph{background:var(--ink);color:var(--surface);box-shadow:0 0 0 2px var(--ink)}
 .toolbar .context-tool[data-context="back"]{height:42px;margin-bottom:6px}
 .context-tool[data-context="back"] span{display:block}
+
+/* Studio type and the existing palette's softened tool tiles. */
+.topbar .brand,
+.grade-shell .grade-top .grade-brand {
+  font-family: "FrameLab Hedvig", Georgia, serif;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -.025em;
+  font-optical-sizing: auto;
+}
+.topbar h1 { font-weight: 600; }
+
+.toolbar .palette-tool {
+  gap: 3px;
+  padding-block: 1px;
+}
+.toolbar :is(.palette-tool,.context-tool,.toolbottom button) > span {
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.toolbar .palette-tool[data-tool="image"] > span,
+.toolbar .context-tool[data-context="back"] > span {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.toolbar .palette-tool .tool-glyph {
+  width: 37px;
+  height: 32px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 3px #0001;
+  color: var(--ink);
+  filter: none;
+}
+.toolbar .palette-tool .tool-glyph svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.6;
+}
+.toolbar .palette-tool .glyph-line svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 1.7;
+}
+.toolbar .palette-tool.tool-active .tool-glyph {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+}
+.toolbar .palette-tool .tool-glyph.glyph-board {
+  background: #5b7fff;
+  color: #f0f4ff;
+  border-color: transparent;
+}
+.toolbar :is(.palette-tool,.context-tool,.toolbottom button):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+  border-radius: 4px;
+}

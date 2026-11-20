@@ -142,7 +142,7 @@ actions.root=()=>enterBoard(null);
 const boardBaseContext=handleContext;handleContext=function(action){const o=contextObject();if(action==='edit'&&o?.type==='board'){enterBoard(o.id);return}boardBaseContext(action)};
 const taskBoardBaseEdit=actions.edit;actions.edit=function(){const o=contextObject();if(o?.type==='todo'){startInline(o);return}if(o?.type==='board'){enterBoard(o.id);return}taskBoardBaseEdit()};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-board-open],[data-board-up]');if(!b)return;if(b.hasAttribute('data-board-up')){const o=state.objects.find(o=>o.id===state.activeBoardId);enterBoard(o?.parentBoardId||null)}else enterBoard(b.dataset.boardOpen)});
-const taskBoardBaseRender=render;render=function(){if(state.activeBoardId&&!state.objects.some(o=>o.id===state.activeBoardId&&o.type==='board'))state.activeBoardId=null;taskBoardBaseRender();world.querySelectorAll('.object.todo').forEach(card=>{const o=state.objects.find(o=>o.id===card.dataset.id);fitTodo(card,o)});renderBoardNav();$('#boardEmpty').hidden=visibleObjects().length>0};
+const taskBoardBaseRender=render;render=function(){if(state.activeBoardId&&!state.objects.some(o=>o.id===state.activeBoardId&&o.type==='board'))state.activeBoardId=null;taskBoardBaseRender();world.querySelectorAll('.object.todo').forEach(card=>{const o=state.objects.find(o=>o.id===card.dataset.id);fitTodo(card,o)});renderBoardNav()};
 function canvasRow(id,name,objects,isRoot=false){
  const photos=objects.filter(o=>o.type==='image'&&!o.variant),cover=photos.find(o=>o.src);
  const parent=!isRoot&&state.objects.find(o=>o.id===state.objects.find(x=>x.id===id)?.parentBoardId);
