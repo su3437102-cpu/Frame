@@ -95,7 +95,7 @@
 @media(prefers-reduced-motion:reduce){#dialog,#popover,#selectionbar,#minimap,#dialog::backdrop{transition:none!important;scale:1}}
 
 /* finesse component: AI color, existing workbench tokens */
-.ai-node{padding:0 12px 12px!important}.ai-node img{width:100%;object-fit:contain;flex:1;min-height:0}.ai-node .ps-title{margin:0 -2px}.ai-node small{padding:8px 0 0}#aiStrength{accent-color:var(--ink)}.dialogactions button:disabled{opacity:.5;cursor:not-allowed}.dialogactions button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.ai-node img{width:100%;object-fit:contain;flex:1;min-height:0}#aiStrength{accent-color:var(--ink)}.dialogactions button:disabled{opacity:.5;cursor:not-allowed}.dialogactions button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
 /* Workspace navigation, startup and creation */
 .topbar .myboards{display:inline-flex;align-items:center;color:var(--ink)}
@@ -122,3 +122,112 @@ body:not(.workspace-loading) #desk,body:not(.workspace-loading) #mobile{animatio
 #pikadoPanel.editor-ready .editor-placeholder{opacity:0;visibility:hidden;transition:opacity 160ms ease-out,visibility 160ms step-end}
 
 #mobileSync:not([hidden]){display:block;margin:-8px 0 14px;padding:7px 10px;min-height:36px;max-width:100%;color:var(--ink);background:var(--surface);border:1px solid var(--line);white-space:normal;text-align:left}
+
+/* Canvas chrome recedes at a distance, while card content keeps its hierarchy. */
+#desk {
+  --canvas-dot: color-mix(in srgb, var(--ink) 15%, var(--bg));
+  --canvas-dot-radius: .67px;
+  background-image: radial-gradient(var(--canvas-dot) var(--canvas-dot-radius), transparent calc(var(--canvas-dot-radius) + .16px));
+}
+#desk:has(> #world.far) {
+  --canvas-dot: color-mix(in srgb, var(--ink) 12%, var(--bg));
+  --canvas-dot-radius: .55px;
+}
+#world {
+  --canvas-outline: calc(1.5 * var(--screen-pixel, 1px) * var(--connector-scale, 1));
+}
+#world .object.selected:not(.image,.board) > .inner::after,
+#world .object.selected.zone,
+#world .board.selected .board-symbol {
+  box-shadow: inset 0 0 0 var(--canvas-outline) var(--selected);
+}
+#world .image.selected > .inner::after {
+  box-shadow: inset 0 0 0 calc(var(--screen-pixel, 1px) * var(--connector-scale, 1)) var(--selected);
+}
+#world .object .resize::after {
+  transform: scale(var(--connector-scale, 1));
+  transform-origin: bottom right;
+}
+#world .object.image:not(.dragging) > .inner {
+  box-shadow: 0 2px 6px rgb(0 0 0 / .11);
+}
+.dark #world .object.image:not(.dragging) > .inner {
+  box-shadow: 0 2px 6px rgb(0 0 0 / .28);
+}
+#world .board > .board-cutout { gap: 8px; }
+#world .board .board-symbol {
+  background: color-mix(in srgb, #bfc2c6 82%, var(--surface));
+}
+#world .board h3 {
+  font-size: 13px;
+  line-height: 1.45;
+}
+#world .board small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+#world :is(.note,.column,.todo) h3 {
+  font-size: 14px;
+  line-height: 1.4;
+}
+#world .note > .inner { padding: 16px 18px; }
+#world .note .note-text,
+#world .note .inner > p {
+  font-size: 13px;
+  line-height: 1.65;
+}
+#world .note-text h1 { font-size: 23px; }
+#world .note-text h2 { font-size: 18px; }
+#world .column .sample {
+  margin-block: 12px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--bg) 75%, var(--surface));
+  font-size: 12px;
+  line-height: 1.65;
+}
+#world .live-todo { padding: 16px 18px; }
+#world .live-task {
+  gap: 10px;
+  min-height: 30px;
+}
+#world .live-task :is(input,.draft-check) { border-width: 1px; border-color: var(--muted); }
+#world .live-task input:checked { border-color: var(--ink); }
+#world .task-editor {
+  min-height: 26px;
+  padding-block: 2px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+#world :is(.note-text,.task-editor):empty::before,
+#world .task-draft,
+#world .live-task.is-done .task-editor { opacity: 1; }
+#world .live-task [data-remove-task] { line-height: 26px; }
+#world .todo-footer { gap: 8px; }
+
+/* The two photo processors use the same frame around their intrinsic-aspect image. */
+#world .object.image > .inner.ps-node {
+  padding-block: 14px;
+  gap: 9px;
+}
+#world .ps-node .ps-title {
+  font-size: 12px;
+  font-weight: 550;
+}
+#world .ps-title span { font-size: 10px; }
+#world .ps-empty {
+  padding: 12px;
+  background: color-mix(in srgb, var(--bg) 75%, var(--surface));
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: center;
+}
+#pikadoPanel { --editor-header-height: 52px; }
+#pikadoPanel header {
+  gap: 8px 16px;
+  min-height: var(--editor-header-height);
+  padding: 8px clamp(12px, 2vw, 24px);
+}
+#pikadoPanel header button { padding-inline: 14px; }
+#pikadoPanel .editor-placeholder { inset-block-start: var(--editor-header-height); }

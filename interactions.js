@@ -3,7 +3,15 @@ let connecting=null,edgeSelected=null,paletteDrag=null,activeTool=null,placement
 const baseRender=render;
 render=function(){baseRender();installHandles()};
 const baseCamera=renderCamera;
-renderCamera=function(){baseCamera();world.style.setProperty('--screen-pixel',1/state.camera.z+'px');world.style.setProperty('--control-scale',1/state.camera.z);renderConnections()};
+function connectorScale(zoom){return Math.max(.45,Math.min(1,Math.sqrt(zoom)))}
+renderCamera=function(){
+ baseCamera();
+ const zoom=state.camera.z;
+ world.style.setProperty('--screen-pixel',1/zoom+'px');
+ world.style.setProperty('--control-scale',1/zoom);
+ world.style.setProperty('--connector-scale',connectorScale(zoom));
+ renderConnections();
+};
 const connectableCard='.object:not(.zone):not(.line)';
 function installHandles(){
  world.querySelectorAll(connectableCard).forEach(card=>{
@@ -35,7 +43,7 @@ function connectionShape(object){
   top:Math.min(...captions.map(el=>el.offsetTop))-localY,
   bottom:Math.max(...captions.map(el=>el.offsetTop+el.offsetHeight))-localY,
  }:null;
- return {...center,halfWidth,halfHeight,label,radius:parseFloat(getComputedStyle(symbol).borderTopLeftRadius)||0,angle};
+ return {...center,halfWidth,halfHeight,label,radius:parseFloat(getComputedStyle(symbol).borderTopLeftRadius)||0,angle,board:true};
 }
 
 function connectionBoundary(shape,toward){
@@ -81,7 +89,30 @@ function geometry(edge,shape=connectionShapes()){
  const normal={x:-dy/length,y:dx/length};
  const centerX=(s.x+t.x)/2,centerY=(s.y+t.y)/2,bend=edge.bend||0;
  const m={x:centerX+normal.x*bend,y:centerY+normal.y*bend};
- return {s,t,m,normal,mid:{x:(centerX+m.x)/2,y:(centerY+m.y)/2}};
+ return {
+  s,t,m,normal,mid:{x:(centerX+m.x)/2,y:(centerY+m.y)/2},
+  curved:Math.abs(bend)>=.001,fromBoard:from.board,toBoard:to.board
+ };
+}
+
+function interpolatePoint(a,b,t){
+ return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
+}
+
+function visibleConnectionPath({s,t,m=interpolatePoint(s,t,.5),curved,fromBoard,toBoard},camera){
+ const {z,x,y}=camera;
+ const gap=Math.max(2.5,Math.min(9,6.5*z))/z;
+ // Trim only the displayed path, preserving the stored curve and the bend handle.
+ const part=endpoint=>Math.min(.18,gap/Math.max(.001,2*Math.hypot(m.x-endpoint.x,m.y-endpoint.y)));
+ const start=fromBoard?part(s):0,end=toBoard?1-part(t):1;
+ const screen=p=>`${p.x*z+x},${p.y*z+y}`;
+ if(!curved)return `M${screen(interpolatePoint(s,t,start))}L${screen(interpolatePoint(s,t,end))}`;
+ const startControl=interpolatePoint(s,m,start),endControl=interpolatePoint(m,t,start);
+ const first=interpolatePoint(startControl,endControl,start);
+ const remaining=(end-start)/(1-start);
+ const control=interpolatePoint(first,endControl,remaining);
+ const last=interpolatePoint(control,interpolatePoint(endControl,t,remaining),remaining);
+ return `M${screen(first)}Q${screen(control)} ${screen(last)}`;
 }
 
 function targetAt(event){
@@ -98,24 +129,35 @@ function renderConnections(){
   desk.append(layer);
  }
  const camera=state.camera;
+ const scale=connectorScale(camera.z),stroke=Math.max(.7,1.25*scale),arrowSize=6.5*scale;
+ layer.style.setProperty('--edge-stroke',stroke+'px');
+ layer.style.setProperty('--edge-active-stroke',1.18*stroke+'px');
+ layer.style.setProperty('--edge-preview-dashes',`${3*scale}px ${4*scale}px`);
  const screen=p=>({x:p.x*camera.z+camera.x,y:p.y*camera.z+camera.y});
  const shape=connectionShapes();
- let html='<defs><marker id="edge-arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="currentColor" stroke="none"/></marker></defs>';
+ let html=`<defs><marker id="edge-arrow" viewBox="0 0 8 8" markerWidth="${arrowSize}" markerHeight="${arrowSize}" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="currentColor" stroke="none"/></marker></defs>`;
  for(const edge of state.connections||[]){
   const g=geometry(edge,shape);
   if(!g)continue;
-  const s=screen(g.s),t=screen(g.t),m=screen(g.m),mid=screen(g.mid);
-  const d=Math.abs(edge.bend||0)<.001?`M${s.x},${s.y}L${t.x},${t.y}`:`M${s.x},${s.y}Q${m.x},${m.y} ${t.x},${t.y}`;
-  html+=`<g data-edge="${esc(edge.id)}" class="${edge.id===edgeSelected?'edge-selected':''}"><path class="edge-hit" d="${d}"/><path class="edge-line" d="${d}" marker-end="url(#edge-arrow)"/><circle class="bend-handle" cx="${mid.x}" cy="${mid.y}" r="5"/></g>`;
+  const active=edge.id===edgeSelected,d=visibleConnectionPath(g,camera);
+  html+=`<g data-edge="${esc(edge.id)}" class="${active?'edge-selected':''}"><path class="edge-hit" d="${d}"/><path class="edge-line" d="${d}" marker-end="url(#edge-arrow)"/>`;
+  if(active){
+   const mid=screen(g.mid);
+   html+=`<circle class="bend-handle" cx="${mid.x}" cy="${mid.y}" r="${3.2*scale}"/><circle class="bend-hit" cx="${mid.x}" cy="${mid.y}" r="7"/>`;
+  }
+  html+='</g>';
  }
  const from=connecting?.from&&shape(connecting.from);
  if(from&&connecting.cursor){
   const target=targetAt(connecting.cursor);
   const snapped=target&&target!==connecting.from?geometry({from:connecting.from,to:target},shape):null;
   const cursor=point(connecting.cursor);
-  const s=screen(snapped?.s||connectionBoundary(from,cursor)),t=screen(snapped?.t||cursor);
-  html+=`<path class="edge-preview" d="M${s.x},${s.y}L${t.x},${t.y}"${snapped?' marker-end="url(#edge-arrow)"':''}/>`;
-  if(snapped)html+=`<circle class="edge-snap" cx="${t.x}" cy="${t.y}" r="3.5"/>`;
+  const d=visibleConnectionPath(snapped||{s:connectionBoundary(from,cursor),t:cursor,fromBoard:from.board},camera);
+  html+=`<path class="edge-preview" d="${d}"${snapped?' marker-end="url(#edge-arrow)"':''}/>`;
+  if(snapped){
+   const anchor=screen(snapped.t);
+   html+=`<circle class="edge-snap" cx="${anchor.x}" cy="${anchor.y}" r="${2.8*scale}"/>`;
+  }
  }
  layer.innerHTML=html;
 }
@@ -163,7 +205,7 @@ desk.addEventListener('pointerdown',e=>{
   selected.clear();
   selectionUI();
   edgeSelected=edge.dataset.edge;
-  if(e.target.classList.contains('bend-handle')){
+  if(e.target.classList.contains('bend-hit')){
    checkpoint();
    connecting={bend:edgeSelected,pointerId:e.pointerId};
   }

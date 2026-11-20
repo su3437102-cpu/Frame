@@ -16,11 +16,15 @@
 #dialog.image-preview-dialog #dialogbody>.primary{align-self:flex-end;margin:0;min-height:36px}
 #dialog.image-preview-dialog .dialogcopy{margin:0;font-size:12px}
 #dialog.image-preview-dialog .dialogactions{margin:0;flex-wrap:wrap;gap:8px}
-.toolbar{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+.toolbar{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding-block:14px 12px;gap:16px}
 .toolbar [hidden]{display:none!important}
+.toolbar > div:has(> :is(.palette-tool,.context-tool)),.toolbar .toolbottom{display:grid;gap:4px}
+.toolbar .toolbottom{padding-top:10px}
+.toolbar .toolbottom button{height:46px;gap:5px}
+.toolbar .toolbottom svg{width:17px;height:17px}
 .toolbar .tool-active .tool-glyph{transform:none;box-shadow:0 1px 2px #0002}
-@media(hover:hover){.toolbar .palette-tool:hover .tool-glyph,.toolbar .context-tool:hover i{transform:translate(4px,-2px);box-shadow:0 5px 9px #0003}}
-.toolbar .palette-tool:focus-visible .tool-glyph{transform:translate(4px,-2px);box-shadow:0 5px 9px #0003}
+@media(hover:hover){.toolbar .palette-tool:hover .tool-glyph,.toolbar .context-tool:hover i{transform:translate(2px,-1px);box-shadow:0 3px 7px #0002}}
+.toolbar .palette-tool:focus-visible .tool-glyph{transform:translate(2px,-1px)}
 .toolbar .tool-dragging .tool-glyph{opacity:.4;transform:none!important;box-shadow:none!important}
 .palette-tool{touch-action:none}
 #paletteGhost.object{position:fixed;left:0;top:0;z-index:250;pointer-events:none;transform-origin:top left;padding:0;display:block;opacity:1;border:0;border-radius:0;background:transparent;box-shadow:none}
@@ -29,37 +33,33 @@
 #paletteGhost.line{background:transparent}#paletteGhost.line svg{width:100%;height:100%}
 #paletteGhost.zone{background:var(--surface);padding:15px;box-shadow:0 10px 22px #0004}
 .ghost-upload{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;background:var(--surface);box-shadow:0 10px 22px #0004;color:var(--muted)}
-#contextRail{width:100%;padding-bottom:12px}
-.toolbar .context-tool{width:100%;height:58px;gap:5px;padding:4px 0;color:var(--ink)}
-.context-tool i{width:28px;height:27px;display:grid;place-items:center;background:var(--hover);border-radius:3px;transition:transform 140ms ease-out,box-shadow 140ms ease-out}
-.context-tool svg{width:19px;height:19px;stroke-width:1.6}
-.context-tool span{font-size:10px;line-height:1.25}
-.toolbar .context-tool[data-context="back"]{height:30px;border-bottom:1px solid var(--line);margin-bottom:10px}
-.context-tool[data-context="back"] span{display:none}.context-tool[data-context="back"] i{background:transparent}
-.toolbar .context-tool.compact{height:39px}.context-tool.compact i{background:transparent;width:24px;height:25px}
+.toolbar > div:has(> .context-tool){width:100%;padding-bottom:12px;gap:6px}
+.toolbar .context-tool{width:100%;height:54px;gap:6px;padding:4px 0;color:var(--ink)}
+.context-tool i{width:27px;height:25px;display:grid;place-items:center;background:var(--hover);border-radius:6px;transition:transform 140ms ease-out,box-shadow 140ms ease-out}
+.context-tool svg{width:17px;height:17px;stroke-width:1.5}
+.toolbar .context-tool[data-context="back"]{height:auto;min-height:54px;padding-block:6px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.context-tool[data-context="back"] i{background:transparent;flex:none}
+.toolbar .context-tool.compact{height:38px}.context-tool.compact i{background:transparent;width:24px;height:24px}
 .context-tool[aria-pressed="true"] i{color:var(--surface);background:var(--ink)}
-#contextPopover{position:fixed;z-index:180;left:calc(var(--rail) + 8px);top:calc(var(--top) + 34px);width:238px;max-width:calc(100vw - var(--rail) - 18px);max-height:calc(100dvh - var(--top) - 50px);overflow:auto;padding:12px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;box-shadow:0 6px 22px var(--shadow);font-size:12px}
+#contextPopover{position:fixed;z-index:180;left:calc(var(--rail) + 12px);top:calc(var(--top) + 24px);width:252px;max-width:calc(100vw - var(--rail) - 24px);max-height:calc(100dvh - var(--top) - 40px);overflow:auto;padding:14px 16px 16px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:7px;box-shadow:0 6px 22px var(--shadow);font-size:12px}
 #contextPopover[hidden]{display:none}
-/* Keep connector feedback crisp and screen-sized at every canvas zoom. */
-#connections .edge-selected .edge-line{stroke-width:2.2}
-#connections .edge-selected .bend-handle{stroke:var(--ink);stroke-width:2}
-#connections g:hover .bend-handle{stroke:var(--ink);stroke-width:2}
-#contextPopover header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+#contextPopover header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:10px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+#contextPopover header strong{font-size:13px;font-weight:550}
 #dialog .canvas-list{max-height:min(62vh,680px);overflow:auto;border-top:1px solid var(--line)}
-#dialog .canvas-row{min-height:74px}
+#dialog .canvas-row{min-height:78px}
 #dialog .canvas-row strong,#dialog .canvas-row small{display:block}
 #dialog .canvas-row strong{font-weight:500;color:var(--ink);margin-bottom:5px}
 #dialog .canvas-row>small{white-space:nowrap}
-#dialog .canvas-cover{width:62px;height:45px;display:grid;place-items:center;background:var(--bg);font-size:25px;color:var(--muted)}
+#dialog .canvas-cover{flex:0 0 62px;height:45px;display:grid;place-items:center;background:var(--bg);font-size:23px;color:var(--muted)}
 #dialog .canvas-empty{padding:20px 10px;color:var(--muted);font-size:13px}
 @media(max-width:900px){.topbar .myboards{display:inline-flex!important}}
-#contextPopover header button{font-size:18px;padding:0 6px}#contextPopover label{display:block;margin:8px 0;line-height:1.6}
-#contextPopover input:not([type="color"]),#contextPopover textarea,#contextPopover select{display:block;width:100%;padding:7px;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:3px}
-#contextPopover button{padding:7px;white-space:normal;text-align:left;min-height:30px}#contextPopover p{margin:8px 0;line-height:1.5}
-.context-options{display:flex;flex-direction:column}.context-options button{width:100%}
-.context-colors{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:9px 0}.context-colors button{height:27px;border:1px solid #8886;border-radius:2px;min-height:27px!important}
-.context-tags{display:flex;flex-wrap:wrap;gap:4px}.context-tags button{background:var(--hover)}
-.context-reactions{display:flex;gap:2px}.context-reactions button{font-size:22px}
+#contextPopover header button{font-size:18px;padding:0;min-width:32px;text-align:center;color:var(--muted)}#contextPopover label{display:block;margin:10px 0;line-height:1.6}
+#contextPopover input:not([type="color"]),#contextPopover textarea,#contextPopover select{display:block;width:100%;padding:8px 10px;margin-top:5px;background:var(--surface);border:1px solid var(--line);border-radius:4px}
+#contextPopover button{padding:7px 9px;white-space:normal;text-align:left;min-height:33px}#contextPopover p{margin:10px 0;line-height:1.55}
+.context-options{display:flex;flex-direction:column;gap:3px}.context-options button{width:100%}
+.context-colors{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0}.context-colors button{height:27px;border:1px solid #8886;border-radius:4px;min-height:27px!important}
+.context-tags{display:flex;flex-wrap:wrap;gap:6px}.context-tags button{background:var(--hover)}
+.context-reactions{display:flex;flex-wrap:wrap;gap:4px}.context-reactions button{font-size:20px}
 .context-comments p{border-bottom:1px solid var(--line);overflow-wrap:anywhere}.context-comments p button{float:right}.context-muted{color:var(--muted)}
 .note-text{min-height:22px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;outline:none!important;user-select:text;cursor:text}
 .note-text:empty:before{content:attr(data-placeholder);color:var(--muted);opacity:.6;pointer-events:none}
@@ -68,7 +68,7 @@
 .object-color-strip{position:absolute;left:0;right:0;top:0;height:4px;pointer-events:none}
 .object-meta{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:10px;margin-top:8px}.object-meta>span,.object-meta>button{padding:2px 5px;background:var(--hover);border-radius:2px;color:var(--ink);font-size:10px}.object-meta svg{width:12px;height:12px;vertical-align:middle}.image:not(#paletteGhost) .object-meta{position:absolute;left:0;top:100%;margin-top:5px}
 .board .object-meta{justify-content:center}
-@media(max-width:600px){#contextRail{display:none}#contextPopover{left:12px;width:260px;max-width:calc(100vw - 24px)}}
+@media(max-width:600px){body:not(.fulldesktop) #contextRail{display:none}body.fulldesktop #contextPopover{left:calc(var(--rail) + 8px);max-width:calc(100vw - var(--rail) - 20px)}}
 @media(prefers-reduced-motion:reduce){.context-tool i,.tool-glyph{transition:none!important}}
 /* finesse: component refinement — live tasks and nested board navigation. */
 .object.todo .inner.live-todo{height:auto;min-height:74px;padding:16px 18px;overflow:visible}
@@ -92,8 +92,6 @@
 @media(prefers-reduced-motion:reduce){.live-task input,.task-editor,.live-task [data-remove-task]{transition:none}}
 
 .toolbar .tool-active .tool-glyph{background:var(--ink);color:var(--surface);box-shadow:0 0 0 2px var(--ink)}
-.toolbar .context-tool[data-context="back"]{height:42px;margin-bottom:6px}
-.context-tool[data-context="back"] span{display:block}
 
 /* Studio type and the existing palette's softened tool tiles. */
 .topbar .brand,
@@ -104,22 +102,37 @@
   letter-spacing: -.025em;
   font-optical-sizing: auto;
 }
-.topbar h1 { font-weight: 600; }
+.topbar { padding-inline: 16px; gap: 12px; }
+.topbar button { font-size: 13px; }
+.topbar .home { gap: 6px; }
+.topbar .home svg { width: 16px; height: 16px; }
+.topbar .divider { height: 16px; margin-inline: 5px; }
+.topbar .crumb { margin-inline: 0; }
+.topbar h1 { font-size: 13px; font-weight: 550; }
+.topright { gap: 10px; }
+.topbar .share { padding-inline: 14px; border-radius: 5px; }
+.topbar .more { min-width: 34px; color: var(--muted); }
+#zoom { min-width: 64px; }
 
 .toolbar .palette-tool {
-  gap: 3px;
+  gap: 5px;
+  min-height: 53px;
   padding-block: 1px;
 }
+.toolbar :is(.palette-tool,.toolbottom button) { width: 100%; }
 .toolbar :is(.palette-tool,.context-tool,.toolbottom button) > span {
-  color: var(--ink);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 500;
   line-height: 1.2;
 }
-.toolbar .palette-tool[data-tool="image"] > span,
+.toolbar .palette-tool[data-tool="image"] > span {
+  font-size: 10px;
+}
 .toolbar .context-tool[data-context="back"] > span {
   font-size: 10px;
-  white-space: nowrap;
+  max-width: min(4em,100%);
+  white-space: normal;
 }
 .toolbar .palette-tool .tool-glyph {
   width: 37px;
@@ -157,6 +170,68 @@
   border-radius: 4px;
 }
 
+/* Give transient panels predictable insets without crowding the canvas edges. */
+#popover {
+  top: calc(var(--top) + 8px);
+  right: 16px;
+  width: 244px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - var(--top) - 24px);
+  overflow: auto;
+  padding: 8px;
+  border-radius: 7px;
+}
+#popover button { min-height: 36px; padding: 8px 12px; font-size: 12px; }
+#popover hr { margin: 6px 4px; }
+#popover small { padding: 8px 12px; }
+#dialog { padding: clamp(18px,4vw,28px); }
+#dialog .dialoghead { gap: 16px; margin-bottom: 22px; }
+#dialog .dialoghead h2 { font-size: 18px; font-weight: 550; line-height: 1.3; }
+#dialog .dialoghead button { flex: none; color: var(--muted); }
+#dialog .dialogcopy { line-height: 1.65; }
+#dialog .field { margin-block: 18px; }
+#dialog .dialogactions { gap: 8px 12px; }
+#dialog .listrow { padding-block: 12px; gap: 12px; }
+#dialog .listrow > span:not(.canvas-cover) { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+
+#selectionbar:not([hidden]) { display: flex; align-items: center; gap: 4px; }
+#selectionbar { max-width: calc(100vw - 24px); padding: 4px 6px; border-radius: 7px; }
+#selectionbar button { padding: 8px 10px; min-height: 34px; }
+#selectedcount { padding-inline: 8px; font-size: 11px; }
+.deskfooter { gap: 12px; }
+.newproject { padding: 8px 14px; min-height: 36px; border-radius: 5px; font-size: 12px; }
+.deskfooter #saveState,.deskfooter #saveState button { font-size: 11px; }
+.maptoggle { border-radius: 5px; min-width: 36px; min-height: 36px; place-content: center; }
+.maptoggle svg { width: 16px; height: 16px; }
+#minimap { padding: 10px 9px 12px; border-radius: 7px; }
+#minimap > span { display: block; padding-top: 6px; font-size: 11px; }
+#edgeNav button { padding: 9px 12px; border-radius: 5px; }
+#toast { max-width: calc(100vw - 32px); padding: 10px 14px; line-height: 1.5; font-size: 12px; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .topbar { padding-inline: 10px; gap: 6px; }
+  .topright { gap: 6px; }
+}
+@media (max-width: 600px) {
+  .topbar { padding-inline: 8px; }
+  .topright { gap: 4px; }
+  #boardNavigation { gap: 4px; }
+  #boardNavigation button { font-size: 11px; }
+  body.fulldesktop .toolbar button { width: 100%; }
+  body.fulldesktop .context-tool.compact { min-height: 44px; }
+  #mobile { padding: 24px 16px 32px; }
+  .mobilehead { gap: 10px; margin-bottom: 14px; }
+  .mobilehead h2 { font-size: 21px; font-weight: 550; margin: 0; }
+  .mobilehead span { font-size: 11px; }
+  .mobiletabs { gap: 6px; margin-bottom: 20px; }
+  .mobiletabs button { padding-inline: 9px; border-radius: 6px; }
+  #mobileSync:not([hidden]) { padding: 6px 8px; margin-bottom: 12px; text-align: left; white-space: normal; }
+  #mobilelist { gap: 18px 12px; }
+  .mobilecard img { height: auto; aspect-ratio: 4 / 3; margin: 0; border-radius: 5px; }
+  .mobilecard:not(:has(img)) { min-height: 76px; padding: 10px 8px; }
+  .mobilecard:not(:has(img)) > strong { display: block!important; margin-top: 6px; overflow-wrap: anywhere; }
+}
+
 /* The stored board footprint positions the card; only its visible content is interactive. */
 #world > .object.board {
   display: flex;
@@ -173,14 +248,61 @@
 }
 #world > .board:focus-visible .board-symbol,
 #desk.connecting .board:hover .board-symbol {
-  box-shadow: inset 0 0 0 calc(2 * var(--screen-pixel, 1px)) var(--selected);
+  box-shadow: inset 0 0 0 var(--canvas-outline) var(--selected);
 }
 #desk.connecting .edge-hit,
-#desk.connecting .bend-handle {
+#desk.connecting .bend-hit {
   pointer-events: none;
 }
+
+/* SVG connectors scale visually while their transparent hit areas stay usable. */
+#connections {
+  --edge-ink: color-mix(in srgb, var(--ink) 62%, var(--bg));
+  --edge-active-ink: color-mix(in srgb, var(--ink) 85%, var(--bg));
+  color: var(--edge-ink);
+}
+#connections .edge-line {
+  stroke-width: var(--edge-stroke, 1.25px);
+}
+#connections .edge-selected,
+#connections .edge-preview {
+  color: var(--edge-active-ink);
+}
+#connections .edge-selected .edge-line,
+#connections .edge-preview {
+  stroke-width: var(--edge-active-stroke, 1.475px);
+}
+#connections .edge-preview {
+  stroke-dasharray: var(--edge-preview-dashes, 3px 4px);
+}
+#connections #edge-arrow path {
+  fill: context-stroke;
+}
+#connections .bend-handle,
 #connections .edge-snap {
   fill: var(--surface);
-  stroke: var(--ink);
-  stroke-width: 1.5;
+  stroke: var(--edge-active-ink);
+  stroke-width: var(--edge-stroke, 1.25px);
+  pointer-events: none;
+}
+#connections .bend-hit {
+  fill: transparent;
+  pointer-events: all;
+  cursor: grab;
+}
+#connections .bend-hit:active {
+  cursor: grabbing;
+}
+#world .object.selected .connect-handle::before {
+  width: calc(5.5px * var(--connector-scale, 1));
+  height: calc(5.5px * var(--connector-scale, 1));
+  box-shadow: 0 0 0 .65px color-mix(in srgb, var(--ink) 36%, transparent);
+}
+#world .object.selected .connect-handle:is(:hover,:focus-visible,:active)::before {
+  width: calc(13.5px * var(--connector-scale, 1));
+  height: calc(13.5px * var(--connector-scale, 1));
+}
+#world .object.selected .connect-handle svg {
+  width: calc(10.5px * var(--connector-scale, 1));
+  height: calc(10.5px * var(--connector-scale, 1));
 }

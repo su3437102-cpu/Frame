@@ -1,11 +1,17 @@
 .grade-shell {
-  --grade-soft-line: color-mix(in srgb, var(--line) 58%, var(--surface));
+  --grade-soft-line: color-mix(in srgb, var(--line) 68%, var(--surface));
+  --grade-command: color-mix(in srgb, var(--ink) 90%, var(--surface));
+  --grade-track: color-mix(in srgb, var(--muted) 78%, var(--surface));
   --grade-accent: #3459c8;
   --grade-tint: #eef2ff;
+  --grade-step: 4px;
+  --grade-gap: calc(var(--grade-step) * 2);
+  --grade-inset: calc(var(--grade-step) * 5);
   --grade-quick: 150ms;
   --grade-ease: cubic-bezier(.23,1,.32,1);
   display: grid;
-  grid-template-rows: 52px minmax(0,1fr);
+  grid-template-columns: minmax(0,1fr);
+  grid-template-rows: 56px minmax(0,1fr);
   height: 100dvh;
   overflow: hidden;
   color: var(--ink);
@@ -16,54 +22,54 @@
 .grade-shell *, .grade-shell *::before, .grade-shell *::after { box-sizing: border-box; }
 .grade-shell h1, .grade-shell h2, .grade-shell h3, .grade-shell p, .grade-shell figure { margin: 0; }
 .grade-shell button, .grade-shell input, .grade-shell select { font: inherit; color: inherit; }
-.grade-shell button { background: transparent; border: 0; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.grade-shell button { background: transparent; border: 0; border-radius: 5px; cursor: pointer; white-space: nowrap; }
 .grade-shell button:disabled { opacity: .45; cursor: default; }
 .grade-shell :is(button,input,select):focus-visible { outline: 2px solid var(--grade-accent); outline-offset: 2px; }
 .grade-shell [hidden] { display: none !important; }
-.grade-shell svg { width: 17px; height: 17px; fill: none; flex: none; stroke: currentColor; stroke-width: 1.55; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
-.grade-top { display: flex; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--line); }
-.grade-top .grade-return { display: inline-flex; align-items: center; gap: 7px; padding: 0 7px; min-height: 34px; margin-left: -7px; }
-.grade-top .grade-brand { font-weight: 650; margin-left: 2px; padding-left: 15px; border-left: 1px solid var(--line); }
+.grade-shell svg { width: 16px; height: 16px; fill: none; flex: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+.grade-top { display: flex; align-items: center; gap: 16px; padding: 0 var(--grade-inset); border-bottom: 1px solid var(--grade-soft-line); }
+.grade-top .grade-return { display: inline-flex; align-items: center; gap: var(--grade-gap); padding: 0 var(--grade-gap); min-height: 36px; margin-left: calc(-1 * var(--grade-gap)); font-size: 12px; }
+.grade-top .grade-brand { font-weight: 650; padding-left: 16px; border-left: 1px solid var(--grade-soft-line); }
 .grade-top .grade-slash, .grade-top .grade-file { color: var(--muted); }
 .grade-top .grade-file { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; }
-.grade-top h1 { font-size: 14px; font-weight: 600; flex-shrink: 0; }
-.grade-top-actions, .grade-button-row { display: flex; align-items: center; gap: 5px; }
-.grade-top-actions { margin-left: auto; flex-shrink: 0; }
-.grade-shell .grade-icon { display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; }
-.grade-shell .grade-outline, .grade-shell .grade-primary { min-height: 34px; padding: 0 11px; border: 1px solid var(--line); font-size: 13px; }
-.grade-shell .grade-primary { color: var(--surface); background: var(--ink); border-color: var(--ink); }
+.grade-top h1 { font-size: 13px; font-weight: 600; flex-shrink: 0; }
+.grade-top-actions, .grade-button-row { display: flex; align-items: center; gap: var(--grade-gap); }
+.grade-top-actions { padding-inline-start: var(--grade-step); margin-left: auto; flex-shrink: 0; }
+.grade-shell .grade-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; }
+.grade-shell .grade-outline, .grade-shell .grade-primary { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); font-size: 12px; }
+.grade-shell .grade-primary { color: var(--surface); background: var(--grade-command); border-color: var(--grade-command); }
 .grade-workspace { min-height: 0; min-width: 0; display: grid; grid-template-columns: 240px minmax(0,1fr) 294px; }
 .grade-left, .grade-right { min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.grade-left { padding: 18px 15px 22px; border-right: 1px solid var(--line); }
-.grade-right { display: flex; flex-direction: column; border-left: 1px solid var(--line); }
-.grade-shell .grade-auto { display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px; min-height: 38px; font-weight: 600; }
-.grade-template-head { margin-top: 22px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.grade-template-head h2, .grade-adjust-title { font-size: 14px; font-weight: 650; }
-.grade-template-group { margin-top: 15px; }
-.grade-template-group h3 { color: var(--muted); font-size: 11.5px; font-weight: 600; margin-bottom: 6px; }
-.grade-template-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px 7px; }
-.grade-shell .grade-preset { display: block; position: relative; min-width: 0; padding: 3px; text-align: start; border: 1px solid transparent; border-radius: 5px; font-size: 12px; }
+.grade-left { padding: 24px var(--grade-inset); border-right: 1px solid var(--grade-soft-line); }
+.grade-right { display: flex; flex-direction: column; border-left: 1px solid var(--grade-soft-line); }
+.grade-shell .grade-auto { display: flex; width: 100%; align-items: center; justify-content: center; gap: var(--grade-gap); min-height: 40px; font-weight: 600; }
+.grade-template-head { margin-top: 24px; display: flex; align-items: center; justify-content: space-between; gap: var(--grade-gap); }
+.grade-template-head h2, .grade-adjust-title { font-size: 13px; font-weight: 600; }
+.grade-template-group { margin-top: 20px; }
+.grade-template-group h3 { color: var(--muted); font-size: 11.5px; font-weight: 550; line-height: 1.4; margin-bottom: var(--grade-gap); }
+.grade-template-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px var(--grade-gap); }
+.grade-shell .grade-preset { display: block; position: relative; min-width: 0; padding: var(--grade-step); text-align: start; border: 1px solid transparent; border-radius: 5px; font-size: 11.5px; }
 .grade-preset img { display: block; width: 100%; height: 45px; object-fit: cover; border-radius: 2px; background: var(--bg); }
-.grade-preset span { display: block; overflow: hidden; text-overflow: ellipsis; padding: 4px 2px 0; }
+.grade-preset span { display: block; overflow: hidden; text-overflow: ellipsis; padding: 6px 1px 2px; line-height: 1.4; }
 .grade-preset[data-preset="portrait"] { grid-column: 1 / -1; }
 .grade-preset[data-preset="portrait"] img { height: 60px; object-position: 54% 34%; }
 .grade-preset .grade-preset-check { display: none; position: absolute; top: 7px; right: 7px; width: 18px; height: 18px; background: var(--grade-accent); color: var(--surface); border-radius: 3px; }
 .grade-shell .grade-preset[aria-pressed="true"] { border-color: var(--grade-accent); background: var(--grade-tint); color: var(--ink); }
 .grade-preset[aria-pressed="true"] .grade-preset-check { display: block; }
-.grade-subject-entry { margin-top: 15px; padding-top: 11px; border-top: 1px solid var(--grade-soft-line); }
-.grade-shell .grade-subject-entry button { display: flex; width: 100%; min-height: 36px; align-items: center; justify-content: space-between; padding: 6px; gap: 7px; font-size: 12px; }
+.grade-subject-entry { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--grade-soft-line); }
+.grade-shell .grade-subject-entry button { display: flex; width: 100%; min-height: 36px; align-items: center; justify-content: space-between; padding: 6px; gap: var(--grade-gap); font-size: 12px; }
 .grade-subject-entry button span { flex: 1; text-align: start; }
 .grade-shell .grade-subject-entry button svg:last-child { width: 14px; height: 14px; }
-.grade-center { display: grid; grid-template-rows: 49px minmax(0,1fr) 45px; min-height: 0; min-width: 0; background: var(--bg); }
-.grade-center-head, .grade-center-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 16px; background: var(--surface); }
+.grade-center { display: grid; grid-template-rows: 52px minmax(0,1fr) 44px; min-height: 0; min-width: 0; background: var(--bg); }
+.grade-center-head, .grade-center-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 var(--grade-inset); background: var(--surface); }
 .grade-center-head { border-bottom: 1px solid var(--grade-soft-line); }
 .grade-center-foot { border-top: 1px solid var(--grade-soft-line); font-size: 12px; }
-.grade-segment { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--grade-soft-line); background: var(--bg); border-radius: 5px; }
-.grade-shell .grade-segment button { padding: 4px 9px; min-height: 24px; color: var(--muted); font-size: 12px; line-height: 16px; display: inline-flex; align-items: center; gap: 5px; }
+.grade-segment { display: inline-flex; align-items: center; gap: var(--grade-step); padding: 3px; border: 1px solid var(--grade-soft-line); background: var(--bg); border-radius: 6px; }
+.grade-shell .grade-segment button { padding: 5px 10px; min-height: 28px; color: var(--muted); font-size: 11.5px; line-height: 16px; display: inline-flex; align-items: center; gap: 5px; }
 .grade-shell .grade-segment button[aria-pressed="true"] { color: var(--ink); background: var(--surface); box-shadow: 0 1px 2px #0002; }
 .grade-segment svg { width: 14px; height: 14px; }
-.grade-stage { min-width: 0; min-height: 0; display: grid; place-items: center; padding: 20px 18px; overflow: auto; background-image: radial-gradient(var(--dot) .65px, transparent .65px); background-size: 20px 20px; }
-.grade-photo { position: relative; isolation: isolate; max-height: 100%; max-width: 100%; min-height: 0; aspect-ratio: var(--grade-ratio, 2 / 3); height: 100%; background: var(--bg); box-shadow: 0 3px 12px #0002; overflow: hidden; }
+.grade-stage { min-width: 0; min-height: 0; display: grid; place-items: center; padding: clamp(12px, 2.1vw, 28px); overflow: auto; background-image: radial-gradient(var(--dot) .6px, transparent .7px); background-size: 22px 22px; }
+.grade-photo { position: relative; isolation: isolate; max-height: 100%; max-width: 100%; min-height: 0; aspect-ratio: var(--grade-ratio, 2 / 3); height: 100%; background: var(--bg); box-shadow: 0 3px 12px #0001; overflow: hidden; }
 .grade-photo img, .grade-photo canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .grade-photo [data-photo="original"], .grade-photo [data-photo="ai"] { z-index: 1; }
 .grade-photo[data-view="split"] [data-photo="original"] { clip-path: inset(0 calc(100% - var(--grade-split, 50%)) 0 0); }
@@ -76,27 +82,27 @@
 .grade-photo-handle span { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); display: grid; place-items: center; height: 30px; width: 30px; background: #fff; color: #292929; border-radius: 50%; box-shadow: 0 1px 4px #0004; }
 .grade-photo-split { position: absolute; z-index: 4; margin: 0; inset: 0 0 auto; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; }
 .grade-photo:has(.grade-photo-split:focus-visible) .grade-photo-handle span { outline: 2px solid var(--grade-accent); outline-offset: 3px; }
-.grade-center-foot .grade-note, .grade-center-head .grade-note { color: var(--muted); font-size: 12px; min-width: 0; }
+.grade-center-foot .grade-note, .grade-center-head .grade-note { color: var(--muted); font-size: 11.5px; min-width: 0; }
 .grade-center-foot .grade-note { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.grade-shell .grade-zoom { display: flex; align-items: center; gap: 5px; flex: none; min-height: 32px; padding: 0 5px; font-size: 12px; }
+.grade-shell .grade-zoom { display: flex; align-items: center; gap: 6px; flex: none; min-height: 34px; padding: 0 6px; font-size: 11.5px; }
 .grade-zoom svg { width: 14px; height: 14px; }
-.grade-adjust-head { display: flex; justify-content: space-between; align-items: center; padding: 13px 15px 7px; }
-.grade-adjust-head button { padding: 6px; font-size: 12px; color: var(--muted); }
-.grade-tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; border-bottom: 1px solid var(--grade-soft-line); padding: 0 12px; }
-.grade-shell .grade-tabs button { min-height: 36px; padding: 3px 4px; text-align: center; color: var(--muted); border-radius: 0; border-bottom: 2px solid transparent; }
+.grade-adjust-head { display: flex; justify-content: space-between; align-items: center; padding: 18px var(--grade-inset) var(--grade-gap); }
+.grade-adjust-head button { padding: 8px 4px; font-size: 11.5px; color: var(--muted); }
+.grade-tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: var(--grade-gap); border-bottom: 1px solid var(--grade-soft-line); padding: 0 var(--grade-inset); }
+.grade-shell .grade-tabs button { min-height: 38px; padding: 3px 4px; text-align: center; color: var(--muted); border-radius: 0; border-bottom: 2px solid transparent; font-size: 12px; }
 .grade-shell .grade-tabs button[aria-pressed="true"] { color: var(--grade-accent); border-bottom-color: var(--grade-accent); font-weight: 600; }
-.grade-tab-body { padding: 16px 16px 20px; }
+.grade-tab-body { padding: var(--grade-inset) var(--grade-inset) 24px; }
 .grade-tab-body[data-enter] { animation: grade-panel-in var(--grade-quick) var(--grade-ease) both; }
 @keyframes grade-panel-in { from { opacity: .6; transform: translateY(3px); } }
-.grade-strength { padding-bottom: 13px; border-bottom: 1px solid var(--grade-soft-line); }
-.grade-section-label { margin: 15px 0 7px !important; font-size: 12px; font-weight: 650; }
-.grade-control { display: grid; grid-template-columns: 1fr auto; gap: 2px 9px; align-items: center; margin-bottom: 7px; min-height: 38px; font-size: 12px; }
-.grade-control input { grid-column: 1 / -1; display: block; width: 100%; min-height: 16px; margin: 0; accent-color: var(--ink); cursor: pointer; }
+.grade-strength { padding-bottom: 16px; border-bottom: 1px solid var(--grade-soft-line); }
+.grade-section-label { margin: 20px 0 var(--grade-gap) !important; font-size: 12px; font-weight: 600; }
+.grade-control { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--grade-step) 12px; align-items: center; margin-bottom: 10px; min-height: 40px; font-size: 12px; }
+.grade-control input { grid-column: 1 / -1; display: block; width: 100%; min-height: 20px; margin: 0; accent-color: var(--grade-command); cursor: pointer; }
 .grade-control input:disabled { cursor: default; }
 .grade-strength .grade-control { margin: 0; }
-.grade-info { color: var(--muted); font-size: 12px; line-height: 1.55; margin-top: 9px !important; }
-.grade-history { padding: 11px 16px 15px; margin-top: auto; border-top: 1px solid var(--grade-soft-line); color: var(--muted); font-size: 12px; }
-.grade-history strong { color: var(--ink); font-size: 12px; font-weight: 600; }
+.grade-info { color: var(--muted); font-size: 11.5px; line-height: 1.6; margin-top: 12px !important; }
+.grade-history { padding: 16px var(--grade-inset); margin-top: auto; border-top: 1px solid var(--grade-soft-line); color: var(--muted); font-size: 11.5px; }
+.grade-history strong { color: var(--ink); font-size: 11.5px; font-weight: 600; }
 .grade-history p { margin-top: 7px; }
 .grade-history p::before { display: inline-block; content: ""; width: 5px; height: 5px; background: var(--grade-accent); border-radius: 50%; margin: 0 7px 2px 1px; }
 .grade-empty { display: grid; min-height: 140px; place-content: center; text-align: center; color: var(--muted); }
@@ -109,34 +115,40 @@
   .grade-tab-body[data-enter] { animation: none; }
 }
 @media(max-width: 980px) {
-  .grade-workspace { grid-template-columns: 188px minmax(0,1fr) 248px; }
-  .grade-top { gap: 9px; }
-  .grade-left { padding-inline: 10px; }
+  .grade-shell { --grade-inset: 14px; }
+  .grade-workspace { grid-template-columns: 176px minmax(0,1fr) 232px; }
+  .grade-top { gap: 10px; }
 }
 @media(max-width: 740px) {
-  .grade-shell { grid-template-rows: auto minmax(0,1fr); }
-  .grade-top { padding: 5px 10px; min-height: 50px; gap: 7px; }
-  .grade-top .grade-brand,.grade-top .grade-slash,.grade-top .grade-file,.grade-top-actions [data-action="redo"] { display: none; }
-  .grade-top .grade-return { padding-inline: 1px; margin-left: 0; }
+  .grade-shell { --grade-inset: 16px; grid-template-rows: auto minmax(0,1fr); }
+  .grade-top { padding: 4px 12px; min-height: 54px; gap: 6px; }
+  .grade-top .grade-brand,.grade-top .grade-slash,.grade-top .grade-file { display: none; }
+  .grade-top h1 { display: block; }
+  .grade-top .grade-return { padding: 0; min-width: 40px; min-height: 44px; justify-content: center; margin-left: 0; }
   .grade-top .grade-return span { display: none; }
-  .grade-top-actions { gap: 1px; }
-  .grade-workspace { grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(300px,50dvh) auto auto; overflow: auto; }
-  .grade-center { grid-row: 1; grid-template-rows: 44px minmax(0,1fr) 36px; }
-  .grade-center-head,.grade-center-foot { padding-inline: 10px; }
-  .grade-stage { padding: 10px; }
-  .grade-left,.grade-right { border-inline: 0; border-top: 1px solid var(--line); overflow: visible; }
-  .grade-left { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 10px; padding: 12px 12px 16px; }
+  .grade-top-actions { gap: var(--grade-step); padding-inline-start: 0; }
+  .grade-shell .grade-top-actions .grade-icon { width: 40px; height: 44px; }
+  .grade-shell .grade-top-actions :is(.grade-outline,.grade-primary) { min-height: 44px; padding-inline: 8px; }
+  .grade-workspace { grid-template-columns: minmax(0,1fr); grid-template-rows: max(300px,50dvh) max-content max-content; align-content: start; overflow: auto; }
+  .grade-center { grid-row: 1; grid-template-rows: 48px minmax(0,1fr) 40px; }
+  .grade-stage { padding: 12px; }
+  .grade-left,.grade-right { border-inline: 0; border-top: 1px solid var(--grade-soft-line); min-height: auto; overflow: visible; }
+  .grade-left { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); column-gap: 12px; padding: 16px var(--grade-inset) 20px; }
   .grade-auto,.grade-template-head,.grade-subject-entry { grid-column: 1 / -1; }
-  .grade-left .grade-template-head { margin-top: 13px; }
-  .grade-template-group { margin-top: 10px; }
+  .grade-left .grade-template-head { margin-top: 16px; }
+  .grade-template-group { margin-top: 12px; }
+  .grade-template-grid { gap: var(--grade-gap) var(--grade-step); }
+  .grade-preset span { white-space: normal; overflow-wrap: anywhere; }
   .grade-center-head .grade-note { display: none; }
+  .grade-shell .grade-segment button { min-height: 34px; }
+  .grade-shell .grade-tabs button { min-height: 44px; }
   .grade-tab-body { max-width: 420px; width: 100%; align-self: center; }
 }
-.grade-control input[type="range"] { appearance: none; height: 19px; background: transparent; }
-.grade-control input[type="range"]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: var(--line); }
-.grade-control input[type="range"]::-moz-range-track { height: 3px; border-radius: 2px; background: var(--line); }
-.grade-control input[type="range"]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; margin-top: -4.5px; border: 0; border-radius: 50%; background: var(--ink); }
-.grade-control input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: var(--ink); }
+.grade-control input[type="range"] { appearance: none; height: 20px; background: transparent; }
+.grade-control input[type="range"]::-webkit-slider-runnable-track { height: 2px; border-radius: 2px; background: var(--grade-track); }
+.grade-control input[type="range"]::-moz-range-track { height: 2px; border-radius: 2px; background: var(--grade-track); }
+.grade-control input[type="range"]::-webkit-slider-thumb { appearance: none; width: 11px; height: 11px; margin-top: -4.5px; border: 0; border-radius: 50%; background: var(--grade-command); }
+.grade-control input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border: 0; border-radius: 50%; background: var(--grade-command); }
 .grade-control input[type="range"]:disabled { opacity: .45; }
 #grade-workbench {
   inset: 0;
@@ -158,23 +170,27 @@
 #grade-workbench[open] { opacity: 1; transform: none; transition-duration: 180ms; }
 #grade-workbench::backdrop { background: var(--bg); }
 @starting-style { #grade-workbench[open] { opacity: 0; transform: translateY(5px); } }
-.grade-shell .grade-auto-correction { display: block; width: 100%; min-height: 32px; color: var(--muted); margin-top: 5px; font-size: 12px; }
-.grade-template-head button { font-size: 11px; color: var(--muted); min-height: 28px; padding: 2px 5px; }
+.grade-shell .grade-auto-correction { display: block; width: 100%; min-height: 34px; color: var(--muted); margin-top: 6px; font-size: 11.5px; }
+.grade-template-head button { font-size: 11.5px; color: var(--muted); min-height: 30px; padding: 2px 5px; }
 .grade-stage { container-type: size; }
 .grade-photo { width: min(100%, calc(100cqh * var(--grade-photo-aspect, .667))); height: auto; }
 .grade-photo-zoomed { transform: scale(1.14); }
 .grade-photo[data-paint="select"], .grade-photo[data-paint="brush"], .grade-photo[data-paint="erase"] { cursor: crosshair; touch-action: none; }
 .grade-mask-overlay { z-index: 2; pointer-events: none; }
 .grade-photo:focus-visible { outline: 2px solid var(--grade-accent); outline-offset: 2px; }
-.grade-local-buttons { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-.grade-brush-controls { margin-top: 6px; }
+.grade-local-buttons { display: flex; align-items: center; gap: var(--grade-gap); flex-wrap: wrap; }
+.grade-brush-controls { margin-top: var(--grade-gap); }
 .grade-shell .grade-local-buttons button { padding-inline: 7px; font-size: 12px; }
 .grade-shell .grade-local-buttons button[aria-pressed="true"] { background: var(--grade-tint); border-color: var(--grade-accent); }
 .grade-control select { min-width: 80px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); padding: 4px; }
 @media(max-width: 740px) {
   .grade-shell .grade-auto-correction { grid-column: 1 / -1; }
+  .grade-control input[type="range"] { min-height: 32px; }
+}
+@media(max-width: 360px) {
+  .grade-top { padding-inline: 8px; gap: 4px; }
 }
 @media(prefers-reduced-motion: reduce) {
   #grade-workbench, #grade-workbench[open] { transition: none; transform: none; }
 }
-.grade-shell .grade-value { min-width: 40px; min-height: 22px; padding: 1px 3px; margin-right: -3px; color: var(--muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.grade-shell .grade-value { min-width: 48px; min-height: 24px; padding: 1px 4px; margin-right: -4px; color: var(--muted); font-size: 11.5px; text-align: right; font-variant-numeric: tabular-nums; }
