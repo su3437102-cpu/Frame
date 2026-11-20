@@ -1,31 +1,199 @@
 // Object-bound connectors and palette drag/drop. R11 storage only.
 let connecting=null,edgeSelected=null,paletteDrag=null,activeTool=null,placementStart=null;
 const baseRender=render;
-render=function(){baseRender();renderConnections();installHandles();};
+render=function(){baseRender();installHandles()};
 const baseCamera=renderCamera;
-renderCamera=function(){baseCamera();world.style.setProperty('--screen-pixel',1/state.camera.z+'px');world.style.setProperty('--control-scale',1/state.camera.z);renderConnections();};
-function installHandles(){world.querySelectorAll('.object:not(.zone):not(.line)').forEach(el=>{let b=document.createElement('button');b.className='connect-handle';b.title='连接到另一个对象';b.setAttribute('aria-label','创建连接');b.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 15 10 10 7 8 17 3 12 13 10 10 6 16Z"/></svg>';(el.querySelector('.board-symbol')||el).append(b)})}
-function center(o){return {x:o.x+o.w/2,y:o.y+o.h/2}}
-function boundary(o,t){const c=center(o),a=-(o.r||0)*Math.PI/180,dx=t.x-c.x,dy=t.y-c.y,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a),k=1/Math.max(Math.abs(lx)/(o.w/2),Math.abs(ly)/(o.h/2),.00001);return {x:c.x+dx*k,y:c.y+dy*k}}
-function geometry(edge){let a=state.objects.find(o=>o.id===edge.from),b=state.objects.find(o=>o.id===edge.to);if(!a||!b||(a.parentBoardId||null)!==(state.activeBoardId||null)||(b.parentBoardId||null)!==(state.activeBoardId||null))return null;let ca=center(a),cb=center(b),dx=cb.x-ca.x,dy=cb.y-ca.y,l=Math.hypot(dx,dy)||1,s=boundary(a,cb),t=boundary(b,ca),m={x:(s.x+t.x)/2-dy/l*(edge.bend??0),y:(s.y+t.y)/2+dx/l*(edge.bend??0)};return {s,t,m,d:Math.abs(edge.bend||0)<.001?`M${s.x},${s.y} L${t.x},${t.y}`:`M${s.x},${s.y} Q${m.x},${m.y} ${t.x},${t.y}`,mid:{x:(s.x+2*m.x+t.x)/4,y:(s.y+2*m.y+t.y)/4}}}
+renderCamera=function(){baseCamera();world.style.setProperty('--screen-pixel',1/state.camera.z+'px');world.style.setProperty('--control-scale',1/state.camera.z);renderConnections()};
+const connectableCard='.object:not(.zone):not(.line)';
+function installHandles(){
+ world.querySelectorAll(connectableCard).forEach(card=>{
+  const button=document.createElement('button');
+  button.className='connect-handle';
+  button.title='连接到另一个对象';
+  button.setAttribute('aria-label','创建连接');
+  button.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 15 10 10 7 8 17 3 12 13 10 10 6 16Z"/></svg>';
+  (card.querySelector('.board-symbol')||card).append(button);
+ });
+}
 
-function renderConnections(){let layer=$('#connections');if(!layer){layer=document.createElementNS('http://www.w3.org/2000/svg','svg');layer.id='connections';desk.append(layer)}
-const c=state.camera,screen=p=>({x:p.x*c.z+c.x,y:p.y*c.z+c.y});
-let html='<defs><marker id="edge-arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="currentColor" stroke="none"/></marker></defs>';
-html+=(state.connections||[]).map(e=>{let g=geometry(e);if(!g)return '';let s=screen(g.s),t=screen(g.t),m=screen(g.m),mid=screen(g.mid),d=Math.abs(e.bend||0)<.001?`M${s.x},${s.y}L${t.x},${t.y}`:`M${s.x},${s.y}Q${m.x},${m.y} ${t.x},${t.y}`;return `<g data-edge="${esc(e.id)}" class="${e.id===edgeSelected?'edge-selected':''}"><path class="edge-hit" d="${d}"/><path class="edge-line" d="${d}" marker-end="url(#edge-arrow)"/><circle class="bend-handle" cx="${mid.x}" cy="${mid.y}" r="5"/></g>`}).join('');
-if(connecting?.from){let a=state.objects.find(o=>o.id===connecting.from);if(a){let p=connecting.point||center(a),t=screen(p),s=screen(boundary(a,p));html+=`<path class="edge-preview" d="M${s.x},${s.y}L${t.x},${t.y}"/>`}}layer.innerHTML=html;}
+function connectionShape(object){
+ if(!object)return null;
+ const angle=(object.r||0)*Math.PI/180;
+ if(object.type!=='board')return {x:object.x+object.w/2,y:object.y+object.h/2,halfWidth:object.w/2,halfHeight:object.h/2,radius:0,angle};
+ const card=canvasBoardCard(object.id),symbol=card?.querySelector('.board-symbol');
+ if(!symbol)return null;
+ const rect=symbol.getBoundingClientRect();
+ if(!rect.width||!rect.height)return null;
+ const origin=world.getBoundingClientRect(),zoom=state.camera.z;
+ const center={x:(rect.left+rect.width/2-origin.left)/zoom,y:(rect.top+rect.height/2-origin.top)/zoom};
+ const halfWidth=symbol.offsetWidth/2,halfHeight=symbol.offsetHeight/2;
+ const localX=symbol.offsetLeft+halfWidth,localY=symbol.offsetTop+halfHeight;
+ const captions=[...card.children].filter(element=>element!==symbol);
+ const label=captions.length?{
+  left:Math.min(...captions.map(el=>el.offsetLeft))-localX,
+  right:Math.max(...captions.map(el=>el.offsetLeft+el.offsetWidth))-localX,
+  top:Math.min(...captions.map(el=>el.offsetTop))-localY,
+  bottom:Math.max(...captions.map(el=>el.offsetTop+el.offsetHeight))-localY,
+ }:null;
+ return {...center,halfWidth,halfHeight,label,radius:parseFloat(getComputedStyle(symbol).borderTopLeftRadius)||0,angle};
+}
 
-function finishConnection(target){if(!connecting)return;let from=connecting.from;if(target&&target!==from){checkpoint();state.connections??=[];state.connections.push({id:crypto.randomUUID(),from,to:target,bend:0});update()}connecting=null;desk.classList.remove('connecting');renderConnections()}
-function targetAt(e){return document.elementFromPoint(e.clientX,e.clientY)?.closest('.object:not(.zone):not(.line)')?.dataset.id}
+function connectionBoundary(shape,toward){
+ const {x,y,halfWidth,halfHeight,radius,angle,label}=shape;
+ const dx=toward.x-x,dy=toward.y-y,length=Math.hypot(dx,dy);
+ if(!length)return {x,y};
+ const cos=Math.cos(angle),sin=Math.sin(angle);
+ const localX=(dx*cos+dy*sin)/length,localY=(dy*cos-dx*sin)/length;
+ const ux=Math.abs(localX),uy=Math.abs(localY);
+ let distance=1/Math.max(ux/halfWidth,uy/halfHeight);
+ const cornerX=halfWidth-radius,cornerY=halfHeight-radius;
+ if(radius&&distance*ux>cornerX&&distance*uy>cornerY){
+  const projection=cornerX*ux+cornerY*uy;
+  const cross=cornerX*uy-cornerY*ux;
+  distance=projection+Math.sqrt(Math.max(0,radius*radius-cross*cross));
+ }
+ // Beneath a board, clear its title and count if the line would cross them.
+ if(label&&localY>0){
+  const enter=label.top/localY,exit=label.bottom/localY;
+  const startX=enter*localX,endX=exit*localX;
+  if(Math.min(startX,endX)<=label.right&&Math.max(startX,endX)>=label.left){
+   const exitSide=localX===0?Infinity:(localX>0?label.right:label.left)/localX;
+   distance=Math.max(distance,Math.min(exit,exitSide));
+  }
+ }
+ return {x:x+dx/length*distance,y:y+dy/length*distance};
+}
+
+function connectionShapes(){
+ const objects=new Map(visibleObjects().map(object=>[object.id,object]));
+ const shapes=new Map();
+ return id=>{
+  if(!shapes.has(id))shapes.set(id,connectionShape(objects.get(id)));
+  return shapes.get(id);
+ };
+}
+
+function geometry(edge,shape=connectionShapes()){
+ const from=shape(edge.from),to=shape(edge.to);
+ if(!from||!to)return null;
+ const s=connectionBoundary(from,to),t=connectionBoundary(to,from);
+ const dx=to.x-from.x,dy=to.y-from.y,length=Math.hypot(dx,dy)||1;
+ const normal={x:-dy/length,y:dx/length};
+ const centerX=(s.x+t.x)/2,centerY=(s.y+t.y)/2,bend=edge.bend||0;
+ const m={x:centerX+normal.x*bend,y:centerY+normal.y*bend};
+ return {s,t,m,normal,mid:{x:(centerX+m.x)/2,y:(centerY+m.y)/2}};
+}
+
+function targetAt(event){
+ // Ignore the transparent hit strip of any line crossing an otherwise visible card.
+ const hit=document.elementsFromPoint(event.clientX,event.clientY).find(element=>!element.closest('#connections'));
+ return hit?.closest('#desk')?hit.closest(connectableCard)?.dataset.id:null;
+}
+
+function renderConnections(){
+ let layer=$('#connections');
+ if(!layer){
+  layer=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  layer.id='connections';
+  desk.append(layer);
+ }
+ const camera=state.camera;
+ const screen=p=>({x:p.x*camera.z+camera.x,y:p.y*camera.z+camera.y});
+ const shape=connectionShapes();
+ let html='<defs><marker id="edge-arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="currentColor" stroke="none"/></marker></defs>';
+ for(const edge of state.connections||[]){
+  const g=geometry(edge,shape);
+  if(!g)continue;
+  const s=screen(g.s),t=screen(g.t),m=screen(g.m),mid=screen(g.mid);
+  const d=Math.abs(edge.bend||0)<.001?`M${s.x},${s.y}L${t.x},${t.y}`:`M${s.x},${s.y}Q${m.x},${m.y} ${t.x},${t.y}`;
+  html+=`<g data-edge="${esc(edge.id)}" class="${edge.id===edgeSelected?'edge-selected':''}"><path class="edge-hit" d="${d}"/><path class="edge-line" d="${d}" marker-end="url(#edge-arrow)"/><circle class="bend-handle" cx="${mid.x}" cy="${mid.y}" r="5"/></g>`;
+ }
+ const from=connecting?.from&&shape(connecting.from);
+ if(from&&connecting.cursor){
+  const target=targetAt(connecting.cursor);
+  const snapped=target&&target!==connecting.from?geometry({from:connecting.from,to:target},shape):null;
+  const cursor=point(connecting.cursor);
+  const s=screen(snapped?.s||connectionBoundary(from,cursor)),t=screen(snapped?.t||cursor);
+  html+=`<path class="edge-preview" d="M${s.x},${s.y}L${t.x},${t.y}"${snapped?' marker-end="url(#edge-arrow)"':''}/>`;
+  if(snapped)html+=`<circle class="edge-snap" cx="${t.x}" cy="${t.y}" r="3.5"/>`;
+ }
+ layer.innerHTML=html;
+}
+
+function finishConnection(target){
+ if(!connecting)return;
+ const from=connecting.from;
+ connecting=null;
+ desk.classList.remove('connecting');
+ if(from&&target&&target!==from){
+  checkpoint();
+  state.connections??=[];
+  state.connections.push({id:crypto.randomUUID(),from,to:target,bend:0});
+  update();
+ }else renderConnections();
+}
+
+function connectorCursor(event){return {clientX:event.clientX,clientY:event.clientY}}
+
 desk.addEventListener('pointerdown',e=>{
+ if(e.button!==0||space)return;
  const handle=e.target.closest('.connect-handle'),edge=e.target.closest('[data-edge]');
- if(handle){e.stopImmediatePropagation();e.preventDefault();connecting={from:handle.closest('.object').dataset.id,point:point(e),drag:false};desk.classList.add('connecting');return}
- if(connecting){e.stopImmediatePropagation();e.preventDefault();let id=targetAt(e);if(connecting.from)finishConnection(id);else if(id)connecting={from:id,point:point(e)};return}
- if(edge){e.stopImmediatePropagation();e.preventDefault();selected.clear();selectionUI();edgeSelected=edge.dataset.edge;if(e.target.classList.contains('bend-handle')){checkpoint();connecting={bend:edgeSelected}}renderConnections();return}
- edgeSelected=null;renderConnections();
+ if(connecting){
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  const id=targetAt(e);
+  if(connecting.from)finishConnection(id);
+  else if(id){
+   connecting={from:id,cursor:connectorCursor(e)};
+   renderConnections();
+  }
+  return;
+ }
+ if(handle){
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  const cursor=connectorCursor(e);
+  connecting={from:handle.closest('.object').dataset.id,cursor,start:cursor,pointerId:e.pointerId};
+  desk.classList.add('connecting');
+  return;
+ }
+ if(edge){
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  selected.clear();
+  selectionUI();
+  edgeSelected=edge.dataset.edge;
+  if(e.target.classList.contains('bend-handle')){
+   checkpoint();
+   connecting={bend:edgeSelected,pointerId:e.pointerId};
+  }
+  renderConnections();
+  return;
+ }
+ edgeSelected=null;
+ renderConnections();
 },true);
-document.addEventListener('pointermove',e=>{if(connecting?.from){connecting.point=point(e);connecting.drag=true;renderConnections()}else if(connecting?.bend){let edge=state.connections.find(a=>a.id===connecting.bend),a=center(state.objects.find(o=>o.id===edge.from)),b=center(state.objects.find(o=>o.id===edge.to)),dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy)||1,p=point(e);for(let i=0;i<12;i++){let g=geometry(edge),err=(p.x-g.mid.x)*(-dy/l)+(p.y-g.mid.y)*(dx/l);edge.bend+=2*err;if(Math.abs(err)<.01)break}renderConnections()}else if(gesture)renderConnections();});
-document.addEventListener('pointerup',e=>{if(connecting?.bend){connecting=null;save()}else if(connecting?.drag)finishConnection(targetAt(e));});
+
+document.addEventListener('pointermove',e=>{
+ if(connecting?.pointerId!=null&&connecting.pointerId!==e.pointerId)return;
+ if(connecting?.from){
+  connecting.cursor=connectorCursor(e);
+  if(connecting.start&&Math.hypot(e.clientX-connecting.start.clientX,e.clientY-connecting.start.clientY)>3)connecting.drag=true;
+  renderConnections();
+ }else if(connecting?.bend){
+  const edge=state.connections.find(item=>item.id===connecting.bend),g=edge&&geometry(edge);
+  if(!g)return;
+  const p=point(e);
+  edge.bend=2*((p.x-(g.s.x+g.t.x)/2)*g.normal.x+(p.y-(g.s.y+g.t.y)/2)*g.normal.y);
+  renderConnections();
+ }else if(gesture)renderConnections();
+});
+document.addEventListener('pointerup',e=>{
+ if(!connecting||connecting.pointerId!==e.pointerId)return;
+ if(connecting.bend){connecting=null;save()}
+ else if(connecting.drag)finishConnection(targetAt(e));
+ else{connecting.pointerId=null;connecting.start=null}
+});
 function cancelConnection(){if(connecting?.bend)save();connecting=null;desk.classList.remove('connecting');renderConnections()}
 document.addEventListener('pointercancel',()=>{cancelConnection();cancelPalette()});
 window.addEventListener('blur',cancelConnection);

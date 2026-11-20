@@ -156,3 +156,31 @@
   outline-offset: -2px;
   border-radius: 4px;
 }
+
+/* The stored board footprint positions the card; only its visible content is interactive. */
+#world > .object.board {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  outline: none;
+}
+#world > .board > .board-cutout {
+  width: max-content;
+  max-width: 100%;
+  height: auto;
+  pointer-events: auto;
+}
+#world > .board:focus-visible .board-symbol,
+#desk.connecting .board:hover .board-symbol {
+  box-shadow: inset 0 0 0 calc(2 * var(--screen-pixel, 1px)) var(--selected);
+}
+#desk.connecting .edge-hit,
+#desk.connecting .bend-handle {
+  pointer-events: none;
+}
+#connections .edge-snap {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}

@@ -4,7 +4,7 @@
 
 ## 部署
 - Worker: frame；GitHub: su3437102-cpu/Frame，main。
-- Build: npm run build；Deploy: npx wrangler deploy。
+- 本地构建使用 `npm run build`。本地验证通过后，将改动推送到 GitHub 的 `main`，由 Cloudflare Workers Builds 自动发布。
 - 在 Worker Settings → Runtime variables and secrets 添加 Secret：LOGIN_KEY。
 - 请用密码管理器生成 32–64 位随机字母数字口令，保存于密码管理器，仅由本人填写至 Cloudflare Secret。不要发到聊天或 GitHub。
 - 未设置或少于 32 位时，所有私有资源和数据接口返回 503；登录页仍可查看。
