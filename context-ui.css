@@ -278,7 +278,11 @@
 #connections #edge-arrow path {
   fill: context-stroke;
 }
-#connections .bend-handle,
+#connections .bend-handle {
+  fill: var(--surface);
+  stroke: none;
+  pointer-events: none;
+}
 #connections .edge-snap {
   fill: var(--surface);
   stroke: var(--edge-active-ink);
@@ -287,11 +291,13 @@
 }
 #connections .bend-hit {
   fill: transparent;
+  stroke: none;
   pointer-events: all;
-  cursor: grab;
+  cursor: move;
 }
-#connections .bend-hit:active {
-  cursor: grabbing;
+#desk.bending-connection,
+#desk.bending-connection * {
+  cursor: move;
 }
 #world .object.selected .connect-handle::before {
   width: calc(5.5px * var(--connector-scale, 1));

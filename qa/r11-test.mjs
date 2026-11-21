@@ -53,6 +53,40 @@ await page.setViewportSize({width:1440,height:900});
 await page.locator('#fileinput').setInputFiles('assets/photo-0.jpg');await page.waitForTimeout(700);check('local photo upload',await page.locator('#world .image').count()===31);check('uploaded photo embedded for backup',(await read()).objects.some(o=>o.src?.startsWith('data:image/jpeg')));await page.keyboard.press('Control+z');await pause();
 await page.locator('#backupinput').setInputFiles(dir+'/test-backup.json');await page.locator('#confirmImport').waitFor();check('import review shows before commit',await page.locator('dialog').evaluate(e=>e.open));const oldBackup=page.waitForEvent('download');await page.locator('#confirmImport').click();await oldBackup;await pause();check('validated backup restores objects',await page.locator('#world .image').count()===30);
 await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);await context.setOffline(true);await page.reload();await page.waitForTimeout(500);check('offline reload',await page.locator('#world .image').count()===30);await context.setOffline(false);
+await page.evaluate(()=>{
+ state.objects=[
+  {id:'bend-source',type:'note',text:'Source',x:180,y:240,w:150,h:90,r:0},
+  {id:'bend-target',type:'note',text:'Target',x:780,y:240,w:150,h:90,r:0},
+ ];
+ state.connections=[{id:'qa-bend',from:'bend-source',to:'bend-target',bend:0}];
+ state.activeBoardId=null;
+ state.camera={x:45,y:50,z:.62};
+ selected.clear();
+ render();
+});
+const curve=page.locator('[data-edge="qa-bend"] .edge-line');
+const straightPath=await curve.getAttribute('d');
+const marker=page.locator('.bend-handle');
+check('inactive curve has no midpoint marker',await marker.count()===0);
+const bendStart=await curve.evaluate(path=>{
+ const p=path.getPointAtLength(path.getTotalLength()/2),rect=path.ownerSVGElement.getBoundingClientRect();
+ return {x:rect.left+p.x,y:rect.top+p.y};
+});
+await page.mouse.click(bendStart.x,bendStart.y);
+check('selected midpoint has no outline',await marker.evaluate(el=>getComputedStyle(el).stroke)==='none');
+check('midpoint hit area is invisible',await page.locator('.bend-hit').evaluate(el=>getComputedStyle(el).stroke==='none'&&getComputedStyle(el).fill==='rgba(0, 0, 0, 0)'));
+const bendEnd={x:bendStart.x+48,y:bendStart.y-40};
+await page.mouse.down();
+await page.mouse.move(bendEnd.x,bendEnd.y,{steps:8});
+const movedMarker=await marker.boundingBox();
+check('midpoint follows both axes during drag',Math.hypot(movedMarker.x+movedMarker.width/2-bendEnd.x,movedMarker.y+movedMarker.height/2-bendEnd.y)<1);
+const draggedPath=await curve.getAttribute('d');
+await page.mouse.up();
+check('released curve matches its preview',await curve.getAttribute('d')===draggedPath);
+await page.mouse.dblclick(bendEnd.x,bendEnd.y);
+check('double-click straightens curve',await curve.getAttribute('d')===straightPath);
+await page.keyboard.press('Control+z');
+check('undo restores the curve',await curve.getAttribute('d')===draggedPath);
 check('zero JS runtime errors',errors.length===0,errors);fs.writeFileSync(dir+'/test-results.json',JSON.stringify({date:new Date().toISOString(),browser:browser.version(),results},null,2));await browser.close();console.log(JSON.stringify({passed:results.filter(r=>r.passed).length,total:results.length,failed:results.filter(r=>!r.passed)},null,2));
 if(results.some(result=>!result.passed))process.exitCode=1;
 

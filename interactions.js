@@ -81,18 +81,28 @@ function connectionShapes(){
  };
 }
 
-function geometry(edge,shape=connectionShapes()){
+function bendGeometry(base,curve){
+ const {center,tangent,normal,length}=base;
+ const bend=Number.isFinite(curve.bend)?curve.bend:0;
+ const offset=Number.isFinite(curve.bendAlong)?curve.bendAlong*length:0;
+ const along=Number.isFinite(offset)?offset:0;
+ const dx=tangent.x*along+normal.x*bend/2,dy=tangent.y*along+normal.y*bend/2;
+ // The editable point lies on the curve at t=.5. Its control point is twice its offset.
+ return {...base,
+  m:{x:center.x+2*dx,y:center.y+2*dy},
+  mid:{x:center.x+dx,y:center.y+dy},
+  curved:Math.abs(bend)>=.001||Math.abs(along)>=.001
+ };
+}
+
+function geometry(edge,shape=connectionShapes(),curve=edge){
  const from=shape(edge.from),to=shape(edge.to);
  if(!from||!to)return null;
  const s=connectionBoundary(from,to),t=connectionBoundary(to,from);
  const dx=to.x-from.x,dy=to.y-from.y,length=Math.hypot(dx,dy)||1;
- const normal={x:-dy/length,y:dx/length};
- const centerX=(s.x+t.x)/2,centerY=(s.y+t.y)/2,bend=edge.bend||0;
- const m={x:centerX+normal.x*bend,y:centerY+normal.y*bend};
- return {
-  s,t,m,normal,mid:{x:(centerX+m.x)/2,y:(centerY+m.y)/2},
-  curved:Math.abs(bend)>=.001,fromBoard:from.board,toBoard:to.board
- };
+ const tangent={x:dx/length,y:dy/length},normal={x:-tangent.y,y:tangent.x};
+ const center=interpolatePoint(s,t,.5);
+ return bendGeometry({s,t,center,tangent,normal,length,fromBoard:from.board,toBoard:to.board},curve);
 }
 
 function interpolatePoint(a,b,t){
@@ -137,13 +147,14 @@ function renderConnections(){
  const shape=connectionShapes();
  let html=`<defs><marker id="edge-arrow" viewBox="0 0 8 8" markerWidth="${arrowSize}" markerHeight="${arrowSize}" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="currentColor" stroke="none"/></marker></defs>`;
  for(const edge of state.connections||[]){
-  const g=geometry(edge,shape);
+  const curve=connecting?.bend===edge.id?connecting.draft||edge:edge;
+  const g=geometry(edge,shape,curve);
   if(!g)continue;
   const active=edge.id===edgeSelected,d=visibleConnectionPath(g,camera);
   html+=`<g data-edge="${esc(edge.id)}" class="${active?'edge-selected':''}"><path class="edge-hit" d="${d}"/><path class="edge-line" d="${d}" marker-end="url(#edge-arrow)"/>`;
   if(active){
    const mid=screen(g.mid);
-   html+=`<circle class="bend-handle" cx="${mid.x}" cy="${mid.y}" r="${3.2*scale}"/><circle class="bend-hit" cx="${mid.x}" cy="${mid.y}" r="7"/>`;
+   html+=`<circle class="bend-handle" cx="${mid.x}" cy="${mid.y}" r="${3.4*scale}"/><circle class="bend-hit" cx="${mid.x}" cy="${mid.y}" r="7"/>`;
   }
   html+='</g>';
  }
@@ -176,6 +187,63 @@ function finishConnection(target){
 }
 
 function connectorCursor(event){return {clientX:event.clientX,clientY:event.clientY}}
+function beginBend(event,id){
+ const edge=state.connections.find(item=>item.id===id),g=edge&&geometry(edge);
+ if(!g)return;
+ const p=point(event);
+ connecting={bend:id,pointerId:event.pointerId,start:connectorCursor(event),
+  grabOffset:{x:p.x-g.mid.x,y:p.y-g.mid.y}};
+}
+
+function dragBend(event){
+ const edit=connecting;
+ const moved=Math.hypot(event.clientX-edit.start.clientX,event.clientY-edit.start.clientY);
+ if(!edit.draft&&moved<3)return;
+ const edge=state.connections.find(item=>item.id===edit.bend),g=edge&&geometry(edge);
+ if(!g)return;
+ if(!edit.draft){
+  desk.setPointerCapture(event.pointerId);
+  desk.classList.add('bending-connection');
+ }
+ const p=point(event);
+ const dx=p.x-edit.grabOffset.x-g.center.x,dy=p.y-edit.grabOffset.y-g.center.y;
+ edit.draft={
+  bend:2*(dx*g.normal.x+dy*g.normal.y),
+  bendAlong:(dx*g.tangent.x+dy*g.tangent.y)/g.length
+ };
+ // Keep the hit target and other paths mounted during the drag.
+ const group=$(`#connections [data-edge="${CSS.escape(edge.id)}"]`);
+ if(!group){renderConnections();return}
+ const draft=bendGeometry(g,edit.draft),camera=state.camera;
+ const path=visibleConnectionPath(draft,camera);
+ group.querySelectorAll('path').forEach(node=>node.setAttribute('d',path));
+ group.querySelectorAll('circle').forEach(node=>{
+  node.setAttribute('cx',draft.mid.x*camera.z+camera.x);
+  node.setAttribute('cy',draft.mid.y*camera.z+camera.y);
+ });
+}
+
+function clearConnectionGesture(){
+ const previous=connecting;
+ connecting=null;
+ desk.classList.remove('connecting','bending-connection');
+ if(previous?.bend&&desk.hasPointerCapture(previous.pointerId))desk.releasePointerCapture(previous.pointerId);
+}
+
+function finishBend(){
+ const {bend:id,draft}=connecting;
+ clearConnectionGesture();
+ if(!draft)return;
+ const edge=state.connections.find(item=>item.id===id);
+ if(edge&&(Math.abs((edge.bend||0)-draft.bend)>.001||Math.abs((edge.bendAlong||0)-draft.bendAlong)>.00001)){
+  checkpoint();
+  edge.bend=draft.bend;
+  if(Math.abs(draft.bendAlong)>.00001)edge.bendAlong=draft.bendAlong;
+  else delete edge.bendAlong;
+  save();
+ }
+ renderConnections();
+}
 
 desk.addEventListener('pointerdown',e=>{
  if(e.button!==0||space)return;
@@ -183,6 +251,7 @@ desk.addEventListener('pointerdown',e=>{
  if(connecting){
   e.stopImmediatePropagation();
   e.preventDefault();
+  if(connecting.bend)return;
   const id=targetAt(e);
   if(connecting.from)finishConnection(id);
   else if(id){
@@ -202,13 +271,13 @@ desk.addEventListener('pointerdown',e=>{
  if(edge){
   e.stopImmediatePropagation();
   e.preventDefault();
+  if(e.target.classList.contains('bend-hit')){
+   beginBend(e,edge.dataset.edge);
+   return;
+  }
   selected.clear();
   selectionUI();
   edgeSelected=edge.dataset.edge;
-  if(e.target.classList.contains('bend-hit')){
-   checkpoint();
-   connecting={bend:edgeSelected,pointerId:e.pointerId};
-  }
   renderConnections();
   return;
  }
@@ -222,24 +291,60 @@ document.addEventListener('pointermove',e=>{
   connecting.cursor=connectorCursor(e);
   if(connecting.start&&Math.hypot(e.clientX-connecting.start.clientX,e.clientY-connecting.start.clientY)>3)connecting.drag=true;
   renderConnections();
- }else if(connecting?.bend){
-  const edge=state.connections.find(item=>item.id===connecting.bend),g=edge&&geometry(edge);
-  if(!g)return;
-  const p=point(e);
-  edge.bend=2*((p.x-(g.s.x+g.t.x)/2)*g.normal.x+(p.y-(g.s.y+g.t.y)/2)*g.normal.y);
-  renderConnections();
- }else if(gesture)renderConnections();
+ }else if(connecting?.bend)dragBend(e);
+ else if(gesture)renderConnections();
 });
 document.addEventListener('pointerup',e=>{
  if(!connecting||connecting.pointerId!==e.pointerId)return;
- if(connecting.bend){connecting=null;save()}
+ if(connecting.bend)finishBend();
  else if(connecting.drag)finishConnection(targetAt(e));
  else{connecting.pointerId=null;connecting.start=null}
 });
-function cancelConnection(){if(connecting?.bend)save();connecting=null;desk.classList.remove('connecting');renderConnections()}
-document.addEventListener('pointercancel',()=>{cancelConnection();cancelPalette()});
+desk.addEventListener('dblclick',event=>{
+ const handle=event.target.closest('.bend-hit');
+ if(!handle)return;
+ const id=handle.closest('[data-edge]').dataset.edge;
+ const edge=state.connections.find(item=>item.id===id);
+ if(!edge||(!edge.bend&&!edge.bendAlong))return;
+ event.preventDefault();
+ event.stopPropagation();
+ checkpoint();
+ edge.bend=0;
+ delete edge.bendAlong;
+ renderConnections();
+ save();
+});
+function cancelConnection(){clearConnectionGesture();renderConnections()}
+desk.addEventListener('lostpointercapture',event=>{
+ if(connecting?.bend&&connecting.pointerId===event.pointerId)cancelConnection();
+});
+document.addEventListener('pointercancel',event=>{
+ if(!connecting?.bend||connecting.pointerId===event.pointerId)cancelConnection();
+ cancelPalette();
+});
 window.addEventListener('blur',cancelConnection);
-document.addEventListener('keydown',e=>{if(dialog.open||e.target.closest('input,textarea,select,[contenteditable="true"]'))return;if(e.key==='Escape'&&(connecting||edgeSelected||paletteDrag||activeTool)){e.preventDefault();e.stopImmediatePropagation();edgeSelected=null;cancelConnection();cancelPalette();chooseTool(null);return}if(edgeSelected&&(e.key==='Delete'||e.key==='Backspace')){e.preventDefault();e.stopImmediatePropagation();checkpoint();state.connections=(state.connections||[]).filter(a=>a.id!==edgeSelected);edgeSelected=null;update()}},true);
+document.addEventListener('keydown',e=>{
+ if(dialog.open||e.target.closest('input,textarea,select,[contenteditable="true"]'))return;
+ if(connecting?.bend&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z')cancelConnection();
+ if(e.key==='Escape'&&(connecting||edgeSelected||paletteDrag||activeTool)){
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  edgeSelected=null;
+  cancelConnection();
+  cancelPalette();
+  chooseTool(null);
+  return;
+ }
+ if(edgeSelected&&(e.key==='Delete'||e.key==='Backspace')){
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  clearConnectionGesture();
+  checkpoint();
+  state.connections=(state.connections||[]).filter(edge=>edge.id!==edgeSelected);
+  edgeSelected=null;
+  update();
+ }
+},true);
 function chooseTool(type){activeTool=type;desk.classList.toggle('placing-tool',!!type);$$('.palette-tool').forEach(b=>{let active=b.dataset.tool===type;b.classList.toggle('tool-active',active);b.setAttribute('aria-pressed',String(active))})}
 function createTool(type,p){if(type==='ps'){createPSNode(p);return}if(type==='templates'){actions.templates();return}if(type==='line'){connecting={from:null};desk.classList.add('connecting');toast('依次点击两个对象，或拖动照片右上角的连接手柄');return}if(type==='image'){actions.upload(p);return}let extra=p?{x:p.x,y:p.y}:{};if(type==='note')Object.assign(extra,{h:54,text:'Start typing…'});if(type==='board')Object.assign(extra,{w:140,h:120});if(type==='todo')Object.assign(extra,{w:260,h:96,text:'',taskItems:[],todoTitle:false});if(type==='comment'){type='note';Object.assign(extra,{variant:'comment',name:'Comment',text:'双击输入评论',w:240,h:80})}if(type==='table'){type='note';Object.assign(extra,{variant:'table',name:'Table',text:'标题  |  内容\n项目  |  待填写',w:280,h:120})}return add(type,extra)}
 const palette=[['note','Note'],['todo','To-do'],['line','Line'],['board','Board'],['column','Column'],['ps','PS'],['templates','模板'],['image','Add image']];
