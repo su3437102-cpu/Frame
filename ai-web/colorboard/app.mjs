@@ -67,16 +67,16 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   }
 
   const sections = [
-    ['明暗', [
+    ['light', '明暗', 3, [
       ['exposure', '曝光', -3, 3, .01, ' EV'],
       ['contrast', '对比度'], ['highlights', '高光'], ['shadows', '阴影'], ['whites', '白色'], ['blacks', '黑色']
     ]],
-    ['色彩', [
+    ['color', '色彩', 3, [
       ['temperature', '色温', -100, 100, 1, '', '#9eb8ee, #e9dce9, #f1bb80'],
       ['tint', '色调', -100, 100, 1, '', '#9ec5ac, #e8dce9, #d99bcc'],
       ['vibrance', '自然饱和度'], ['saturation', '饱和度'], ['hue', '色相', -180, 180, 1, '°']
     ]],
-    ['质感', [
+    ['texture', '质感', 3, [
       ['clarity', '清晰度'], ['dehaze', '去雾'], ['sharpen', '锐化', 0, 100],
       ['vignette', '暗角'], ['fade', '褪色', 0, 100], ['grain', '颗粒', 0, 100]
     ]]
@@ -205,23 +205,46 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     return { row, update, key };
   }
 
-  const globalRanges = [];
-  for (const [title, fields] of sections) {
-    const group = document.createElement('div');
-    group.className = 'control-group';
-    const heading = document.createElement('h3');
-    heading.textContent = title;
-    group.append(heading);
-    for (const field of fields) {
-      const range = createRange('tone', field, state.settings[field[0]], value => {
-        state.settings[field[0]] = value;
-        scheduleRender();
-      });
-      globalRanges.push(range);
-      group.append(range.row);
-    }
-    el('tone-controls').append(group);
+  function bindDisclosure(button, content) {
+    button.addEventListener('click', () => {
+      content.hidden = !content.hidden;
+      button.setAttribute('aria-expanded', String(!content.hidden));
+    });
   }
+
+  function appendRangeGroups(container, scope, groups, settings, change) {
+    return groups.flatMap(([name, title, visibleCount, fields]) => {
+      const group = document.createElement('div');
+      group.className = 'control-group';
+      const heading = document.createElement('h3');
+      const ranges = fields.map(field => createRange(scope, field, settings[field[0]], value => change(field[0], value)));
+      group.append(heading, ...ranges.slice(0, visibleCount).map(range => range.row));
+      if (ranges.length > visibleCount) {
+        const details = document.createElement('div');
+        details.id = scope + '-' + name + '-details';
+        details.hidden = true;
+        details.append(...ranges.slice(visibleCount).map(range => range.row));
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'control-disclosure';
+        button.setAttribute('aria-controls', details.id);
+        button.setAttribute('aria-expanded', 'false');
+        button.textContent = title;
+        heading.append(button);
+        group.append(details);
+        bindDisclosure(button, details);
+      } else {
+        heading.textContent = title;
+      }
+      container.append(group);
+      return ranges;
+    });
+  }
+
+  const globalRanges = appendRangeGroups(el('tone-controls'), 'tone', sections, state.settings, (key, value) => {
+    state.settings[key] = value;
+    scheduleRender();
+  });
 
   const aiRange = createRange('ai', ['strength', 'AI 强度', 0, 100, 1, '%'], state.aiStrength, value => {
     state.aiStrength = value;
@@ -230,38 +253,24 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   el('ai-strength-wrap').append(aiRange.row);
 
   const glowButton = el('toggle-glow');
-  const glowRanges = [];
   const glowGroups = [
-    ['高光晕染', [
+    ['bloom', '高光晕染', 2, [
       ['amount', '辉光强度', 0, 100, 1, '%'],
       ['threshold', '高光门槛', 0, 100, 1, '%'],
       ['radius', '扩散范围', 0, 100, 1, '%'],
       ['warmth', '辉光冷暖', -100, 100, 1, '', '#9eb8ee, #e9dce9, #f1bb80']
     ]],
-    ['方向光带', [
+    ['streak', '方向光带', 2, [
       ['streak', '光带强度', 0, 100, 1, '%'],
       ['angle', '光带方向', -90, 90, 1, '°']
     ]]
   ];
-  for (const [title, fields] of glowGroups) {
-    const group = document.createElement('div');
-    group.className = 'control-group';
-    const heading = document.createElement('h3');
-    heading.textContent = title;
-    group.append(heading);
-    for (const field of fields) {
-      const key = field[0];
-      const range = createRange('glow', field, state.glow[key], value => {
-        state.glow[key] = value;
-        if (key === 'amount') state.glowEnabled = value > 0;
-        syncGlowControls();
-        scheduleRender();
-      });
-      glowRanges.push(range);
-      group.append(range.row);
-    }
-    el('glow-controls').append(group);
-  }
+  const glowRanges = appendRangeGroups(el('glow-controls'), 'glow', glowGroups, state.glow, (key, value) => {
+    state.glow[key] = value;
+    if (key === 'amount') state.glowEnabled = value > 0;
+    syncGlowControls();
+    scheduleRender();
+  });
 
   function syncGlowControls() {
     for (const range of glowRanges) range.update(state.glow[range.key]);
@@ -594,6 +603,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   lutMenu.setAttribute('aria-label', '开源 LUT 方案');
   lutMenu.append(new Option('选择开源 LUT…', ''), ...OPEN_LUTS.map(item => new Option(item.name, item.id)));
   el('lut-caption').before(lutMenu);
+  bindDisclosure(el('lut-disclosure'), el('lut-details'));
   const lutRange = createRange('lut', ['strength', 'LUT 强度', 0, 100, 1, '%'], state.lutStrength, value => {
     state.lutStrength = value;
     scheduleRender();
@@ -927,6 +937,13 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     return row;
   }
 
+  const localRanges = appendRangeGroups(el('mask-tone-controls'), 'local', sections, DEFAULT_SETTINGS, (key, value) => {
+    const layer = activeLayer();
+    if (!layer) return;
+    layer.settings[key] = value;
+    scheduleRender();
+  });
+
   function syncMaskPanel() {
     const layer = activeLayer();
     el('mask-list').replaceChildren(...state.layers.map(maskRow));
@@ -949,12 +966,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
         scheduleRender();
       });
       el('mask-brush-controls').replaceChildren(size.row, feather.row, opacity.row);
-      el('mask-tone-controls').replaceChildren(...sections.flatMap(([, fields]) => fields).map(field => {
-        return createRange('local', field, layer.settings[field[0]], value => {
-          layer.settings[field[0]] = value;
-          scheduleRender();
-        }).row;
-      }));
+      for (const range of localRanges) range.update(layer.settings[range.key]);
     }
     updateView();
   }

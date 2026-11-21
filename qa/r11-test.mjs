@@ -117,6 +117,15 @@ check('grading mounts in the FrameLab page with one editor',
   await workbench.locator('iframe,#framelab-basic').count()===0&&
   await gradingPage.locator('[data-context="ai-basic"],[data-context="ai-advanced"]').count()===0);
 const exposure=workbench.locator('#tone-exposure');
+const lightGroup=workbench.getByRole('button',{name:'明暗',exact:true});
+const shadows=workbench.locator('#tone-shadows');
+const collapsed=await shadows.isHidden();
+await lightGroup.press('Enter');
+await shadows.press('ArrowRight');
+const editedShadows=await shadows.inputValue();
+await lightGroup.press('Space');
+check('grading defaults to key sliders and keeps hidden adjustments when folded',
+  collapsed&&await shadows.isHidden()&&await lightGroup.getAttribute('aria-expanded')==='false'&&Number(editedShadows)===1);
 await exposure.press('End');
 const exposureValue=await exposure.inputValue();
 const lookTabs=await workbench.locator('.shelf-tabs button').allTextContents();
@@ -135,6 +144,8 @@ await workbench.locator('#framelab-save:enabled').waitFor();
 check('grading restores the saved adjustment and keeps the linked photo',
   exposureValue!=='0'&&await exposure.inputValue()===exposureValue&&
   await linkedPhoto.locator('img').getAttribute('src')===linkedSrc);
+await lightGroup.press('Enter');
+check('grading restores advanced sliders on reopen',await shadows.inputValue()===editedShadows);
 check('opening and manually grading a photo loads no AI models',modelRequests.length===0,modelRequests);
 await gradingPage.close();
 

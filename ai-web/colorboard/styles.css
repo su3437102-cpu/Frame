@@ -179,7 +179,8 @@ h1, h2, p { margin: 0; }
 .auto-section { padding: 16px var(--panel-inset); border-bottom: 1px solid var(--line); }
 .auto-title { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
 .ai-icon { display: grid; place-items: center; width: 34px; height: 34px; color: var(--accent); background: var(--accent-pale); border-radius: 8px; }
-.auto-title h2, .histogram-heading h2, .panel-header h2 { font-size: 13px; font-weight: 750; }
+.auto-title h2, .histogram-heading h2 { font-size: 13px; font-weight: 750; }
+.panel-header h2 { font-size: 16px; line-height: 1.25; font-weight: 750; }
 .auto-title p { color: var(--muted); font-size: 10.5px; margin-top: 3px; line-height: 1.35; }
 .auto-section .button-primary { width: 100%; min-height: 35px; }
 .ai-strength { margin-top: 9px; }
@@ -190,7 +191,7 @@ h1, h2, p { margin: 0; }
 .text-button i { width: 13px; height: 13px; }
 .text-button:hover { color: var(--accent-dark); text-decoration: underline; }
 .inspector-tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); padding: 0 8px; border-bottom: 1px solid var(--line); }
-.inspector-tabs button { display: inline-flex; justify-content: center; gap: 4px; align-items: center; min-height: 42px; padding: 0 3px; color: var(--muted); font-size: 11px; font-weight: 550; border: 0; border-bottom: 2px solid transparent; background: transparent; white-space: nowrap; }
+.inspector-tabs button { display: inline-flex; justify-content: center; gap: 4px; align-items: center; min-height: 42px; padding: 0 3px; color: var(--muted); font-size: 12px; font-weight: 650; border: 0; border-bottom: 2px solid transparent; background: transparent; white-space: nowrap; }
 .inspector-tabs i { width: 14px; height: 14px; }
 .inspector-tabs button[aria-selected="true"] { color: var(--accent-dark); border-bottom-color: var(--accent); }
 .inspector-tabs button:hover { background: var(--soft); }
@@ -201,8 +202,14 @@ h1, h2, p { margin: 0; }
 .inspector-scroll [role="tabpanel"] { padding: 15px var(--panel-inset) 20px; }
 .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin-bottom: 10px; }
 .panel-subhead { padding-top: 11px; margin-top: 12px; border-top: 1px solid var(--line); }
-.control-group + .control-group { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
-.control-group h3 { font-size: 10px; color: var(--muted); font-weight: 650; margin: 0 0 4px; }
+.control-group + .control-group, .color-lut { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.control-group h3, .color-lut h2 { font-size: 14px; line-height: 1.3; color: var(--text); font-weight: 750; margin: 0 0 5px; }
+.control-group h3 { display: flex; align-items: center; min-height: 36px; }
+.control-disclosure { display: flex; width: 100%; min-height: 36px; align-items: center; justify-content: space-between; gap: 8px; padding: 0 6px 0 0; text-align: left; border: 0; border-radius: 4px; background: transparent; font: inherit; }
+.control-disclosure::after { content: ""; width: 8px; height: 8px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); color: var(--muted); transition: transform 150ms cubic-bezier(.23,1,.32,1); }
+.control-disclosure[aria-expanded="true"]::after { transform: translateY(2px) rotate(225deg); }
+.control-disclosure:hover { color: var(--accent-dark); background: var(--soft); }
+.lut-import { min-height: 30px; margin-bottom: 6px; }
 .range-row { display: grid; gap: 2px; margin-bottom: 6px; }
 .range-row label { display: flex; justify-content: space-between; align-items: baseline; line-height: 1.2; color: var(--text); font-size: 11px; }
 .range-row output { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; min-width: 27px; text-align: right; }
@@ -358,4 +365,7 @@ dialog::backdrop { background: #201a2e66; }
   .inspector-scroll { display: block; }
   .inspector-tabs i { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .spinning { animation: none; }
+  .control-disclosure::after { transition: none; }
+}

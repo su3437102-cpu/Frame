@@ -113,9 +113,14 @@ const markup = `
             <div id="hsl-colors" class="hsl-colors" aria-label="选择色彩范围"></div>
             <div id="hsl-controls"></div>
           </div>
-          <div class="panel-header panel-subhead"><h2>LUT</h2><button id="import-lut" class="text-button" type="button"><i data-icon="upload"></i>导入 .cube</button></div>
-          <p id="lut-caption" class="panel-note">可叠加第三方 3D LUT。</p>
-          <div id="lut-controls" hidden></div>
+          <section class="control-group color-lut">
+            <h2><button id="lut-disclosure" class="control-disclosure" type="button" aria-controls="lut-details" aria-expanded="false">LUT</button></h2>
+            <div id="lut-details" hidden>
+              <button id="import-lut" class="text-button lut-import" type="button"><i data-icon="upload"></i>导入 .cube</button>
+              <p id="lut-caption" class="panel-note">可叠加第三方 3D LUT。</p>
+              <div id="lut-controls" hidden></div>
+            </div>
+          </section>
         </section>
         <section id="panel-glow" role="tabpanel" aria-labelledby="tab-glow" hidden>
           <div class="panel-header"><h2>高光辉光</h2><button id="reset-glow" class="text-button" type="button"><i data-icon="reset"></i>重置辉光</button></div>
