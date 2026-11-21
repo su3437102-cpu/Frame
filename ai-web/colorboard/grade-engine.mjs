@@ -49,6 +49,47 @@ export const PRESETS = [
       hsl: { orange: { hue: -7, saturation: 15, luminance: 1 }, blue: { hue: -16, saturation: 16, luminance: -8 } },
     },
   },
+  {
+    id: 'general-portrait', name: '通用人像', category: '人像', example: 'portrait',
+    description: '轻降对比和饱和度，抬起阴影，压低高光。',
+    settings: { contrast: -7, shadows: 12, highlights: -8, saturation: -3 },
+  },
+  // The seasonal and hour looks adapt OpenStill Originals (CC0 1.0) to these controls.
+  {
+    id: 'spring', name: '春日清新', category: '四季', example: 'landscape',
+    description: '提亮照片，保留柔和的暗部和清新的色彩。',
+    settings: { exposure: 0.15, vibrance: 25, tint: 7, fade: 4 },
+  },
+  {
+    id: 'summer', name: '夏日明亮', category: '四季', example: 'landscape',
+    description: '提高亮度和鲜艳度，增加日光的暖意。',
+    settings: { exposure: 0.1, temperature: 10, vibrance: 30 },
+  },
+  {
+    id: 'autumn', name: '秋日暖色', category: '四季', example: 'landscape',
+    description: '暖化白平衡，增强黄橙色和植被的色彩。',
+    settings: { hue: 8, temperature: 13, saturation: 20 },
+  },
+  {
+    id: 'winter', name: '冬日冷调', category: '四季', example: 'landscape',
+    description: '降低色温和饱和度，轻提雪景和阴天的亮度。',
+    settings: { temperature: -19, saturation: -30, exposure: 0.1 },
+  },
+  {
+    id: 'golden', name: '暖金', category: '色调', example: 'landscape',
+    description: '压住强光，给照片加入日落的暖金色。',
+    settings: { temperature: 23, highlights: -20, saturation: 10 },
+  },
+  {
+    id: 'blue', name: '暮蓝', category: '色调', example: 'night',
+    description: '压暗并冷却画面，保留蓝调时刻的色彩。',
+    settings: { temperature: -25, exposure: -0.3, saturation: 10 },
+  },
+  {
+    id: 'matte', name: '柔和哑光', category: '色调', example: 'architecture',
+    description: '减淡黑位、对比度和饱和度。',
+    settings: { fade: 5, contrast: -9, saturation: -9 },
+  },
 ];
 
 const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, value));

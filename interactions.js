@@ -324,7 +324,7 @@ document.addEventListener('pointercancel',event=>{
 });
 window.addEventListener('blur',cancelConnection);
 document.addEventListener('keydown',e=>{
- if(dialog.open||e.target.closest('input,textarea,select,[contenteditable="true"]'))return;
+ if(dialog.open||e.target.closest('#colorboard-workbench,input,textarea,select,[contenteditable="true"]'))return;
  if(connecting?.bend&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z')cancelConnection();
  if(e.key==='Escape'&&(connecting||edgeSelected||paletteDrag||activeTool)){
   e.preventDefault();

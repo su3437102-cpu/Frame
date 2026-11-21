@@ -1,9 +1,9 @@
-# FrameLab 进阶调色工作台
+# FrameLab 调色工作台
 
-本模块来自用户提供的 ColorBoard 源码和模型包。选中 FrameLab 照片并点击「AI 调色」，在生成的节点中打开「调色设置」。已有基础调色工程可继续用原来的参数编辑，也可从同一节点进入「进阶调色」。
+本模块来自用户提供的 ColorBoard 源码和模型包。选中 FrameLab 照片并点击「AI 调色」，在生成的节点中打开「调色设置」。旧基础调色的已保存结果可以作为工作台的起始照片。
 
-1. 打开或拖入照片，先让 AI 根据原图生成可调强度的基础色调。也可先用示例照片体验。
-2. 选择「建筑冷调」「人像柔肤」「山野通透」或「霓虹夜景」。四套预设分别侧重建筑细节、自然肤色、天空与植被层次、城市灯光。
+1. 打开或拖入照片即可手动调整，也可以先用示例照片体验。点击「自动调色」可让 AI 根据照片生成可调强度的起始色调。
+2. 选择建筑冷调、人像柔肤、山野通透、霓虹夜景、通用人像、四季或色调预设。应用后可继续修改参数。
 3. 在侧栏调整曝光、白平衡、反差、高光和阴影、饱和度、清晰度、锐化、去雾与暗角。可单独修改 RGB 曲线和六区 HSL，或叠加内置的开源 LUT 或导入 `.cube`。
 4. 从「蒙版」选「框选主体」，在照片上拖一个框。在框内拖动可移动，拉边或角可调整大小。点击「确认识别」或按 Enter 后，AI 沿主体边缘生成蒙版。也可以使用全图 AI 主体或新建画笔。框选后可显示或隐藏范围、重新框选，或使用画笔补选和橡皮擦除。支持导出整张 JPG/PNG、透明抠图或黑白蒙版。
 
@@ -22,6 +22,7 @@
 ## 参考与来源
 
 - 工作台的摄影画板与组织方式参考 [Milanote 摄影画板官方指南](https://milanote.com/guide/photography-moodboard)。
+- 四季、暖金和暮蓝预设参考 [OpenStill Originals](https://github.com/haon-v2/OpenStill/blob/main/Resources/LUTs/originals.json)，采用 CC0 1.0 授权，参数已适配本工作台。
 - AI 调色使用 [HuiZeng/Image-Adaptive-3DLUT](https://github.com/HuiZeng/Image-Adaptive-3DLUT) 的 sRGB 模型，分类器转换为 ONNX，在浏览器根据照片预测三个色彩查找表的权重。参考 [Apache 2.0 许可](./vendor/adaptive/LICENSE.txt)。
 - AI 主体蒙版使用 [U²-NetP](https://github.com/xuebinqin/U-2-Net)，加载 [rembg 提供的 ONNX 模型](https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx)。相关许可和来源见 [模型说明](./vendor/matte/SOURCES.md)。模型由 [ONNX Runtime Web](https://onnxruntime.ai/docs/get-started/with-javascript/web.html) 在本地运行。
 - AI 框选使用 Apache 2.0 许可的 [SlimSAM](https://github.com/czg1225/SlimSAM)，基于 [Segment Anything](https://github.com/facebookresearch/segment-anything)。浏览器用选框的两个角点提示分割模型。同一张照片首次框选需要几秒，后续可重用分析结果。模型加载失败时，可改用选框范围内的 U²-NetP 主体识别。模型版本、转换过程和许可见 [框选模型来源](./vendor/box-segment/SOURCES.md)。

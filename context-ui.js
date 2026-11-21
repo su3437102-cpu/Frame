@@ -49,9 +49,7 @@ function syncContextRail(){
   for(const [command,label,glyph] of [['bold','粗体','bold'],['italic','斜体','italic'],['strikeThrough','删除线','strike'],['underline','下划线','underline'],['insertUnorderedList','项目列表','bullets'],['insertOrderedList','编号列表','ordered'],['align','对齐','align'],['code','代码块','code'],['link','文字链接','link']])html+=contextButton(command,label,glyph,true);
  }else{
   if(o.variant==='ai'){
-   const basic=o.aiEditor==='basic'||(o.aiEditor!=='advanced'&&o.gradeEdit&&!o.colorBoardEdit);
    html+=contextButton('ai-edit','调色设置','ai')+
-    (basic?contextButton('ai-advanced','进阶调色','edit'):contextButton('ai-basic','基础调色','edit'))+
     contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+
     contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
   }
@@ -118,7 +116,7 @@ function finishInline(redraw=true){if(!inlineEdit)return;storeInline();inlineEdi
 desk.addEventListener('pointerdown',e=>{if(e.target.closest('[contenteditable="true"]')){e.stopImmediatePropagation();return}if(inlineEdit)finishInline(false)},true);
 desk.addEventListener('dblclick',e=>{const el=e.target.closest('.object'),o=el&&state.objects.find(x=>x.id===el.dataset.id);if(o&&['note','todo','column'].includes(o.type)&&!e.target.closest('button,input')){e.preventDefault();e.stopImmediatePropagation();startInline(o)}},true);
 document.addEventListener('keydown',e=>{
- if(dialog.open)return;
+ if(dialog.open||e.target.closest('#colorboard-workbench'))return;
  if(e.key==='Escape'&&!contextPopover.hidden&&!popoverClosing){e.preventDefault();e.stopImmediatePropagation();const focused=contextPopover.contains(document.activeElement);closeContextPopover();if(focused)(inlineEdit?.el||contextRail.querySelector('button'))?.focus();return}
  // Nested rich-text spans must never forward Delete/arrows/Space to the desktop.
  if(e.target.closest('input,textarea,select,[contenteditable="true"]'))return;

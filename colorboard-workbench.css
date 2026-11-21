@@ -1,0 +1,56 @@
+/* The full-screen dialog keeps the workspace inert while its native editor mounts. */
+#colorboard-workbench {
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--bg);
+  box-shadow: none;
+}
+#colorboard-workbench::backdrop { background: var(--bg); }
+#colorboard-workbench .colorboard-root {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+#colorboard-workbench .colorboard-root[inert] { pointer-events: none; }
+#colorboard-workbench .colorboard-state {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  padding: 76px 24px 24px;
+  background: radial-gradient(var(--dot) .65px, transparent .85px) var(--bg) 0 0 / 21px 21px;
+  color: var(--muted);
+  text-align: center;
+}
+#colorboard-workbench .colorboard-state::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 54px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  content: "";
+}
+#colorboard-workbench .colorboard-state[hidden] { display: none; }
+#colorboard-workbench .colorboard-state p { margin: 0; }
+#colorboard-workbench [data-colorboard-back] {
+  position: absolute;
+  inset: 5px auto auto 16px;
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--ink);
+}
+@media (max-width: 740px) {
+  #colorboard-workbench .colorboard-state::before { height: 49px; }
+  #colorboard-workbench [data-colorboard-back] { inset: 2px auto auto 8px; }
+}

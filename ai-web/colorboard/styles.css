@@ -1,4 +1,4 @@
-:root {
+:host {
   color-scheme: light;
   --text: #292824;
   --muted: #68655e;
@@ -25,7 +25,7 @@
   color: var(--text);
   background: var(--board);
 }
-:root[data-framelab-theme="dark"] {
+:host([data-framelab-theme="dark"]) {
   color-scheme: dark;
   --text: #eeeae3;
   --muted: #bcb7ad;
@@ -45,7 +45,7 @@
   --shadow: #0005;
 }
 *, *::before, *::after { box-sizing: border-box; }
-body { display: grid; grid-template-rows: auto minmax(0,1fr); height: 100dvh; margin: 0; overflow: hidden; }
+.colorboard-layout { display: grid; grid-template-rows: auto minmax(0,1fr); height: 100%; min-height: 0; margin: 0; overflow: hidden; }
 button, input, select { font: inherit; }
 button { cursor: pointer; color: inherit; }
 button:disabled { cursor: default; opacity: .55; }
@@ -302,7 +302,7 @@ dialog::backdrop { background: #201a2e66; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 1000px) {
-  :root { --panel-inset: 14px; }
+  :host { --panel-inset: 14px; }
   .topbar { gap: 9px; padding-inline: 11px; }
   .top-actions { gap: 6px; }
   .workbench { grid-template-columns: 47px minmax(0,1fr) 286px; }
@@ -310,7 +310,7 @@ dialog::backdrop { background: #201a2e66; }
   .photo-meta { display: none; }
 }
 @media (max-width: 740px) {
-  :root { --top-height: 49px; }
+  :host { --top-height: 49px; }
   .topbar { gap: 7px; padding-inline: 8px; }
   .top-actions { gap: 4px; }
   .top-actions .button { padding-inline: 7px; }

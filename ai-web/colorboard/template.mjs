@@ -1,26 +1,15 @@
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f0efeb">
-  <title>FrameLab · AI 调色工作台</title>
-  <link rel="icon" type="image/svg+xml" href="./assets/mark.svg">
-  <link rel="stylesheet" href="../../assets/fonts/latin.css">
-  <link rel="stylesheet" href="./styles.css">
-</head>
-<body>
+const markup = `
+<div class="colorboard-layout">
   <header class="topbar">
-    <button id="framelab-back" class="button" type="button" aria-label="返回画布" title="返回画布" hidden><i data-icon="chevron-right"></i><span>返回画布</span></button>
+    <button id="framelab-back" class="button" type="button" aria-label="返回画布" title="返回画布"><i data-icon="chevron-right"></i><span>返回画布</span></button>
     <span class="brand">FrameLab</span>
     <span class="header-divider" aria-hidden="true"></span>
-    <div class="breadcrumbs"><h1>AI 调色</h1><i data-icon="chevron-right"></i><strong id="doc-name">建筑示例</strong></div>
+    <div class="breadcrumbs"><h1>AI 调色</h1><i data-icon="chevron-right"></i><strong id="doc-name">未连接照片</strong></div>
     <div class="top-actions">
-      <button id="framelab-basic" class="button" type="button" aria-label="基础调色" title="基础调色" hidden><i data-icon="sliders"></i><span>基础调色</span></button>
       <button id="open-file" class="button" type="button" aria-label="打开照片" title="打开照片"><i data-icon="upload"></i><span>打开照片</span></button>
       <button id="extract-look-header" class="button" type="button" aria-label="提取调色" title="提取调色" aria-haspopup="dialog" aria-controls="extract-look-dialog"><i data-icon="sparkles"></i><span>提取调色</span></button>
       <button id="export-open" class="button" type="button" aria-label="导出" title="导出"><i data-icon="download"></i><span>导出</span></button>
-      <button id="framelab-save" class="button button-dark" type="button" aria-label="保存到画布" title="保存到画布" hidden><i data-icon="check"></i><span>保存到画布</span></button>
+      <button id="framelab-save" class="button button-dark" type="button" aria-label="保存到画布" title="保存到画布" disabled><i data-icon="check"></i><span>保存到画布</span></button>
     </div>
     <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/bmp" hidden>
     <input id="lut-input" type="file" accept=".cube" hidden>
@@ -46,7 +35,7 @@
           <div id="box-selection" hidden aria-label="框选主体" tabindex="0"></div>
           <div id="mask-brush-cursor" aria-hidden="true" hidden></div>
           <span id="before-tag" class="image-tag before-tag" hidden>原图</span>
-          <span id="after-tag" class="image-tag after-tag">调色后</span>
+          <span id="after-tag" class="image-tag after-tag" hidden>调色后</span>
           <div id="compare-divider" hidden><span><i data-icon="compare"></i></span></div>
         </div>
         <span class="canvas-placeholder" id="canvas-placeholder"><i data-icon="image"></i>将照片拖到这里，或打开一张照片</span>
@@ -59,8 +48,8 @@
       </div>
       <div class="board-foot">
         <div class="photo-meta">
-          <span id="canvas-caption"><i data-icon="image"></i><span>建筑示例</span></span>
-          <span id="image-meta">正在打开示例照片…</span>
+          <span id="canvas-caption"><i data-icon="image"></i><span>未连接照片</span></span>
+          <span id="image-meta">打开照片，或从画布连接原图</span>
         </div>
         <div class="view-tools">
           <div class="segmented" aria-label="预览模式">
@@ -160,14 +149,14 @@
           <div class="shelf-heading">
             <h2 id="preset-heading">风格预设</h2>
             <div class="shelf-tabs" aria-label="预设来源">
-              <button type="button" id="feishu-looks-tab" aria-pressed="true">飞书样本</button>
-              <button type="button" id="built-in-looks-tab" aria-pressed="false">内置预设</button>
+              <button type="button" id="built-in-looks-tab" aria-pressed="true">内置预设</button>
+              <button type="button" id="feishu-looks-tab" aria-pressed="false">飞书样本</button>
               <button type="button" id="my-looks-tab" aria-pressed="false">我的模板</button>
             </div>
             <button type="button" id="extract-look-open" class="button button-soft" aria-haspopup="dialog" aria-controls="extract-look-dialog"><i data-icon="sparkles"></i>从照片提取</button>
           </div>
-          <div id="presets" class="preset-grid" hidden></div>
-          <div id="feishu-looks">
+          <div id="presets" class="preset-grid"></div>
+          <div id="feishu-looks" hidden>
             <p class="feishu-summary">3 套调色、1 套辉光预设和 1 套框选留色模板。</p>
             <div id="feishu-look-grid" class="feishu-look-grid"></div>
           </div>
@@ -244,11 +233,28 @@
   <dialog id="help-dialog">
     <form method="dialog" class="dialog-form">
       <div class="dialog-header"><h2>使用指南</h2><button class="button icon-button" value="close" aria-label="关闭"><i data-icon="x"></i></button></div>
-      <ol class="help-steps"><li>打开或拖入照片，AI 会先做基础调色。</li><li>在照片上滚轮缩放，按住空格拖动画布。按 R 切到旋转工具后拖动，按 0 适合画板。</li><li>在「蒙版」里画框，移动和调整大小后确认识别。生成后可继续用画笔修边或将背景设为黑白。</li><li>用滑块、曲线和辉光微调，再导出整图、透明抠图或黑白蒙版。</li></ol>
+      <ol class="help-steps"><li>打开或拖入照片后即可调整。需要 AI 建议时，点击「自动调色」。</li><li>在照片上滚轮缩放，按住空格拖动画布。按 R 切到旋转工具后拖动，按 0 适合画板。</li><li>在「蒙版」里画框，移动和调整大小后确认识别。生成后可继续用画笔修边或将背景设为黑白。</li><li>用滑块、曲线和辉光微调，再导出整图、透明抠图或黑白蒙版。</li></ol>
       <div class="help-links"><a href="https://milanote.com/guide/photography-moodboard" target="_blank" rel="noreferrer">Milanote 摄影画板指南 <i data-icon="external"></i></a><a href="https://github.com/HuiZeng/Image-Adaptive-3DLUT" target="_blank" rel="noreferrer">开源调色模型 <i data-icon="external"></i></a><a href="https://github.com/xuebinqin/U-2-Net" target="_blank" rel="noreferrer">开源抠图模型 <i data-icon="external"></i></a></div>
     </form>
   </dialog>
   <div id="toast" role="status" aria-live="polite" hidden></div>
-  <script type="module" src="./app.mjs"></script>
-</body>
-</html>
+</div>
+`;
+
+export function mountColorBoardTemplate(container, { theme = 'light' } = {}) {
+  const root = container.attachShadow({ mode: 'open' });
+  const document = container.ownerDocument;
+  const stylesheet = document.createElement('link');
+  stylesheet.rel = 'stylesheet';
+  stylesheet.href = new URL('./styles.css', import.meta.url).href;
+  const ready = new Promise((resolve, reject) => {
+    stylesheet.addEventListener('load', resolve, { once: true });
+    stylesheet.addEventListener('error', () => reject(new Error('无法加载调色工作台样式')), { once: true });
+  });
+
+  const template = document.createElement('template');
+  template.innerHTML = markup;
+  container.dataset.framelabTheme = theme === 'dark' ? 'dark' : 'light';
+  root.append(stylesheet, template.content);
+  return { root, ready };
+}

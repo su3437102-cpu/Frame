@@ -29,7 +29,7 @@ function isEditingControl(event) {
   return Boolean(event.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])'));
 }
 
-export function installCanvasViewport({ viewport, stage, onChange }) {
+export function installCanvasViewport({ viewport, stage, onChange, keyboardRoot = viewport.ownerDocument }) {
   const document = viewport.ownerDocument;
   const window = document.defaultView;
   const listeners = new AbortController();
@@ -319,17 +319,17 @@ export function installCanvasViewport({ viewport, stage, onChange }) {
 
   viewport.addEventListener('pointerenter', () => { pointerOverViewport = true; }, listenerOptions);
   viewport.addEventListener('pointerleave', () => { pointerOverViewport = false; }, listenerOptions);
-  document.addEventListener('keydown', event => {
+  keyboardRoot.addEventListener('keydown', event => {
     if (event.code !== 'Space' || !imageWidth || !imageHeight ||
         event.altKey || event.ctrlKey || event.metaKey || isEditingControl(event) ||
-        (isControl(event) && !pointerOverViewport) || document.querySelector('dialog[open]')) return;
+        (isControl(event) && !pointerOverViewport) || keyboardRoot.querySelector('dialog[open]')) return;
     event.preventDefault();
     if (!space) {
       space = true;
       render();
     }
   }, listenerOptions);
-  document.addEventListener('keyup', event => {
+  keyboardRoot.addEventListener('keyup', event => {
     if (event.code === 'Space' && space) {
       event.preventDefault();
       space = false;

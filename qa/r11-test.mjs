@@ -95,6 +95,40 @@ await page.mouse.dblclick(bendEnd.x,bendEnd.y);
 check('double-click straightens curve',await curve.getAttribute('d')===straightPath);
 await page.keyboard.press('Control+z');
 check('undo restores the curve',await curve.getAttribute('d')===draggedPath);
+
+const gradingPage=await browser.newPage();
+gradingPage.on('pageerror',error=>errors.push(error.message));
+const modelRequests=[];
+gradingPage.on('request',request=>{
+  if(/\/ai-web\/colorboard\/vendor\//.test(request.url()))modelRequests.push(request.url());
+});
+await gradingPage.goto('http://127.0.0.1:4311');
+await gradingPage.locator('#workspaceStatus').waitFor({state:'hidden'});
+const linkedPhoto=gradingPage.locator('#world [data-id="project-0"]');
+const linkedSrc=await linkedPhoto.locator('img').getAttribute('src');
+await linkedPhoto.click();
+await gradingPage.locator('[data-context="to-ai"]').click();
+const openGrading=gradingPage.locator('[data-context="ai-edit"]');
+await openGrading.click();
+const workbench=gradingPage.locator('#colorboard-workbench');
+const saveGrading=workbench.locator('#framelab-save');
+await workbench.locator('#framelab-save:enabled').waitFor();
+check('grading mounts in the FrameLab page with one editor',
+  await workbench.locator('iframe,#framelab-basic').count()===0&&
+  await gradingPage.locator('[data-context="ai-basic"],[data-context="ai-advanced"]').count()===0);
+const exposure=workbench.locator('#tone-exposure');
+await exposure.press('End');
+const exposureValue=await exposure.inputValue();
+await saveGrading.click();
+await workbench.waitFor({state:'hidden'});
+await openGrading.click();
+await workbench.locator('#framelab-save:enabled').waitFor();
+check('grading restores the saved adjustment and keeps the linked photo',
+  exposureValue!=='0'&&await exposure.inputValue()===exposureValue&&
+  await linkedPhoto.locator('img').getAttribute('src')===linkedSrc);
+check('opening and manually grading a photo loads no AI models',modelRequests.length===0,modelRequests);
+await gradingPage.close();
+
 check('zero JS runtime errors',errors.length===0,errors);fs.writeFileSync(dir+'/test-results.json',JSON.stringify({date:new Date().toISOString(),browser:browser.version(),results},null,2));await browser.close();console.log(JSON.stringify({passed:results.filter(r=>r.passed).length,total:results.length,failed:results.filter(r=>!r.passed)},null,2));
 if(results.some(result=>!result.passed))process.exitCode=1;
 

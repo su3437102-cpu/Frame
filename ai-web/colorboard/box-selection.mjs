@@ -79,7 +79,7 @@ function createHandle(document, key) {
 }
 
 export function installBoxSelection({
-  surface, onSelect, onCancel, onDraft, showGuide = true, clientToPoint,
+  surface, onSelect, onCancel, onDraft, showGuide = true, clientToPoint, keyboardRoot = surface.ownerDocument, signal,
 }) {
   const document = surface.ownerDocument;
   const frame = document.createElement('div');
@@ -246,23 +246,23 @@ export function installBoxSelection({
 
   function disable() {
     if (!enabled) return;
-    if (document.activeElement === surface) {
+    if (keyboardRoot.activeElement === surface) {
       if (focusBefore?.isConnected && focusBefore !== surface && !focusBefore.disabled) {
         focusBefore.focus({ preventScroll: true });
       }
-      if (document.activeElement === surface) surface.blur();
+      if (keyboardRoot.activeElement === surface) surface.blur();
     }
     enabled = false;
     discardDraft();
     focusBefore = null;
   }
 
-  document.addEventListener('keydown', event => {
-    if (event.key !== 'Escape' || !enabled || event.defaultPrevented || document.querySelector('dialog[open]')) return;
+  keyboardRoot.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !enabled || event.defaultPrevented || keyboardRoot.querySelector('dialog[open]')) return;
     event.preventDefault();
     disable();
     onCancel?.();
-  });
+  }, { signal });
 
   surface.addEventListener('keydown', event => {
     if (!enabled || pointer || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -283,7 +283,7 @@ export function installBoxSelection({
   update();
   return {
     enable(initialBox) {
-      if (!enabled) focusBefore = document.activeElement;
+      if (!enabled) focusBefore = keyboardRoot.activeElement;
       enabled = true;
       if (initialBox !== undefined) box = normalize(initialBox);
       discardDraft();
