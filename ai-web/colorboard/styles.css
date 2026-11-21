@@ -79,7 +79,7 @@ h1, h2, p { margin: 0; }
 #framelab-back { border-color: transparent; padding-inline: 4px 7px; }
 #framelab-back i { transform: rotate(180deg); }
 
-.workbench { display: grid; grid-template-columns: 55px minmax(0,1fr) clamp(286px,29vw,358px); min-height: 0; min-width: 0; }
+.workbench { display: grid; grid-template-columns: 55px minmax(0,1fr) clamp(286px,29vw,480px); min-height: 0; min-width: 0; }
 .rail { background: var(--paper); border-inline-end: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 5px 10px; min-height: 0; overflow: auto; scrollbar-width: thin; }
 .rail-button { display: grid; flex: none; place-items: center; align-content: center; gap: 4px; border: 1px solid transparent; border-radius: 7px; padding: 0; width: 43px; height: 48px; background: transparent; color: var(--muted); font-size: 10.5px; font-weight: 550; }
 .rail-button i { width: 17px; height: 17px; }
