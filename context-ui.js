@@ -48,7 +48,13 @@ function syncContextRail(){
   html+=contextButton('text-style','文字样式','text');
   for(const [command,label,glyph] of [['bold','粗体','bold'],['italic','斜体','italic'],['strikeThrough','删除线','strike'],['underline','下划线','underline'],['insertUnorderedList','项目列表','bullets'],['insertOrderedList','编号列表','ordered'],['align','对齐','align'],['code','代码块','code'],['link','文字链接','link']])html+=contextButton(command,label,glyph,true);
  }else{
-  if(o.variant==='ai')html+=contextButton('ai-edit','调色设置','ai')+contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
+  if(o.variant==='ai'){
+   const basic=o.aiEditor==='basic'||(o.aiEditor!=='advanced'&&o.gradeEdit&&!o.colorBoardEdit);
+   html+=contextButton('ai-edit','调色设置','ai')+
+    (basic?contextButton('ai-advanced','进阶调色','edit'):contextButton('ai-basic','基础调色','edit'))+
+    contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+
+    contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
+  }
   else if(o.variant==='ps')html+=contextButton('ps-edit','进入编辑','ps')+contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
   else if(o.type==='image')html+=contextButton('preview','大图预览','eye')+contextButton('replace','替换照片','replace')+contextButton('size','尺寸','size')+contextButton('to-ps','连接 PS','ps')+contextButton('to-ai','AI 调色','ai')+contextButton('download','下载','download');
   else if(o.type==='zone')html+=contextButton('open-zone','打开功能','edit');

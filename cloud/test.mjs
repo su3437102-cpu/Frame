@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {gzipSync} from 'node:zlib';
 import worker,{PersonalDesk} from './worker.mjs';
 import {digestMedia,mediaReference} from '../desk-media.js';
 class Store{
@@ -86,4 +87,30 @@ test('cloud media survives a legacy desk upgrade and requires a verified upload'
  assert.equal(await (await get(path)).text(),image);
  assert.equal((await worker.fetch(new Request('https://frame.example'+path),env,{})).status,401);
  assert.equal(objects.size,1);
+});
+
+test('current and trashed ColorBoard projects round-trip as private workspace media',async()=>{
+ const objects=new Map();
+ const env=makeEnv({
+  async put(key,value){objects.set(key,value)},
+  async get(key){return objects.has(key)?{body:objects.get(key)}:null},
+ });
+ const cookie=(await login(env)).headers.get('Set-Cookie');
+ const headers={Cookie:cookie,Origin:'https://frame.example'};
+ const project='data:application/x-colorboard;base64,'+gzipSync(JSON.stringify({version:1,settings:{exposure:.25}})).toString('base64');
+ const digest=await digestMedia(project),path='/api/desk-media/'+digest;
+ const upload=await worker.fetch(new Request('https://frame.example'+path,{
+  method:'PUT',headers:{...headers,'Content-Type':'text/plain'},body:project,
+ }),env,{});
+ assert.equal(upload.status,200);
+ const ref=mediaReference(digest);
+ const layout={...state,objects:[{id:'advanced',colorBoardEdit:ref}],trash:[{id:'trashed-advanced',colorBoardEdit:ref}]};
+ const put=await worker.fetch(new Request('https://frame.example/api/desk',{
+  method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({revision:0,state:layout}),
+ }),env,{});
+ assert.equal(put.status,200);
+ const read=path=>worker.fetch(new Request('https://frame.example'+path,{headers}),env,{});
+ assert.deepEqual((await (await read('/api/desk')).json()).state,layout);
+ assert.equal(await (await read(path)).text(),project);
+ assert.equal((await worker.fetch(new Request('https://frame.example'+path),env,{})).status,401);
 });

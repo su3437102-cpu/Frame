@@ -1,6 +1,6 @@
 const prefix = 'frame-media:';
 export const mediaDigest = /^[a-f0-9]{64}$/;
-export const mediaTypes = /^data:(?:image\/(?:png|jpeg|webp|gif)|application\/x-pikado);base64,[a-z0-9+/]+=*$/i;
+export const mediaTypes = /^data:(?:image\/(?:png|jpeg|webp|gif)|application\/x-(?:pikado|colorboard));base64,[a-z0-9+/]+=*$/i;
 
 export function deskMediaSlots(state) {
   const slots = [];
@@ -13,7 +13,7 @@ export function deskMediaSlots(state) {
   }
   for (const entries of [state?.objects, state?.trash]) {
     if (Array.isArray(entries)) {
-      for (const object of entries) collect(object, ['src', 'psInputSrc', 'aiInput']);
+      for (const object of entries) collect(object, ['src', 'psInputSrc', 'aiInput', 'colorBoardEdit']);
     }
   }
   for (const project of Object.values(state?.pikadoProjects || {})) {

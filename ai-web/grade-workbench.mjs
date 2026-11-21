@@ -50,18 +50,43 @@ function markup() {
       <div class="grade-top-actions">${iconButton('undo','撤销')}${iconButton('redo','重做')}<button type="button" class="grade-outline" data-grade-action="export">导出</button><button type="button" class="grade-primary" data-grade-action="save">保存到画布</button></div>
     </header>
     <div class="grade-workspace">
-      <aside class="grade-left" aria-label="模板"><button type="button" class="grade-primary grade-auto" data-grade-action="auto">${icon('ai')}<span>AI 一键调色</span></button><button type="button" class="grade-auto-correction" data-grade-action="correct">自动校正</button>
-        <div class="grade-template-head"><h2>模板</h2><button type="button" data-grade-action="clear-preset">移除模板</button></div>
-        ${presetGroups.map(([group, keys])=>`<section class="grade-template-group"><h3>${group}</h3><div class="grade-template-grid">${keys.map(key=>`<button type="button" class="grade-preset" data-preset="${key}" aria-pressed="false"><img alt="">${icon('check','grade-preset-check')}<span>${presets[key].name}</span></button>`).join('')}</div></section>`).join('')}
-        <div class="grade-subject-entry"><button type="button" data-grade-action="subject-panel">${icon('mask')}<span>主体突出</span>${icon('arrows')}</button></div>
-      </aside>
-      <section class="grade-center" aria-label="照片预览"><div class="grade-center-head"><div class="grade-segment" role="group" aria-label="预览方式">${modes.map(([id,label])=>`<button type="button" data-view="${id}" aria-pressed="${id==='current'}"${id==='ai'?' disabled':''}>${id==='split'?icon('split'):''}${label}</button>`).join('')}</div><span class="grade-note" data-grade-view-label>当前效果</span></div>
+      <section class="grade-center" aria-label="照片预览">
         <div class="grade-stage"><div class="grade-empty" role="status">正在读取照片…</div><figure class="grade-photo" data-view="current" hidden>
           <img data-photo="current" alt="当前调色预览" draggable="false"><img data-photo="original" alt="原图预览" draggable="false"><img data-photo="ai" alt="AI 初稿预览" draggable="false">
           <canvas class="grade-mask-overlay" hidden aria-hidden="true"></canvas><span class="grade-photo-caption grade-caption-original">原图</span><span class="grade-photo-caption grade-caption-current">当前</span><span class="grade-photo-handle"><span>${icon('arrows')}</span></span><input type="range" class="grade-photo-split" min="0" max="100" value="50" aria-label="原图与当前效果的分割位置"></figure></div>
-        <div class="grade-center-foot"><span class="grade-note" role="status" aria-live="polite"></span><button type="button" class="grade-zoom" data-grade-action="zoom">${icon('expand')}<span>适合窗口</span></button></div>
+        <div class="grade-center-foot">
+          <div class="grade-preview-tools">
+            <div class="grade-segment" role="group" aria-label="预览方式">${modes.map(([id,label])=>`<button type="button" data-view="${id}" aria-pressed="${id==='current'}"${id==='ai'?' disabled':''}>${id==='split'?icon('split'):''}${label}</button>`).join('')}</div>
+            <button type="button" class="grade-zoom" data-grade-action="zoom" aria-pressed="false">${icon('expand')}<span>适合窗口</span></button>
+          </div>
+          <span class="grade-note" role="status" aria-live="polite"></span>
+        </div>
       </section>
-      <aside class="grade-right" aria-label="调整面板"><div class="grade-adjust-head"><h2 class="grade-adjust-title">调整</h2><button type="button" data-grade-action="reset">重置当前面板</button></div><div class="grade-tabs" role="group" aria-label="调整类型">${groups.map(([id,label])=>`<button type="button" data-tab="${id}" aria-pressed="${id==='global'}">${label}</button>`).join('')}</div><div class="grade-tab-body"></div><div class="grade-history"><strong>最近操作</strong><p>已打开照片</p></div></aside>
+      <aside class="grade-inspector" aria-label="调色工具">
+        <div class="grade-inspector-head">
+          <div class="grade-quick-tools">
+            <button type="button" class="grade-outline grade-auto" data-grade-action="auto">${icon('ai')}<span>AI 一键调色</span></button>
+            <button type="button" class="grade-outline grade-auto-correction" data-grade-action="correct">自动校正</button>
+          </div>
+          <div class="grade-panel-switch" role="group" aria-label="调色面板">
+            <button type="button" data-grade-panel="presets" aria-controls="grade-panel-presets" aria-pressed="true">模板</button>
+            <button type="button" data-grade-panel="adjustments" aria-controls="grade-panel-adjustments" aria-pressed="false">调整</button>
+          </div>
+        </div>
+        <section id="grade-panel-presets" class="grade-panel grade-left" aria-label="模板">
+          <div class="grade-template-head"><button type="button" data-grade-action="clear-preset">移除模板</button></div>
+          ${presetGroups.map(([group, keys])=>`<section class="grade-template-group"><h3>${group}</h3><div class="grade-template-grid">${keys.map(key=>`<button type="button" class="grade-preset" data-preset="${key}" aria-pressed="false"><img alt="">${icon('check','grade-preset-check')}<span>${presets[key].name}</span></button>`).join('')}</div></section>`).join('')}
+          <div class="grade-subject-entry"><button type="button" data-grade-action="subject-panel">${icon('mask')}<span>主体突出</span>${icon('arrows')}</button></div>
+        </section>
+        <section id="grade-panel-adjustments" class="grade-panel grade-right" aria-label="调整" hidden>
+          <div class="grade-adjust-head">
+            <div class="grade-tabs" role="group" aria-label="调整类型">${groups.map(([id,label])=>`<button type="button" data-tab="${id}" aria-pressed="${id==='global'}">${label}</button>`).join('')}</div>
+            <button type="button" data-grade-action="reset">重置</button>
+          </div>
+          <div class="grade-tab-body"></div>
+        </section>
+        <div class="grade-history"><strong>最近操作</strong><p>已打开照片</p></div>
+      </aside>
     </div>
   </main>`;
 }
@@ -125,7 +150,6 @@ export async function openGradeWorkbench({source, name, saved, savedPreview, leg
     compare=view;
     photo.dataset.view=view;
     for(const button of $$('.grade-segment button')) button.setAttribute('aria-pressed',button.dataset.view===view);
-    $('[data-grade-view-label]').textContent = {original:'原图',ai:'AI 初稿',current:'当前效果',split:'原图 · 当前'}[view];
     for (const image of photo.querySelectorAll('img')) image.setAttribute('aria-hidden',String(image.dataset.photo!==view && !(view==='split'&&image.dataset.photo!=='ai')));
   }
   const baseKey = edit => edit.base==='original' ? '' : `${edit.base}:${edit.aiStrength}`;
@@ -272,6 +296,14 @@ export async function openGradeWorkbench({source, name, saved, savedPreview, leg
     if(tab!==selectedTab&&paintMode) setPaint('');
     if(tab!==selectedTab){selectedTab=tab;showTab(animate);}
   }
+  function setPanel(panel) {
+    if(panel==='presets'&&paintMode)setPaint('');
+    for(const button of $$('[data-grade-panel]')){
+      const active=button.dataset.gradePanel===panel;
+      button.setAttribute('aria-pressed',String(active));
+      document.getElementById(button.getAttribute('aria-controls')).hidden=!active;
+    }
+  }
   function setPaint(value) {
     paintMode=value;
     photo.dataset.paint=value;
@@ -382,7 +414,7 @@ export async function openGradeWorkbench({source, name, saved, savedPreview, leg
   dialog.addEventListener('click',async event=>{
     const button=event.target.closest('button');
     if(!button)return;
-    const {preset,tab,view,gradeAction:id,gradeReset}=button.dataset;
+    const {preset,tab,view,gradeAction:id,gradeReset,gradePanel}=button.dataset;
     if(gradeReset){
       const slider=$(`[data-setting="${gradeReset}"]`);
       const value=gradeReset==='feather'?24:gradeReset==='strength'?70:gradeReset==='ai-strength'?60:0;
@@ -390,14 +422,16 @@ export async function openGradeWorkbench({source, name, saved, savedPreview, leg
       return;
     }
     if(preset){apply({...idea,preset},`应用「${presets[preset].name}」`);return;}
+    if(gradePanel){setPanel(gradePanel);return;}
     if(tab){setTab(tab,event.detail>0);return;}
     if(view){if(paintMode)setPaint('');setView(view);return;}
     if(id==='back')closeRequest();
     if(id==='undo')restoreHistory(undo,redo,'已撤销');
     if(id==='redo')restoreHistory(redo,undo,'已重做');
     if(id==='subject-panel'){
+      setPanel('adjustments');
       setTab('local',event.detail>0);
-      if(matchMedia('(max-width: 740px)').matches)$('[data-tab="local"]').focus();
+      $('[data-tab="local"]').focus({preventScroll:true});
     }
     if(id==='auto')runAuto(true);
     if(id==='correct'){
