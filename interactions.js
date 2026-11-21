@@ -14,13 +14,13 @@ renderCamera=function(){
 };
 const connectableCard='.object:not(.zone):not(.line)';
 function installHandles(){
- world.querySelectorAll(connectableCard).forEach(card=>{
+ world.querySelectorAll(`${connectableCard}:not(.board)`).forEach(card=>{
   const button=document.createElement('button');
   button.className='connect-handle';
   button.title='连接到另一个对象';
   button.setAttribute('aria-label','创建连接');
   button.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 15 10 10 7 8 17 3 12 13 10 10 6 16Z"/></svg>';
-  (card.querySelector('.board-symbol')||card).append(button);
+  card.append(button);
  });
 }
 

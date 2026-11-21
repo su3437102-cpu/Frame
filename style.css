@@ -33,7 +33,7 @@
 .object.selected:not(.image):not(.board)>.inner:after{border-width:2px}
 .board.selected .board-symbol{outline-width:2px}
 .object.selected.zone{outline-width:2px}
-.object.selected>.connect-handle,.board.selected .board-symbol>.connect-handle{display:grid;width:18px;height:18px;right:-9px;top:-9px;transform:none;padding:0;background:transparent;border:0;box-shadow:none;overflow:hidden;place-items:center}
+.object.selected>.connect-handle{display:grid;width:18px;height:18px;right:-9px;top:-9px;transform:none;padding:0;background:transparent;border:0;box-shadow:none;overflow:hidden;place-items:center}
 .board-symbol{position:relative;flex:none}
 .connect-handle:before{content:'';position:absolute;width:7px;height:7px;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;background:var(--surface);box-shadow:0 1px 2px #0002;transition:width 150ms ease-out,height 150ms ease-out}
 .connect-handle svg{position:relative;width:16px;height:16px;fill:var(--ink);stroke:none;opacity:0;transform:translate(-6px,6px);transition:transform 190ms cubic-bezier(.18,.75,.25,1),opacity 120ms ease-out;pointer-events:none}
@@ -52,7 +52,7 @@
 .object.selected:not(.image):not(.board)>.inner:after{border-width:calc(2 * var(--screen-pixel,1px))}
 .board.selected .board-symbol{outline-width:calc(2 * var(--screen-pixel,1px))}
 .object.selected.zone{outline-width:calc(2 * var(--screen-pixel,1px));outline-offset:calc(-2 * var(--screen-pixel,1px))}
-.object.selected>.connect-handle,.board.selected .board-symbol>.connect-handle{transform:scale(var(--control-scale,1));transform-origin:center}
+.object.selected>.connect-handle{transform:scale(var(--control-scale,1));transform-origin:center}
 .object .resize,.object .resize:hover,.object .resize:active{transform:scale(var(--control-scale,1));transform-origin:bottom right}
 .toolbar .glyph-line svg{width:24px;height:24px;stroke-width:1.7}
 #connections{transform:none;contain:layout style}.edge-line,.edge-preview{stroke-width:1.5}.bend-handle{stroke-width:1}
