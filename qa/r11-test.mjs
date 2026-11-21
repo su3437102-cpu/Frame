@@ -9,6 +9,14 @@ const context=await browser.newContext({viewport:{width:1440,height:900}});const
 const check=(name,ok,detail)=>{results.push({name,passed:!!ok,detail});if(!ok)console.error('FAIL',name,detail)};
 const pause=()=>page.waitForTimeout(350);const read=()=>page.evaluate(async()=>JSON.parse((await deviceStore.read()).snapshot));
 await page.goto('http://127.0.0.1:4311');await page.locator('#workspaceStatus').waitFor({state:'hidden'});await page.waitForFunction(()=>[...document.querySelectorAll('#world img')].every(i=>i.complete));
+check('primary toolbar icons and labels share the rail center',await page.locator('#tools button > :is(i,span)').evaluateAll(items=>{
+ const rail=items[0].closest('.toolbar').getBoundingClientRect();
+ const center=(rail.left+rail.right)/2;
+ return items.every(item=>{
+  const box=item.getBoundingClientRect();
+  return Math.abs((box.left+box.right)/2-center)<1;
+ });
+}));
 check('30 initial photo projects',await page.locator('#world .image').count()===30);
 check('all photos loaded',await page.evaluate(()=>[...document.querySelectorAll('#world img')].every(i=>i.naturalWidth>0)));
 await page.screenshot({path:dir+'/desktop-light.png'});

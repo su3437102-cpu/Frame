@@ -16,15 +16,20 @@
 #dialog.image-preview-dialog #dialogbody>.primary{align-self:flex-end;margin:0;min-height:36px}
 #dialog.image-preview-dialog .dialogcopy{margin:0;font-size:12px}
 #dialog.image-preview-dialog .dialogactions{margin:0;flex-wrap:wrap;gap:8px}
-.toolbar{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding-block:14px 12px;gap:16px}
+.toolbar{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-gutter:stable both-edges;padding:14px 1px 12px;gap:16px}
+@supports selector(::-webkit-scrollbar){
+ .toolbar{scrollbar-width:auto}
+ .toolbar::-webkit-scrollbar{width:4px}
+ .toolbar::-webkit-scrollbar-thumb{background:var(--muted);border-radius:4px}
+}
 .toolbar [hidden]{display:none!important}
-.toolbar > div:has(> :is(.palette-tool,.context-tool)),.toolbar .toolbottom{display:grid;gap:4px}
+.toolbar > div:has(> :is(.palette-tool,.context-tool)),.toolbar .toolbottom{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
 .toolbar .toolbottom{padding-top:10px}
-.toolbar .toolbottom button{height:46px;gap:5px}
+.toolbar .toolbottom button{height:auto;min-height:46px;gap:5px}
 .toolbar .toolbottom svg{width:17px;height:17px}
 .toolbar .tool-active .tool-glyph{transform:none;box-shadow:0 1px 2px #0002}
-@media(hover:hover){.toolbar .palette-tool:hover .tool-glyph,.toolbar .context-tool:hover i{transform:translate(2px,-1px);box-shadow:0 3px 7px #0002}}
-.toolbar .palette-tool:focus-visible .tool-glyph{transform:translate(2px,-1px)}
+@media(hover:hover){.toolbar .palette-tool:hover .tool-glyph,.toolbar .context-tool:hover i{transform:translateY(-1px);box-shadow:0 3px 7px #0002}}
+.toolbar .palette-tool:focus-visible .tool-glyph{transform:translateY(-1px)}
 .toolbar .tool-dragging .tool-glyph{opacity:.4;transform:none!important;box-shadow:none!important}
 .palette-tool{touch-action:none}
 #paletteGhost.object{position:fixed;left:0;top:0;z-index:250;pointer-events:none;transform-origin:top left;padding:0;display:block;opacity:1;border:0;border-radius:0;background:transparent;box-shadow:none}
@@ -34,12 +39,12 @@
 #paletteGhost.zone{background:var(--surface);padding:15px;box-shadow:0 10px 22px #0004}
 .ghost-upload{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;background:var(--surface);box-shadow:0 10px 22px #0004;color:var(--muted)}
 .toolbar > div:has(> .context-tool){width:100%;padding-bottom:12px;gap:6px}
-.toolbar .context-tool{width:100%;height:54px;gap:6px;padding:4px 0;color:var(--ink)}
+.toolbar .context-tool{width:100%;height:auto;min-height:54px;gap:6px;padding:4px 0;color:var(--ink)}
 .context-tool i{width:27px;height:25px;display:grid;place-items:center;background:var(--hover);border-radius:6px;transition:transform 140ms ease-out,box-shadow 140ms ease-out}
 .context-tool svg{width:17px;height:17px;stroke-width:1.5}
-.toolbar .context-tool[data-context="back"]{height:auto;min-height:54px;padding-block:6px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.toolbar .context-tool[data-context="back"]{padding-block:6px;border-bottom:1px solid var(--line);margin-bottom:6px}
 .context-tool[data-context="back"] i{background:transparent;flex:none}
-.toolbar .context-tool.compact{height:38px}.context-tool.compact i{background:transparent;width:24px;height:24px}
+.toolbar .context-tool.compact{height:38px;min-height:0}.context-tool.compact i{background:transparent;width:24px;height:24px}
 .context-tool[aria-pressed="true"] i{color:var(--surface);background:var(--ink)}
 #contextPopover{position:fixed;z-index:180;left:calc(var(--rail) + 12px);top:calc(var(--top) + 24px);width:252px;max-width:calc(100vw - var(--rail) - 24px);max-height:calc(100dvh - var(--top) - 40px);overflow:auto;padding:14px 16px 16px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:7px;box-shadow:0 6px 22px var(--shadow);font-size:12px}
 #contextPopover[hidden]{display:none}
@@ -116,11 +121,15 @@
 
 .toolbar .palette-tool {
   gap: 5px;
+  height: auto;
   min-height: 53px;
   padding-block: 1px;
 }
-.toolbar :is(.palette-tool,.toolbottom button) { width: 100%; }
+.toolbar :is(.palette-tool,.toolbottom button) { width: 100%; min-width: 0; padding-inline: 0; }
 .toolbar :is(.palette-tool,.context-tool,.toolbottom button) > span {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: var(--muted);
   font-size: 11px;
   font-weight: 500;
