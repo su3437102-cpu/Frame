@@ -145,7 +145,6 @@ h1, h2, p { margin: 0; }
 .shelf-tabs { order: 1; display: flex; flex: 1 0 100%; gap: 3px; align-items: center; }
 .shelf-tabs button { flex: 1; min-height: 29px; background: transparent; border: 0; border-radius: 5px; color: var(--muted); padding: 3px 5px; font-size: 11px; white-space: nowrap; }
 .shelf-tabs button:hover, .shelf-tabs button[aria-pressed="true"] { background: var(--accent-pale); color: var(--accent-dark); }
-.preset-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; }
 .feishu-summary { color: var(--muted); font-size: 11px; margin: 3px 0 10px; }
 .feishu-look-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
 .feishu-card { border: 1px solid var(--line); min-width: 0; border-radius: 8px; overflow: hidden; background: var(--paper); }
@@ -160,19 +159,6 @@ h1, h2, p { margin: 0; }
 .feishu-card-actions .button { min-height: 24px; padding: 0 6px; font-size: 10px; }
 .feishu-card-actions .text-button { min-height: 24px; font-size: 10px; }
 .feishu-card-actions .text-button:disabled { cursor: default; }
-.preset-item { min-width: 0; position: relative; }
-.preset-card { display: block; min-width: 0; width: 100%; position: relative; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); text-align: left; overflow: hidden; }
-.preset-card:hover, .preset-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.preset-card img { display: block; width: 100%; height: 61px; object-fit: cover; background: var(--soft); }
-.preset-card[data-preset="portrait"] img { object-position: center 37%; }
-.preset-card[data-preset="landscape"] img { object-position: center 42%; }
-.preset-card .selected-dot { display: none; position: absolute; top: 6px; right: 6px; width: 17px; height: 17px; border-radius: 50%; background: var(--accent); color: var(--on-accent); place-items: center; }
-.preset-card .selected-dot i { width: 11px; height: 11px; }
-.preset-card[aria-pressed="true"] .selected-dot { display: grid; }
-.preset-card strong { display: block; padding: 6px 8px 2px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.preset-card small { display: block; padding: 0 8px 7px; color: var(--muted); font-size: 10px; }
-.demo-button { position: absolute; bottom: 6px; right: 6px; color: var(--muted); background: var(--soft); border: 0; border-radius: 4px; padding: 2px 5px; font-size: 9px; white-space: nowrap; }
-.demo-button:hover { background: var(--accent-pale); color: var(--accent-dark); }
 .custom-look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(147px, 1fr)); gap: 8px; }
 .custom-look-card { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 7px; min-width: 0; padding: 6px; }
 .custom-look-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }

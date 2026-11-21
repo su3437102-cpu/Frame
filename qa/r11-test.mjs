@@ -119,6 +119,15 @@ check('grading mounts in the FrameLab page with one editor',
 const exposure=workbench.locator('#tone-exposure');
 await exposure.press('End');
 const exposureValue=await exposure.inputValue();
+const lookTabs=await workbench.locator('.shelf-tabs button').allTextContents();
+check('grading lists presets and personal templates',lookTabs.join(',')==='预设,我的模板');
+const preset=workbench.locator('[data-feishu-look="feishu-golden-olive"]');
+await preset.click();
+await workbench.locator('[data-feishu-look="feishu-golden-olive"][aria-pressed="true"]').waitFor();
+const appliedLabel=await preset.textContent();
+await preset.click();
+check('a second preset click removes its effect and keeps manual exposure',
+  appliedLabel==='取消应用'&&await preset.getAttribute('aria-pressed')==='false'&&await exposure.inputValue()===exposureValue);
 await saveGrading.click();
 await workbench.waitFor({state:'hidden'});
 await openGrading.click();

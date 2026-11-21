@@ -90,7 +90,7 @@ const markup = `
           <div id="applied-look" hidden>
             <div class="auto-title"><span class="ai-icon"><i data-icon="cards"></i></span><div><h2 id="applied-look-name"></h2><p>已应用固定调色模板</p></div></div>
             <div id="applied-strength-wrap"></div>
-            <button type="button" id="look-clear" class="text-button"><i data-icon="reset"></i>切回自动调色</button>
+            <button type="button" id="look-clear" class="text-button"><i data-icon="reset"></i><span>切回自动调色</span></button>
           </div>
         </section>
         <section class="histogram-section" aria-label="亮度直方图">
@@ -149,14 +149,12 @@ const markup = `
           <div class="shelf-heading">
             <h2 id="preset-heading">风格预设</h2>
             <div class="shelf-tabs" aria-label="预设来源">
-              <button type="button" id="built-in-looks-tab" aria-pressed="true">内置预设</button>
-              <button type="button" id="feishu-looks-tab" aria-pressed="false">飞书样本</button>
+              <button type="button" id="feishu-looks-tab" aria-pressed="true">预设</button>
               <button type="button" id="my-looks-tab" aria-pressed="false">我的模板</button>
             </div>
             <button type="button" id="extract-look-open" class="button button-soft" aria-haspopup="dialog" aria-controls="extract-look-dialog"><i data-icon="sparkles"></i>从照片提取</button>
           </div>
-          <div id="presets" class="preset-grid"></div>
-          <div id="feishu-looks" hidden>
+          <div id="feishu-looks">
             <p class="feishu-summary">3 套调色、1 套辉光预设和 1 套框选留色模板。</p>
             <div id="feishu-look-grid" class="feishu-look-grid"></div>
           </div>
@@ -177,7 +175,7 @@ const markup = `
       <p id="feishu-case-summary" class="look-intro"></p>
       <div id="feishu-pairs"></div>
       <div id="feishu-extra"></div>
-      <div class="dialog-actions"><button class="button" value="close">关闭</button><button class="button button-primary" type="button" id="feishu-case-apply"><i data-icon="check"></i>应用此模板</button></div>
+      <div class="dialog-actions"><button class="button" value="close">关闭</button><button class="button button-primary" type="button" id="feishu-case-apply"><i data-icon="check"></i><span>应用预设</span></button></div>
     </form>
   </dialog>
   <dialog id="extract-look-dialog" aria-labelledby="extract-look-title">

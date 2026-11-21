@@ -24,7 +24,6 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   const $ = selector => root.querySelector(selector);
   const $$ = selector => [...root.querySelectorAll(selector)];
   const el = id => root.getElementById(id);
-  const asset = path => new URL(path, import.meta.url).href;
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 
   const paths = {
@@ -67,13 +66,6 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     }
   }
 
-  const demoAssets = {
-    architecture: 'architecture2.jpg',
-    portrait: 'portrait.jpg',
-    landscape: 'landscape.jpg',
-    night: 'night.jpg'
-  };
-
   const sections = [
     ['明暗', [
       ['exposure', '曝光', -3, 3, .01, ' EV'],
@@ -98,8 +90,8 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   const state = {
     photo: null,
     imageRequest: 0,
-    settings: applyPreset('architecture'),
-    presetId: 'architecture',
+    settings: { ...DEFAULT_SETTINGS },
+    presetId: null,
     baseLut: null,
     aiStrength: 70,
     aiRun: null,
@@ -116,11 +108,13 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     glow: { ...DEFAULT_GLOW },
     glowEnabled: false,
     glowPresetId: null,
+    glowBeforePreset: null,
     layerId: null,
     maskJob: null,
     maskMode: null,
     boxSession: null,
     colorLayerId: null,
+    subjectPresetLayerId: null,
     maskOverlay: true,
     brushSize: 9,
     brushFeather: 72,
@@ -277,6 +271,9 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   }
 
   function loadGlowPreset(look) {
+    if (!state.glowPresetId) {
+      state.glowBeforePreset = { settings: { ...state.glow }, enabled: state.glowEnabled };
+    }
     state.glow = normalizeGlow(look.glow);
     state.glowEnabled = state.glow.amount > 0;
     state.glowPresetId = look.id;
@@ -294,6 +291,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     state.glow = { ...DEFAULT_GLOW };
     state.glowEnabled = false;
     state.glowPresetId = null;
+    state.glowBeforePreset = null;
     syncGlowControls();
     scheduleRender();
   });
@@ -303,57 +301,8 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     aiRange.update(state.aiStrength);
     el('ai-strength-wrap').hidden = !state.baseLut;
     syncAppliedLook();
-    $$('.preset-card').forEach(card => card.setAttribute('aria-pressed', String(card.dataset.preset === state.presetId)));
     curveEditor.draw();
     setupHslRanges();
-  }
-
-  function choosePreset(id) {
-    cancelFeishuApply();
-    const hadLook = Boolean(state.appliedLook);
-    if (hadLook) clearAppliedLook();
-    state.presetId = id;
-    state.settings = applyPreset(id);
-    syncSettings();
-    scheduleRender();
-    if (hadLook && !state.baseLut) void runAutoGrade({ quiet: true });
-  }
-
-  for (const preset of PRESETS) {
-    const example = preset.example || preset.id;
-    const item = document.createElement('div');
-    const button = document.createElement('button');
-    button.className = 'preset-card';
-    button.type = 'button';
-    button.dataset.preset = preset.id;
-    button.title = preset.description;
-    button.setAttribute('aria-pressed', String(preset.id === state.presetId));
-    const photo = document.createElement('img');
-    photo.alt = '';
-    photo.loading = 'lazy';
-    photo.src = asset('./assets/previews/' + example + '.jpg');
-    photo.addEventListener('error', () => { photo.src = asset('./assets/' + demoAssets[example]); }, { once: true });
-    const selected = document.createElement('span');
-    selected.className = 'selected-dot';
-    selected.innerHTML = '<i data-icon="check"></i>';
-    const name = document.createElement('strong');
-    name.textContent = preset.name;
-    const category = document.createElement('small');
-    category.append(preset.category);
-    button.append(photo, selected, name, category);
-    button.addEventListener('click', () => {
-      choosePreset(preset.id);
-      toast('已应用「' + preset.name + '」');
-    });
-    const demo = document.createElement('button');
-    demo.type = 'button';
-    demo.className = 'demo-button';
-    demo.textContent = '试用示例';
-    demo.setAttribute('aria-label', '打开' + preset.category + '示例');
-    demo.addEventListener('click', () => loadDemo(preset.id).catch(showOpenError));
-    item.className = 'preset-item';
-    item.append(button, demo);
-    el('presets').append(item);
   }
 
   function sizedCanvas(image, maxSide, maxPixels = Infinity) {
@@ -381,14 +330,6 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     }
   }
 
-  async function loadDemo(id) {
-    const preset = PRESETS.find(item => item.id === id);
-    const request = ++state.imageRequest;
-    const image = await imageFrom(asset('./assets/' + demoAssets[preset.example || preset.id]));
-    if (request !== state.imageRequest) return;
-    mountPhoto(image, preset.category + '示例', id, true);
-  }
-
   async function loadFile(file) {
     if (!file) return;
     if (file.size > 90 * 1024 * 1024) {
@@ -400,7 +341,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     try {
       const image = await imageFrom(url);
       if (request !== state.imageRequest) return;
-      mountPhoto(image, file.name.replace(/\.[^.]+$/, ''), null, false, file);
+      mountPhoto(image, file.name.replace(/\.[^.]+$/, ''), false, file);
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -412,14 +353,16 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     toast('无法打开这张照片，请试试 JPG、PNG 或 WebP。');
   }
 
-  function mountPhoto(image, name, presetId, demo, file = null) {
+  function mountPhoto(image, name, demo, file = null) {
+    cancelFeishuApply();
     state.maskJob?.abort();
     state.maskJob = null;
     cancelBoxSelection();
     state.colorLayerId = null;
+    state.subjectPresetLayerId = null;
     state.aiRun = null;
     state.baseLut = null;
-    state.aiStrength = presetId === 'night' ? 48 : 70;
+    state.aiStrength = 70;
     state.layers = [];
     state.layerId = null;
     state.maskMode = null;
@@ -446,9 +389,9 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     inFlightMessage.textContent = '根据照片分析光线与色彩';
     setBusy(el('run-ai'), false, '自动调色');
     setBusy(maskButton, false, '全图 AI 主体');
-    state.presetId = state.appliedLook ? null : presetId;
+    state.presetId = null;
     if (state.appliedLook) state.referenceStrength = state.appliedLook.strength;
-    state.settings = applyPreset(state.presetId);
+    state.settings = { ...DEFAULT_SETTINGS };
     const glowPreset = FEISHU_LOOKS.find(look => look.glow && state.glowEnabled && look.id === state.glowPresetId);
     if (glowPreset) {
       state.glow = normalizeGlow(glowPreset.glow);
@@ -456,6 +399,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       state.glow = { ...DEFAULT_GLOW };
       state.glowEnabled = false;
       state.glowPresetId = null;
+      state.glowBeforePreset = null;
     }
     syncGlowControls();
     syncSettings();
@@ -881,6 +825,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
         const suffix = state.layers.filter(layer => layer.box).length + 1;
         addMask(session.color ? '主体留色' : '框选主体 ' + suffix, alpha, { box, color: session.color });
       }
+      if (session.color) state.subjectPresetLayerId = state.layerId;
       const tip = state.colorLayerId === state.layerId
         ? '主体已留色，背景已转黑白。可用画笔或橡皮修边。'
         : '主体蒙版已生成。可修边，也可开启「背景黑白」。';
@@ -969,6 +914,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       if (state.boxSession?.replace === layer) cancelBoxSelection();
       state.layers = state.layers.filter(item => item !== layer);
       if (state.colorLayerId === layer.id) state.colorLayerId = null;
+      if (state.subjectPresetLayerId === layer.id) state.subjectPresetLayerId = null;
       if (state.layerId === layer.id) {
         state.layerId = state.layers.at(-1)?.id ?? null;
         state.maskMode = null;
@@ -1382,7 +1328,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   $$('[data-rail]').forEach(button => button.addEventListener('click', () => {
     if (button.dataset.rail === 'presets') {
       el('preset-shelf').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      el('presets').querySelector('button')?.focus({ preventScroll: true });
+      $('.shelf-tabs [aria-pressed="true"]')?.focus({ preventScroll: true });
     } else {
       setPanel(button.dataset.rail, true);
     }
@@ -1514,6 +1460,8 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     if (state.appliedLook) {
       el('applied-look-name').textContent = state.appliedLook.name;
       appliedRange.update(state.referenceStrength);
+      el('look-clear').querySelector('span').textContent = FEISHU_LOOKS.some(look => look.id === state.appliedLook.id)
+        ? '取消应用' : '切回自动调色';
     }
   }
 
@@ -1526,25 +1474,24 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     refreshLookCards();
   }
 
-  function useSavedLook(template, lut = lookToLut(template.recipe)) {
+  function useSavedLook(template, lut = lookToLut(template.recipe), { keepAdjustments = false } = {}) {
     cancelFeishuApply();
     state.appliedLook = template;
     state.referenceLut = lut;
     state.referenceStrength = template.strength;
-    state.presetId = null;
-    state.settings = applyPreset(null);
-    state.aiRun = null;
-    setBusy(el('run-ai'), false, state.baseLut ? '重新自动调色' : '自动调色');
+    if (!keepAdjustments) {
+      state.presetId = null;
+      state.settings = { ...DEFAULT_SETTINGS };
+      state.aiRun = null;
+      setBusy(el('run-ai'), false, state.baseLut ? '重新自动调色' : '自动调色');
+    }
     syncSettings();
     refreshLookCards();
     scheduleRender();
   }
 
-  function changeLookShelf(custom) {
-    const shelf = custom === 'feishu' ? 'feishu' : custom ? 'personal' : 'built-in';
-    if (shelf === 'feishu' && !feishuCardButtons.size) installFeishuCards();
+  function changeLookShelf(shelf) {
     for (const [name, panel, tab] of [
-      ['built-in', 'presets', 'built-in-looks-tab'],
       ['feishu', 'feishu-looks', 'feishu-looks-tab'],
       ['personal', 'my-looks', 'my-looks-tab']
     ]) {
@@ -1724,7 +1671,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       const template = createLookTemplate({ name: lookName.value, recipe: draftLook.recipe, strength: draftStrength });
       updateLookLibrary(previous => [template, ...previous]);
       useSavedLook(template, draftLook.lut);
-      changeLookShelf(true);
+      changeLookShelf('personal');
       extractDialog.close();
       toast('已保存「' + template.name + '」');
     } catch (error) {
@@ -1749,7 +1696,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       const template = decodeLookTemplate(await file.text());
       if (listeners.signal.aborted) return;
       updateLookLibrary(previous => [template, ...previous]);
-      changeLookShelf(true);
+      changeLookShelf('personal');
       toast('已导入「' + template.name + '」');
     } catch (error) {
       toast(error.message || '无法导入这个模板文件。');
@@ -1811,8 +1758,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   for (const trigger of ['extract-look-header', 'extract-look-open']) {
     el(trigger).addEventListener('click', openLookExtractor);
   }
-  el('built-in-looks-tab').addEventListener('click', () => changeLookShelf(false));
-  el('my-looks-tab').addEventListener('click', () => changeLookShelf(true));
+  el('my-looks-tab').addEventListener('click', () => changeLookShelf('personal'));
   el('feishu-looks-tab').addEventListener('click', () => changeLookShelf('feishu'));
   el('look-reference-open').addEventListener('click', () => el('look-reference-input').click());
   el('look-reference-input').addEventListener('change', event => {
@@ -1840,6 +1786,11 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     targetCanvas.height = 1;
   });
   el('look-clear').addEventListener('click', () => {
+    const preset = FEISHU_LOOKS.find(look => look.id === state.appliedLook?.id);
+    if (preset) {
+      toggleFeishu(preset);
+      return;
+    }
     clearAppliedLook();
     scheduleRender();
     if (!state.baseLut) void runAutoGrade({ quiet: true });
@@ -1887,19 +1838,32 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   let feishuPending = null;
   let currentFeishuCase = null;
 
+  function feishuSelection(look) {
+    if (look.subjectColor) {
+      if (state.boxSession?.color) return 'selecting';
+      if (state.layers.some(layer => layer.id === state.colorLayerId && layer.visible)) return 'active';
+    }
+    if (look.id === state.appliedLook?.id || (state.glowEnabled && look.id === state.glowPresetId)) return 'active';
+    return 'idle';
+  }
+
   function syncFeishuSelection() {
-    const activeId = state.appliedLook?.id;
-    for (const [id, button] of feishuCardButtons) {
-      const subject = id === 'feishu-subject-color';
-      const colorMask = subject && state.layers.some(layer => layer.id === state.colorLayerId && layer.visible);
-      const selecting = subject && state.boxSession?.color;
-      const selected = id === activeId || (state.glowEnabled && id === state.glowPresetId) || colorMask;
+    const label = (look, idleLabel) => {
+      if (feishuPending === look.id) return '加载中…';
+      const selection = feishuSelection(look);
+      return selection === 'selecting' ? '取消框选' : selection === 'active' ? '取消应用' : idleLabel;
+    };
+    for (const [look, button] of feishuCardButtons) {
+      const selected = feishuSelection(look) !== 'idle';
       button.setAttribute('aria-pressed', String(selected));
       button.closest('.feishu-card').classList.toggle('active', selected);
-      button.textContent = feishuPending === id ? '加载中…' : selecting ? '框选中' : selected ? '已应用' : '应用';
-      button.disabled = feishuPending === id;
+      button.textContent = label(look, '应用');
+      button.setAttribute('aria-label', button.textContent + '「' + look.name + '」');
+      button.disabled = feishuPending === look.id;
     }
-    el('feishu-case-apply').disabled = feishuPending === currentFeishuCase?.id;
+    const caseApply = el('feishu-case-apply');
+    caseApply.disabled = Boolean(currentFeishuCase && feishuPending === currentFeishuCase.id);
+    if (currentFeishuCase) caseApply.querySelector('span').textContent = label(currentFeishuCase, '应用预设');
   }
 
   function cancelFeishuApply() {
@@ -1910,15 +1874,52 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     }
   }
 
+  function toggleFeishu(look) {
+    const selection = feishuSelection(look);
+    if (selection === 'idle') {
+      void applyFeishu(look);
+      return;
+    }
+    if (selection === 'selecting') {
+      cancelBoxSelection();
+    } else if (look.subjectColor) {
+      state.colorLayerId = null;
+      syncMaskPanel();
+    } else if (look.glow) {
+      const previous = state.glowBeforePreset;
+      if (previous) state.glow = previous.settings;
+      state.glowEnabled = previous?.enabled ?? false;
+      state.glowPresetId = null;
+      state.glowBeforePreset = null;
+      syncGlowControls();
+    } else {
+      clearAppliedLook();
+    }
+    syncFeishuSelection();
+    if (feishuDialog.open && currentFeishuCase === look) feishuDialog.close();
+    if (selection === 'active') {
+      scheduleRender();
+      toast('已取消「' + look.name + '」');
+    }
+  }
+
   async function applyFeishu(look, { quiet = false } = {}) {
     if (look.subjectColor) {
-      const replace = state.layers.find(layer => layer.id === state.colorLayerId && layer.box);
-      const started = beginBoxSelection({ color: true, replace });
+      const layer = state.layers.find(layer => layer.id === state.subjectPresetLayerId);
+      if (layer) {
+        state.colorLayerId = layer.id;
+        layer.visible = true;
+        state.maskOverlay = false;
+        syncMaskPanel();
+        syncFeishuSelection();
+        scheduleRender();
+      }
+      const started = layer || beginBoxSelection({ color: true });
       if (started && feishuDialog.open) {
         feishuDialog.close();
-        el('box-selection').focus({ preventScroll: true });
+        if (!layer) el('box-selection').focus({ preventScroll: true });
       }
-      return started;
+      return Boolean(started);
     }
     const request = ++feishuRequest;
     feishuPending = look.id;
@@ -1937,7 +1938,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
         }
         if (request !== feishuRequest) return false;
         feishuPending = null;
-        useSavedLook(look, table);
+        useSavedLook(look, table, { keepAdjustments: true });
       }
       changeLookShelf('feishu');
       if (feishuDialog.open && currentFeishuCase?.id === look.id) feishuDialog.close();
@@ -1967,7 +1968,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       const image = await imageFrom(source);
       if (request !== state.imageRequest || !feishuDialog.open || currentFeishuCase !== look) return;
       if (await applyFeishu(look, { quiet: true }) && request === state.imageRequest) {
-        mountPhoto(image, name, null, true);
+        mountPhoto(image, name, true);
         setView('compare');
         $('.board-heading').scrollIntoView({ block: 'nearest' });
         toast('已在示例图上套用「' + look.name + '」');
@@ -2050,7 +2051,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
             const image = await imageFrom(reference.src);
             if (request !== state.imageRequest || !feishuDialog.open || currentFeishuCase !== look) return;
             feishuDialog.close();
-            mountPhoto(image, reference.label, null, true);
+            mountPhoto(image, reference.label, true);
             beginBoxSelection({ color: true });
             $('.board-heading').scrollIntoView({ block: 'nearest' });
           } catch {
@@ -2073,7 +2074,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       const card = document.createElement('article');
       card.className = 'feishu-card';
       const cover = document.createElement('img');
-      Object.assign(cover, { src: look.thumbnail ?? look.cover, alt: look.name + '参考效果', loading: 'lazy' });
+      Object.assign(cover, { src: look.thumbnail ?? look.cover, alt: look.name + '参考效果', loading: 'lazy', fetchPriority: 'low' });
       const body = document.createElement('div');
       body.className = 'feishu-card-body';
       const meta = document.createElement('div');
@@ -2091,9 +2092,8 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       const apply = document.createElement('button');
       Object.assign(apply, { type: 'button', className: 'button button-soft' });
       apply.dataset.feishuLook = look.id;
-      apply.setAttribute('aria-label', '应用「' + look.name + '」');
-      apply.addEventListener('click', () => void applyFeishu(look));
-      feishuCardButtons.set(look.id, apply);
+      apply.addEventListener('click', () => toggleFeishu(look));
+      feishuCardButtons.set(look, apply);
       const detail = document.createElement('button');
       Object.assign(detail, { type: 'button', className: 'text-button', textContent: look.cases.length ? '前后案例' : '看样本' });
       detail.setAttribute('aria-label', '查看「' + look.name + '」' + detail.textContent);
@@ -2107,7 +2107,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   }
 
   el('feishu-case-apply').addEventListener('click', () => {
-    if (currentFeishuCase) void applyFeishu(currentFeishuCase);
+    if (currentFeishuCase) toggleFeishu(currentFeishuCase);
   });
   feishuDialog.addEventListener('close', () => {
     if (feishuDialog.open) return;
@@ -2220,12 +2220,17 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       lutStrength: frameNumber(project.lutStrength, 70, 0, 100),
       layers, layerId: layers.find(layer => layer.id === project.layerId)?.id ?? null,
       colorLayerId: layers.find(layer => layer.id === project.colorLayerId)?.id ?? null,
+      subjectPresetLayerId: layers.find(layer => layer.box && layer.id === (project.subjectPresetLayerId ?? project.colorLayerId))?.id ?? null,
       maskOverlay: project.maskOverlay !== false,
       brushSize: frameNumber(project.brushSize, 9, 1, 35),
       brushFeather: frameNumber(project.brushFeather, 72, 0, 100),
       glow: normalizeGlow(project.glow),
       glowEnabled: project.glowEnabled === true,
       glowPresetId: typeof project.glowPresetId === 'string' ? frameText(project.glowPresetId) : null,
+      glowBeforePreset: project.glowBeforePreset?.settings ? {
+        settings: normalizeGlow(project.glowBeforePreset.settings),
+        enabled: project.glowBeforePreset.enabled === true
+      } : null,
       compare: frameNumber(project.compare, 50, 0, 100)
     });
     setBusy(el('run-ai'), false, state.baseLut ? '重新自动调色' : '自动调色');
@@ -2261,7 +2266,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
         try {
           const image = await imageFrom(url);
           if (listeners.signal.aborted) return;
-          mountPhoto(image, frameText(replacement.name, photoName), null, false, file);
+          mountPhoto(image, frameText(replacement.name, photoName), false, file);
         } finally {
           URL.revokeObjectURL(url);
         }
@@ -2270,7 +2275,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
         const image = await imageFrom(frameSourceUrl(useLegacy ? legacyPreview : source));
         if (listeners.signal.aborted) return;
         if (!useLegacy) frameLab.linkedImage = image;
-        mountPhoto(image, photoName, null, false);
+        mountPhoto(image, photoName, false);
       }
       if (state.photo && saved) restoreFrameProject(saved);
     } catch (error) {
@@ -2316,7 +2321,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     const replacement = await frameReplacement();
     const {
       settings, presetId, aiStrength, referenceStrength, lutStrength, lutName, lutLookId,
-      layerId, colorLayerId, glow, glowEnabled, glowPresetId, maskOverlay, brushSize,
+      layerId, colorLayerId, subjectPresetLayerId, glow, glowEnabled, glowPresetId, glowBeforePreset, maskOverlay, brushSize,
       brushFeather, panel, view, compare
     } = state;
     const layers = state.layers.map(({ canvas, id, name, box, showBox, visible, invert, opacity, settings }) => ({
@@ -2327,7 +2332,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     const active = state.appliedLook;
     return packProject({
       replacement, settings, presetId, aiStrength, referenceStrength, lutStrength, lutName, lutLookId,
-      layerId, colorLayerId, glow, glowEnabled, glowPresetId, maskOverlay, brushSize,
+      layerId, colorLayerId, subjectPresetLayerId, glow, glowEnabled, glowPresetId, glowBeforePreset, maskOverlay, brushSize,
       brushFeather, panel, view, compare, layers, zoom, rotation,
       baseLut: packLut(state.baseLut), referenceLut: packLut(state.referenceLut), lut: packLut(state.lut),
       appliedLook: active && { id: active.id, name: active.name, strength: active.strength }
@@ -2392,6 +2397,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     $$('dialog[open]').forEach(dialog => dialog.close());
   }
 
+  installFeishuCards();
   icons();
   try {
     lookLibrary = readLookLibrary();
