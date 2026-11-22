@@ -21,6 +21,7 @@
   overflow: hidden;
 }
 #colorboard-workbench .colorboard-root[inert] { pointer-events: none; }
+#colorboard-workbench .colorboard-root[hidden] { display: none; }
 #colorboard-workbench .colorboard-state {
   position: absolute;
   inset: 0;

@@ -6,6 +6,7 @@ const markup = `
     <span class="header-divider" aria-hidden="true"></span>
     <div class="breadcrumbs"><h1>AI 调色</h1><i data-icon="chevron-right"></i><strong id="doc-name">未连接照片</strong></div>
     <div class="top-actions">
+      <button id="framelab-collage" class="button" type="button" aria-label="拼贴与抠图" title="拼贴与抠图"><i data-icon="cards"></i><span>拼贴与抠图</span></button>
       <button id="open-file" class="button" type="button" aria-label="打开照片" title="打开照片"><i data-icon="upload"></i><span>打开照片</span></button>
       <button id="extract-look-header" class="button" type="button" aria-label="提取调色" title="提取调色" aria-haspopup="dialog" aria-controls="extract-look-dialog"><i data-icon="sparkles"></i><span>提取调色</span></button>
       <button id="export-open" class="button" type="button" aria-label="导出" title="导出"><i data-icon="download"></i><span>导出</span></button>

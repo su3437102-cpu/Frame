@@ -89,7 +89,7 @@ test('cloud media survives a legacy desk upgrade and requires a verified upload'
  assert.equal(objects.size,1);
 });
 
-test('current and trashed ColorBoard projects round-trip as private workspace media',async()=>{
+test('grading and collage projects round-trip as private workspace media',async()=>{
  const objects=new Map();
  const env=makeEnv({
   async put(key,value){objects.set(key,value)},
@@ -99,15 +99,18 @@ test('current and trashed ColorBoard projects round-trip as private workspace me
  const headers={Cookie:cookie,Origin:'https://frame.example'};
  const project='data:application/x-colorboard;base64,'+gzipSync(JSON.stringify({version:1,settings:{exposure:.25}})).toString('base64');
  const digest=await digestMedia(project),path='/api/desk-media/'+digest;
+ const ref=mediaReference(digest);
+ const write=layout=>worker.fetch(new Request('https://frame.example/api/desk',{
+  method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({revision:0,state:layout}),
+ }),env,{});
+ const collage={id:'collage',collageEdit:ref};
+ assert.equal((await write({...state,objects:[collage]})).status,400);
  const upload=await worker.fetch(new Request('https://frame.example'+path,{
   method:'PUT',headers:{...headers,'Content-Type':'text/plain'},body:project,
  }),env,{});
  assert.equal(upload.status,200);
- const ref=mediaReference(digest);
- const layout={...state,objects:[{id:'advanced',colorBoardEdit:ref}],trash:[{id:'trashed-advanced',colorBoardEdit:ref}]};
- const put=await worker.fetch(new Request('https://frame.example/api/desk',{
-  method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({revision:0,state:layout}),
- }),env,{});
+ const layout={...state,objects:[{id:'advanced',colorBoardEdit:ref},collage],trash:[{id:'trashed-collage',collageEdit:ref}]};
+ const put=await write(layout);
  assert.equal(put.status,200);
  const read=path=>worker.fetch(new Request('https://frame.example'+path,{headers}),env,{});
  assert.deepEqual((await (await read('/api/desk')).json()).state,layout);

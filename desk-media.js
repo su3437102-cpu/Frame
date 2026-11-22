@@ -13,7 +13,7 @@ export function deskMediaSlots(state) {
   }
   for (const entries of [state?.objects, state?.trash]) {
     if (Array.isArray(entries)) {
-      for (const object of entries) collect(object, ['src', 'psInputSrc', 'aiInput', 'colorBoardEdit']);
+      for (const object of entries) collect(object, ['src', 'psInputSrc', 'aiInput', 'colorBoardEdit', 'collageEdit']);
     }
   }
   for (const project of Object.values(state?.pikadoProjects || {})) {

@@ -1,0 +1,93 @@
+:host {
+  --paper: #fbfaf6;
+  --white: #fefdf9;
+  --ink: #2e2d29;
+  --muted: #66645d;
+  --line: #dedbd2;
+  --accent: #5263b6;
+  --accent-ink: #3d4b97;
+  --soft: #eeeffb;
+  --sans: "FrameLab Geist", "Segoe UI", "Microsoft YaHei", sans-serif;
+  --serif: "FrameLab Hedvig", Georgia, serif;
+  --canvas: #efeee9;
+}
+:host([data-framelab-theme="dark"]) {
+  color-scheme: dark;
+  --paper: #211f1c;
+  --white: #292622;
+  --ink: #f2eee6;
+  --muted: #bbb5aa;
+  --line: #454038;
+  --accent: #a2b0ff;
+  --accent-ink: #b8c3ff;
+  --soft: #3d4159;
+  --canvas: #26231f;
+}
+.atelier { height: 100%; overflow: auto; overscroll-behavior: contain; font-size: 14px; }
+.atelier .site-header { position: sticky; top: 0; z-index: 5; }
+.atelier .header-inner {
+  width: auto;
+  height: 54px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+.atelier-title, .atelier-actions { display: flex; align-items: center; gap: 12px; }
+.atelier-title .text-button { white-space: nowrap; min-height: 36px; }
+.atelier-brand { font: 22px/1 var(--serif); letter-spacing: -.02em; }
+.atelier #studio-title { margin: 0; font-size: 14px; font-weight: 750; letter-spacing: 0; white-space: nowrap; }
+.atelier .atelier-actions .primary { background: var(--ink); color: var(--white); border-color: var(--ink); }
+.atelier .atelier-nav {
+  width: 100%;
+  display: flex;
+  gap: 18px;
+  justify-content: flex-start;
+  overflow-x: auto;
+  padding: 0 18px;
+  font-size: 13px;
+  scrollbar-width: thin;
+}
+.atelier .atelier-nav a { flex: 0 0 auto; padding-block: 9px; border-bottom: 2px solid transparent; color: var(--muted); text-decoration: none; }
+.atelier .atelier-nav a.active { color: var(--accent-ink); border-bottom-color: var(--accent); }
+.atelier .atelier-nav a.active::after { content: none; }
+.atelier .page { width: 100%; padding: 0; }
+.atelier #studio .workspace { grid-template-columns: minmax(0, 1fr) clamp(286px, 29vw, 480px); gap: 0; }
+.atelier #studio .board, .atelier #studio .inspector { border-radius: 0; border-top: 0; box-shadow: none; }
+.atelier #studio .board { border-inline: 0; }
+.atelier #studio .stage { background-color: var(--canvas); height: clamp(300px, 62dvh, 690px); }
+.atelier #studio .toolbar, .atelier #studio .inspector-tabs { min-height: 45px; }
+.atelier #studio .materials { border-radius: 0; margin: 0; }
+.atelier #studio .status { margin-inline: 16px; }
+.atelier .inspector-panel h2, .atelier .panel-title h2 { font-size: 16px; }
+.atelier .layer-transform-fields { margin-block: 10px; padding-block: 6px; border-block: 1px solid var(--line); }
+.atelier .layer-transform-fields summary { font-size: 14px; font-weight: 700; cursor: pointer; }
+.atelier .primary { border-color: var(--accent); background: var(--accent); color: var(--white); }
+.atelier .primary:hover { border-color: var(--accent-ink); background: var(--accent-ink); }
+.atelier .transform-outline { outline-color: var(--accent); }
+.atelier .transform-handle { color: var(--accent-ink); }
+.atelier .transform-handle::before { border-color: var(--accent); background: var(--white); }
+.atelier .transform-handle:hover::before,
+.atelier .transform-handle:focus-visible::before { background: var(--soft); }
+.atelier .drop-overlay { background: var(--soft); }
+.atelier .editorial { width: min(calc(100% - 40px), 1360px); margin: 0 auto; padding: 24px 0; border-top: 0; }
+.atelier .section-intro h2 { font-size: 25px; letter-spacing: -.02em; }
+.atelier :is(a,button,input,select,textarea):focus-visible { outline-color: var(--accent); }
+.atelier a { overflow-wrap: anywhere; }
+.atelier dialog { max-height: 88dvh; overflow: auto; }
+.atelier .atelier-actions button { white-space: nowrap; }
+@media (max-width: 740px) {
+  .atelier .header-inner { padding: 0 8px; }
+  .atelier-title, .atelier-actions { gap: 6px; }
+  .atelier-brand { display: none; }
+  .atelier #studio-title { font-size: 13px; }
+  .atelier .atelier-actions button { padding-inline: 7px; font-size: 11px; }
+  .atelier .atelier-nav { padding-inline: 10px; gap: 14px; }
+  .atelier #studio .workspace { grid-template-columns: minmax(0,1fr); }
+  .atelier #studio .stage { height: clamp(220px, 42dvh, 390px); }
+  .atelier .editorial { width: calc(100% - 24px); padding-block: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atelier *, .atelier *::before, .atelier *::after { scroll-behavior: auto; transition-duration: 0s; }
+}
