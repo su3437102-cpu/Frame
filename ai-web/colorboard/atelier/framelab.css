@@ -79,8 +79,6 @@
 .atelier .board-actions { justify-self: end; }
 .atelier .board-footer { flex: none; min-height: 47px; padding: 5px 10px; gap: 8px; }
 .atelier .board-footer .work-name { flex: 1; }
-.atelier #split-toggle { flex: none; gap: 4px; font-size: .75rem; white-space: nowrap; }
-.atelier #split-toggle svg { width: 15px; height: 15px; }
 .atelier .view-options { flex: none; min-width: 0; gap: 6px; }
 .atelier .atelier-view-tools {
   display: flex;
@@ -122,36 +120,51 @@
   background-size: 21px 21px;
 }
 .atelier .stage-inner { border-radius: 2px; box-shadow: 0 6px 22px #30251520; }
-.atelier .split-guides {
-  position: absolute;
-  inset: 0;
+.atelier .region-guides, .atelier .region-map {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  justify-items: start;
-  padding: 8px 0 0;
-  pointer-events: none;
+  grid-template-columns: repeat(var(--region-columns, 1), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--region-rows, 1), minmax(0, 1fr));
 }
-.atelier .split-guides::before {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 50%;
-  border-inline-start: 1px dashed var(--accent-ink);
-  filter: drop-shadow(1px 0 0 var(--white));
-  content: "";
+.atelier .region-guides { position: absolute; inset: 0; pointer-events: none; }
+.atelier .region-guide {
+  min-width: 0;
+  padding: 4px;
 }
-.atelier .split-guides span {
-  margin-inline-start: 8px;
-  padding: 2px 6px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+.atelier .region-guide[data-seam-top] { border-block-start: 1px dashed color-mix(in srgb, var(--accent-ink) 72%, transparent); }
+.atelier .region-guide[data-seam-start] { border-inline-start: 1px dashed color-mix(in srgb, var(--accent-ink) 72%, transparent); }
+.atelier .region-guide span {
+  display: inline-block;
+  max-width: 100%;
+  padding: 1px 4px;
+  border-radius: 3px;
   background: var(--white);
   color: var(--accent-ink);
-  font-size: .75rem;
+  font-size: .6875rem;
   font-weight: 650;
-  line-height: 1.35;
   white-space: nowrap;
+  overflow: hidden;
 }
+.atelier .region-guide[data-empty] { background: color-mix(in srgb, var(--canvas) 56%, transparent); }
+.atelier .region-guide[data-current] { outline: 1px solid var(--accent-ink); outline-offset: -1px; }
+.atelier .inspector-tabs { grid-template-columns: 1fr 1fr minmax(0, 1.25fr); }
+.atelier .inspector-tabs button { white-space: nowrap; }
+.atelier .region-panel { display: grid; gap: 10px; }
+.atelier .region-count { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 650; }
+.atelier .region-map { gap: 5px; width: min(100%, 290px); }
+.atelier .region-map button, .atelier .region-map > span {
+  display: grid;
+  place-items: center;
+  min-height: 32px;
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: .75rem;
+}
+.atelier .region-map button { color: var(--ink); background: var(--white); }
+.atelier .region-map button[aria-pressed="true"] { color: var(--accent-ink); border-color: var(--accent); background: var(--soft); }
+.atelier .region-map > span { border-style: dashed; background: var(--canvas); }
+.atelier .region-hint { font-size: .75rem; color: var(--muted); }
+.atelier #export-region { justify-self: start; }
 .atelier .stage:is([data-pan-mode="true"], [data-space-pan="true"]),
 .atelier .stage:is([data-pan-mode="true"], [data-space-pan="true"]) canvas { cursor: grab; }
 .atelier .stage:is([data-gesture="pan"], [data-gesture="pinch"]),
@@ -284,12 +297,11 @@
   .atelier .transform-lock-label { gap: 3px; font-size: .75rem; }
   .atelier .board-footer {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2px 8px;
     padding: 4px 8px;
   }
   .atelier .work-name { font-size: .8125rem; }
-  .atelier #split-toggle { min-height: 29px; padding-inline: 6px; }
   .atelier .view-options { grid-column: 1 / -1; justify-content: space-between; }
   .atelier .view-options select { max-width: 106px; }
   .atelier .material-actions { gap: 9px; }

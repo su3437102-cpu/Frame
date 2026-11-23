@@ -10,6 +10,8 @@ import { packProject, unpackProject } from '../framelab-project.mjs';
 import { installCanvasViewport } from '../canvas-viewport.mjs';
 import { canvasBlob, serializeMaterial, deserializeMaterial } from './project-materials.mjs';
 
+const MAX_EXPORT_PIXELS = 26_000_000;
+
 export function mountStudio({root, revealStudio, assetRoot, signal, source, project, onSave, loadJournalFonts, onPhotoChange}) {
   const $ = id => root.getElementById(id);
   const stage = $('stage');
@@ -22,7 +24,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   const future = [];
   const MAX_UPLOADS = 16;
   let state = {
-    style: 'dada', aspect: 'landscape', split: false, bg: '#f2f1ed', flat: true,
+    style: 'dada', aspect: 'landscape', regionCount: 1, bg: '#f2f1ed', flat: true,
     layers: [], uploads: [], example: false, variation: 38
   };
   let selectedId = null;
@@ -31,7 +33,10 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   let reorderDrag = null;
   let dropCue = null;
   let curveEditId = null;
+  const inspectorTabs = ['compose', 'layers', 'regions'];
   let activeTab = 'layers';
+  let selectedRegion = 1;
+  let renderedRegionCount = 0;
   let ready = false;
   let savedState = '';
   let saving = false;
@@ -128,7 +133,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   function showTab(tab, focus = false) {
     activeTab = tab;
     if (tab === 'compose') mountStyles();
-    for (const name of ['compose', 'layers']) {
+    for (const name of inspectorTabs) {
       const active = tab === name;
       const button = $('tab-' + name);
       button.classList.toggle('selected', active);
@@ -137,6 +142,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       $('panel-' + name).hidden = !active;
       if (active && focus) button.focus();
     }
+    syncRegionSelection();
   }
 
   function chooseLayer(id, showControls) {
@@ -261,7 +267,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   }
 
   function addMaterial(asset) {
-    const shape = Collage.photo(asset, state.split ? 1200 : 603, 377, 396, 300, {
+    const shape = Collage.photo(asset, state.regionCount > 1 ? 1200 : 603, 377, 396, 300, {
       rotation: -7, mask: 'tear', fit: asset.id === 'head' ? 'contain' : 'cover'
     });
     edit(() => {
@@ -437,6 +443,64 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     }
   }
 
+  function syncRegionSelection() {
+    for (const button of $('region-map').querySelectorAll('button')) {
+      button.setAttribute('aria-pressed', String(Number(button.dataset.region) === selectedRegion));
+    }
+    for (const guide of $('region-guides').children) {
+      guide.toggleAttribute('data-current', activeTab === 'regions' && Number(guide.dataset.region) === selectedRegion);
+    }
+    const button = $('export-region');
+    button.disabled = saving || !state.layers.length;
+    button.querySelector('span').textContent = '导出选区 ' + selectedRegion;
+  }
+
+  function renderRegions() {
+    const {count, columns, rows} = Renderer.grid(state);
+    const guides = $('region-guides'), map = $('region-map');
+    if (renderedRegionCount !== count) {
+      renderedRegionCount = count;
+      selectedRegion = Math.min(selectedRegion, count);
+      guides.replaceChildren();
+      map.replaceChildren();
+      $('export-area').replaceChildren(new Option('整张画布', 'whole'));
+      for (const grid of [guides, map]) {
+        grid.style.setProperty('--region-columns', columns);
+        grid.style.setProperty('--region-rows', rows);
+      }
+      for (let region = 1; region <= columns * rows; region++) {
+        const guide = document.createElement('div');
+        guide.className = 'region-guide';
+        guide.toggleAttribute('data-seam-top', region > columns);
+        guide.toggleAttribute('data-seam-start', (region - 1) % columns !== 0);
+        guides.append(guide);
+        if (region > count) {
+          guide.setAttribute('data-empty', '');
+          const placeholder = document.createElement('span');
+          placeholder.setAttribute('aria-hidden', 'true');
+          map.append(placeholder);
+          continue;
+        }
+        const label = '选区 ' + region;
+        guide.dataset.region = region;
+        const tag = document.createElement('span');
+        tag.textContent = label;
+        guide.append(tag);
+        const button = makeButton(String(region), '', () => {
+          selectedRegion = region;
+          syncRegionSelection();
+        });
+        button.dataset.region = region;
+        button.setAttribute('aria-label', label);
+        map.append(button);
+        $('export-area').add(new Option(label, region));
+      }
+    }
+    $('region-count').value = count;
+    guides.hidden = count === 1;
+    syncRegionSelection();
+  }
+
   function render() {
     const design = styleById.get(state.style);
     const [w, h] = Renderer.dimensions(state);
@@ -450,11 +514,10 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     $('undo').disabled = !history.length;
     $('redo').disabled = !future.length;
     $('aspect').value = state.aspect;
-    const aspectLabel = state.split ? '单区比例' : '画布比例';
+    const aspectLabel = state.regionCount > 1 ? '单区比例' : '画布比例';
     $('aspect-label').textContent = aspectLabel;
     $('aspect').title = aspectLabel;
-    $('split-toggle').setAttribute('aria-pressed', String(state.split));
-    $('split-guides').hidden = !state.split;
+    renderRegions();
     $('atelier-save').disabled = saving || !state.layers.length;
     $('export').disabled = saving || !state.layers.length;
     root.querySelectorAll('.style-card').forEach(button => {
@@ -611,7 +674,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
         state.uploads = combined;
         for (const [index, asset] of materials.entries()) {
           const offset = index * 49;
-          const layer = Collage.photo(asset, (state.split ? 1200 : 553) + offset % 270, 351 + offset % 205, 422, 325,
+          const layer = Collage.photo(asset, (state.regionCount > 1 ? 1200 : 553) + offset % 270, 351 + offset % 205, 422, 325,
             {mask: 'rect', fit: 'contain', rotation: (index % 3 - 1) * 7});
           state.layers.push(layer);
           selectedId = layer.id;
@@ -1345,10 +1408,22 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   }
 
   function renderExportSize() {
-    const factor = Number($('resolution').value);
-    const panel = state.split && $('export-area').value !== 'whole';
-    const [w, h] = panel ? Renderer.sizes[state.aspect] : Renderer.dimensions(state);
+    const resolution = $('resolution');
+    const [w, h] = $('export-area').value === 'whole' ? Renderer.dimensions(state) : Renderer.sizes[state.aspect];
+    for (const option of resolution.options) option.disabled = w * h * Number(option.value) ** 2 > MAX_EXPORT_PIXELS;
+    if (resolution.selectedOptions[0]?.disabled) {
+      resolution.value = [...resolution.options].findLast(option => !option.disabled).value;
+    }
+    const factor = Number(resolution.value);
     $('export-size').textContent = w * factor + ' × ' + h * factor + ' px';
+  }
+
+  function openExport(area = 'whole') {
+    if (!ready || saving || !state.layers.length) return;
+    $('export-area-row').hidden = state.regionCount === 1;
+    $('export-area').value = area;
+    renderExportSize();
+    $('export-dialog').showModal();
   }
 
   async function downloadWork() {
@@ -1358,16 +1433,27 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     const type = $('file-format').value;
     const factor = Number($('resolution').value);
     const scene = structuredClone(state);
-    const area = scene.split ? $('export-area').value : 'whole';
-    const suffix = area === 'left' ? '-选区1' : area === 'right' ? '-选区2' : '';
+    const area = $('export-area').value;
+    const region = area === 'whole' ? undefined : Number(area);
+    const suffix = region === undefined ? '' : '-选区' + region;
     try {
       const picture = document.createElement('canvas');
       if (hasJournalType(scene.layers)) await loadJournalFonts();
       await loadAssets(scene.layers.map(layer => layer.asset));
       signal.throwIfAborted();
-      Renderer.paint(picture, scene, images, {ratio:factor});
-      const output = area === 'whole' ? picture : Renderer.cropPanel(picture, area);
-      if (output !== picture) picture.width = picture.height = 0;
+      const [width, height] = Renderer.dimensions(scene);
+      const renderWhole = width * height * factor ** 2 <= MAX_EXPORT_PIXELS;
+      // Crop from the same raster when whole-canvas export is available so edges match exactly.
+      Renderer.paint(picture, scene, images, {ratio:factor, region:renderWhole ? undefined : region});
+      let output = picture;
+      if (renderWhole && region !== undefined && scene.regionCount > 1) {
+        const {x, y, width, height} = Renderer.regionBounds(scene, region);
+        output = document.createElement('canvas');
+        output.width = width * factor;
+        output.height = height * factor;
+        output.getContext('2d').drawImage(picture, -x * factor, -y * factor);
+        picture.width = picture.height = 0;
+      }
       const blob = await canvasBlob(output, type === 'png' ? 'image/png' : 'image/jpeg', .94);
       signal.throwIfAborted();
       const link = document.createElement('a');
@@ -1482,22 +1568,26 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   $('undo').addEventListener('click', () => navigateHistory(history, future, '已撤销。'));
   $('redo').addEventListener('click', () => navigateHistory(future, history, '已重做。'));
   $('aspect').addEventListener('change', event => edit(() => { state.aspect = event.target.value; }));
-  $('split-toggle').addEventListener('click', () => {
-    if (!ready || saving || drag || brushDraft || transformDrag) return;
-    edit(() => { state.split = !state.split; });
-    notice(state.split ? '' : '当前显示左区。重新开启双选区可查看右区。');
+  $('region-count').addEventListener('change', event => {
+    if (!ready || saving || drag || brushDraft || transformDrag) {
+      event.target.value = state.regionCount;
+      return;
+    }
+    edit(() => { state.regionCount = Number(event.target.value); });
   });
   $('restore').addEventListener('click', resetExample);
   $('remix').addEventListener('click', () => applyDesign(state.style, true));
   $('variation').addEventListener('input', updateVariation);
   $('variation').title = '改变下一次重组构图的幅度';
-  $('tab-compose').addEventListener('click', () => showTab('compose'));
-  $('tab-layers').addEventListener('click', () => showTab('layers'));
+  for (const name of inspectorTabs) $('tab-' + name).addEventListener('click', () => showTab(name));
   root.querySelector('.inspector-tabs').addEventListener('keydown', event => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const movement = {ArrowLeft:-1, ArrowRight:1}[event.key];
+    if (!movement && event.key !== 'Home' && event.key !== 'End') return;
     event.preventDefault();
-    const next = event.key === 'Home' ? 'compose' : event.key === 'End' ? 'layers' : activeTab === 'compose' ? 'layers' : 'compose';
-    showTab(next, true);
+    const index = inspectorTabs.indexOf(activeTab);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? inspectorTabs.length - 1
+      : (index + movement + inspectorTabs.length) % inspectorTabs.length;
+    showTab(inspectorTabs[next], true);
   });
   $('add-shape').addEventListener('click', addPaper);
   $('add-type').addEventListener('click', addText);
@@ -1666,13 +1756,8 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     stage.classList.remove('drop-active');
     queueFiles(event.dataTransfer.files);
   });
-  $('export').addEventListener('click', () => {
-    if (!ready) return;
-    $('export-area-row').hidden = !state.split;
-    if (!state.split) $('export-area').value = 'whole';
-    renderExportSize();
-    $('export-dialog').showModal();
-  });
+  $('export').addEventListener('click', () => openExport());
+  $('export-region').addEventListener('click', () => openExport(String(selectedRegion)));
   $('resolution').addEventListener('change', renderExportSize);
   $('export-area').addEventListener('change', renderExportSize);
   $('download').addEventListener('click', downloadWork);
@@ -1764,10 +1849,11 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     await Promise.all(packed.materials.map(record => prepareMaterial({
       ...record, blob: deserializeMaterial(record)
     })));
-    state = {...draft, split:draft.split === true, layers:packed.layers};
+    const {split, ...saved} = draft;
+    state = {...saved, regionCount:Renderer.grid(draft).count, layers:packed.layers};
     if (state.montage) setMontageControls(state.montage);
     else if (styleById.get(state.style).group === 'montage') setMontageControls();
-    showTab('layers');
+    showTab(state.regionCount > 1 ? 'regions' : 'layers');
   }
 
   async function saveStudio() {
