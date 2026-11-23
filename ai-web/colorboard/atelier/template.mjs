@@ -95,6 +95,8 @@ export function atelierMarkup(assetRoot) {
                   <button type="button" class="text-button" id="journal-add-edge">破边印记</button>
                   <button type="button" class="text-button" id="journal-add-fill">填充印纹</button>
                   <button type="button" class="text-button" id="journal-add-type">手记文字</button>
+                  <button type="button" class="text-button" id="journal-add-crop-left">左角标</button>
+                  <button type="button" class="text-button" id="journal-add-crop-right">右角标</button>
                 </div>
               </details>
               <ul id="layer-list" aria-label="从前景到背景的图层"></ul>

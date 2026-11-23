@@ -903,18 +903,39 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     return (group === 'edge' ? '破边 · ' : '填充 · ') + name;
   }
 
-  function sizeCropMark(layer) {
-    const photo = state.layers.find(item => item.id === cropTarget && item.kind === 'photo')
+  function sizeCropMark(layer, place = false) {
+    const photo = state.layers.find(item => item.id === cropTarget && item.kind === 'photo' && !item.hidden)
       || state.layers.findLast(item => item.kind === 'photo' && !item.hidden);
     const size = photo ? [photo.w*photo.scale*(photo.scaleX ?? 1)/100,photo.h*photo.scale*(photo.scaleY ?? 1)/100] : [440,310];
     const [w,h] = JournalArt.cropSize(...size);
-    for (const [key,value] of Object.entries({w,h,scale:100,scaleX:1,scaleY:1})) updateLayer(layer,key,value);
+    const patch = {w,h,scale:100,scaleX:1,scaleY:1};
+    if (place) {
+      const direction = layer.pattern === 'crop-right' ? 1 : -1;
+      if (photo) {
+        const [width,height] = Renderer.sizes[state.aspect];
+        const box = Renderer.placement(photo,width,height);
+        const dx = direction*box.w/2, dy = direction*box.h/2;
+        const sin = Math.sin(box.angle), cos = Math.cos(box.angle);
+        patch.x = (box.x+dx*cos-dy*sin)*1200/width;
+        patch.y = (box.y+dx*sin+dy*cos)*800/height;
+        patch.rotation = photo.rotation;
+      } else {
+        patch.x = layer.x+direction*w*.63;
+        patch.y = layer.y+direction*h*.58;
+        patch.rotation = 0;
+      }
+    }
+    for (const [key,value] of Object.entries(patch)) updateLayer(layer,key,value);
   }
 
-  function addJournalElement(group) {
-    const layer = JournalArt.manual(group, sequence++);
-    if (group === 'edge') cropTarget = currentLayer()?.kind === 'photo' ? selectedId : null;
-    if (layer.pattern === 'crop') sizeCropMark(layer);
+  function addJournalElement(group, pattern) {
+    const layer = JournalArt.manual(group, pattern ? JournalMarks.edge.findIndex(item=>item.id===pattern) : sequence++);
+    if (group === 'edge') {
+      const current = currentLayer();
+      if (current?.kind === 'photo') cropTarget = current.id;
+      else if (!JournalMarks.isCrop(current?.pattern)) cropTarget = null;
+    }
+    if (JournalMarks.isCrop(layer.pattern)) sizeCropMark(layer,true);
     if (group !== 'type') layer.name = markName(group, layer.name);
     edit(() => {
       state.layers.push(layer);
@@ -1126,7 +1147,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     const extendable=JournalMarks.canExtend(layer);
     $('transform-tape').hidden=!extendable;
     if (extendable) {
-      const label=layer.pattern==='seam' ? '沿长轴延长虚线' : '沿长轴拉伸胶带';
+      const label={tape:'沿长轴拉伸胶带',seam:'沿长轴延长虚线','slash-seam':'沿长轴延长斜线'}[layer.pattern];
       $('transform-tape').title=label;
       $('transform-tape').setAttribute('aria-label',label);
       marks.push(['tape',project(points.tape),[cos*25,sin*25]]);
@@ -1722,15 +1743,19 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     loadJournalFiles(event.dataTransfer.files);
   });
   for (const kind of ['edge','fill','type']) $('journal-add-' + kind).addEventListener('click', () => addJournalElement(kind));
+  for (const pattern of ['crop-left','crop-right']) {
+    $('journal-add-' + pattern).addEventListener('click', () => addJournalElement('edge',pattern));
+  }
   $('journal-pattern').addEventListener('change', event => {
     const layer = currentLayer();
     if (layer?.kind !== 'mark') return;
     const list = layer.markGroup === 'edge' ? JournalMarks.edge : JournalMarks.fill;
     const pattern = list.find(item => item.id === event.target.value);
     if (!pattern) return;
+    const previousPattern = layer.pattern;
     edit(() => {
       updateLayer(layer, 'pattern', pattern.id);
-      if (pattern.id === 'crop') sizeCropMark(layer);
+      if (JournalMarks.isCrop(pattern.id) && !JournalMarks.isCrop(previousPattern)) sizeCropMark(layer);
       if (pattern.id === 'code') updateLayer(layer,'opacity',Math.max(layer.opacity,88));
       layer.name = markName(layer.markGroup, pattern.name);
     });

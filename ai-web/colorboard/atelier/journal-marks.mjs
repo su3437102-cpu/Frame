@@ -3,8 +3,10 @@ export const JournalMarks = (() => {
 
   const edge = [
     {id: 'tape', name: '半透撕边胶带'},
-    {id: 'crop', name: '裁切角标'},
+    {id: 'crop-left', name: '左裁切角标'},
+    {id: 'crop-right', name: '右裁切角标'},
     {id: 'seam', name: '虚线缝迹'},
+    {id: 'slash-seam', name: '斜线缝迹'},
     {id: 'thread', name: '穿越棉线'}
   ];
 
@@ -51,9 +53,13 @@ export const JournalMarks = (() => {
     ctx.restore();
   }
 
+  function isCrop(pattern) {
+    return pattern === 'crop-left' || pattern === 'crop-right';
+  }
+
   function canExtend(layer) {
     return layer?.kind === 'mark' && layer.markGroup === 'edge' &&
-      (layer.pattern === 'tape' || layer.pattern === 'seam');
+      ['tape','seam','slash-seam'].includes(layer.pattern);
   }
 
   function tornEnd(width, thickness, rng, fromRight) {
@@ -179,6 +185,34 @@ export const JournalMarks = (() => {
     });
   }
 
+  function cropSide(ctx, w, h, direction) {
+    const size = Math.min(w,h);
+    const x = w/2, y = h/2;
+    const arm = direction*size*.36;
+    ctx.lineWidth = Math.max(.65,size*.019);
+    line(ctx, [[x,y+arm],[x,y],[x+arm,y]]);
+    alpha(ctx,.53,()=>{
+      const inset = direction*size*.085;
+      const short = arm*.50;
+      line(ctx, [[x+inset,y+inset+short],[x+inset,y+inset],[x+inset+short,y+inset]]);
+    });
+  }
+
+  function slashSeam(ctx, w, h, rng) {
+    const pitch = Math.max(7,h*.65);
+    const inset = Math.min(w*.12,pitch*.55);
+    const phase = rng()*Math.PI;
+    ctx.lineWidth = Math.max(.65,h*.055);
+    ctx.lineCap = 'round';
+    const step = Math.max(pitch,w/1500);
+    for (let x = inset; x <= w-inset; x += step) {
+      const y = h*(.50 + .13*Math.sin(x/(pitch*2.7)+phase) + (rng()-.5)*.15);
+      const rise = h*(.12 + rng()*.075);
+      const run = Math.min(w*.09,rise*(.31+rng()*.42));
+      alpha(ctx,.62+rng()*.31,()=>line(ctx,[[x-run,y+rise],[x+run,y-rise]]));
+    }
+  }
+
   function seam(ctx, w, h, rng) {
     const unit = Math.max(5, h * .42);
     const start = Math.min(unit * .35, w * .08);
@@ -282,29 +316,64 @@ export const JournalMarks = (() => {
     });
   }
 
-  function contours(ctx, w, h, rng, bounds) {
-    const phase=rng()*Math.PI;
-    const warp=rng()*Math.PI*2;
-    const [left,top,right,bottom]=bounds;
-    const pitch=8;
-    const start=Math.max(0,left-6), end=Math.min(w,right+6);
-    const steps=Math.max(1,Math.min(880,Math.ceil((end-start)/4)));
-    const first=Math.max(-5,Math.floor(top/pitch)-6);
-    const last=Math.min(Math.ceil(h/pitch)+5,Math.ceil(bottom/pitch)+6);
-    ctx.lineWidth=.75;
-    ctx.lineCap='round';
-    for (let row=first,i=0;row<last&&i<350;row++,i++) {
-      const points=Array.from({length:steps+1},(_,index)=>{
-        const x=start+(end-start)*index/steps;
-        const shifted=x+13*Math.sin(row*.044+x/52+warp);
-        const y=(row+.5)*pitch+12*Math.sin(shifted/25+row*.088+phase)
-          +3.5*Math.sin(shifted/10.5-row*.070+phase*.71)
-          +6*Math.sin(x/69+row*.18+warp)
-          +2*Math.sin(x/17+row*.28-warp);
-        return [x,y];
-      });
-      alpha(ctx,row%4?.43:.59,()=>line(ctx,points));
+  function traceContour(sink, x, y, step, corners, level) {
+    const [a,b,c,d] = corners;
+    const highA = a > level, highB = b > level, highC = c > level, highD = d > level;
+    if (highA === highB && highB === highC && highC === highD) return;
+    const crossings = [];
+    if (highA !== highB) crossings.push([x+step*(level-a)/(b-a),y]);
+    if (highB !== highC) crossings.push([x+step,y+step*(level-b)/(c-b)]);
+    if (highC !== highD) crossings.push([x+step*(level-d)/(c-d),y+step]);
+    if (highD !== highA) crossings.push([x,y+step*(level-a)/(d-a)]);
+    const segment = (start,end) => {
+      sink.moveTo(...crossings[start]);
+      sink.lineTo(...crossings[end]);
+    };
+    if (crossings.length === 2) {
+      segment(0,1);
+    } else {
+      // At an ambiguous cell, connect the regions separated by the interpolated saddle.
+      const split = (a-level)*(c-level) > (b-level)*(d-level);
+      segment(0,split ? 1 : 3);
+      segment(2,split ? 3 : 1);
     }
+  }
+
+  function contours(ctx, w, h, rng, bounds) {
+    const phase = rng()*Math.PI*2;
+    const [left,top,right,bottom] = bounds;
+    const step = 7;
+    const start = Math.floor(left/step)*step, end = Math.ceil(right/step)*step;
+    const first = Math.floor(top/step)*step, last = Math.ceil(bottom/step)*step;
+    const levels = [-.83,-.65,-.47,-.30,-.14,.14,.30,.47,.65,.83];
+    const bands = new Path2D(), valleys = new Path2D();
+    const sample = (x,y) => {
+      const ridge = Math.sin((x-43+17*Math.sin(y/42+phase)+9*Math.sin((x+y)/55))/36);
+      const fold = Math.sin((y-24+18*Math.sin(x/68+phase*.65)+9*Math.sin((x-y)/39))/28);
+      return [ridge*fold*(.84+.16*Math.sin(x/100-y/85+phase)),ridge,fold];
+    };
+    const row = y => Array.from({length: (end-start)/step+1}, (_,i) => sample(start+i*step,y));
+    let above = row(first);
+    for (let y = first; y < last; y += step) {
+      const below = row(y+step);
+      for (let i = 0; i < above.length-1; i++) {
+        const x = start+i*step;
+        const corners = [above[i],above[i+1],below[i+1],below[i]];
+        const heights = corners.map(point=>point[0]);
+        const min = Math.min(...heights), max = Math.max(...heights);
+        for (const level of levels) {
+          if (level > min && level <= max) traceContour(bands,x,y,step,heights,level);
+        }
+        // Both factors are zero at a saddle, so the zero contour can genuinely cross.
+        traceContour(valleys,x,y,step,corners.map(point=>point[1]),0);
+        traceContour(valleys,x,y,step,corners.map(point=>point[2]),0);
+      }
+      above = below;
+    }
+    ctx.lineWidth = .76;
+    alpha(ctx,.59,()=>ctx.stroke(bands));
+    ctx.lineWidth = .96;
+    alpha(ctx,.75,()=>ctx.stroke(valleys));
   }
 
   function notes(ctx, w, h, rng) {
@@ -335,23 +404,38 @@ export const JournalMarks = (() => {
     });
   }
 
-  function grid(ctx, w, h, rng) {
-    const spacing = Math.max(Math.min(w,h)*.123,w/300,h/300);
-    ctx.lineWidth = spacing * .053;
-    const x0 = w * .05;
-    const y0 = h * .05;
-    const x1 = w * .95;
-    const y1 = h * .95;
-    alpha(ctx, .25, () => {
-      for (let x = x0; x <= x1; x += spacing) line(ctx, [[x, y0], [x, y1]]);
-      for (let y = y0; y <= y1; y += spacing) line(ctx, [[x0, y], [x1, y]]);
+  function grid(ctx, w, h, rng, bounds) {
+    const pitch = 16;
+    const [left,top,right,bottom] = bounds;
+    ctx.lineWidth = .72;
+    alpha(ctx,.29,()=>{
+      ctx.beginPath();
+      for (let x = Math.floor(left/pitch)*pitch; x < right; x+=pitch) {
+        ctx.moveTo(x,top);
+        ctx.lineTo(x,bottom);
+      }
+      for (let y = Math.floor(top/pitch)*pitch; y < bottom; y+=pitch) {
+        ctx.moveTo(left,y);
+        ctx.lineTo(right,y);
+      }
+      ctx.stroke();
     });
-    alpha(ctx, .49, () => {
-      const points = Array.from({length: 6}, (_, i) =>
-        [w * (.13 + .145 * i), h * (.71 - .08 * i + rng() * .14)]);
-      ctx.lineWidth *= 1.52;
-      line(ctx, points);
-      for (const [x, y] of points) dot(ctx, x, y, spacing * .087);
+
+    const bandHeight = pitch*4, period = 7;
+    const first = Math.max(0,Math.floor(left/pitch)-1);
+    const last = Math.ceil(right/pitch)+1;
+    const steps = Array.from({length:period},(_,i)=>Math.sin(i/period*2*Math.PI)*pitch*.94+(rng()-.5)*pitch*.55);
+    ctx.lineWidth = 1.08;
+    alpha(ctx,.55,()=>{
+      const start = Math.max(0,Math.floor(top/bandHeight)*bandHeight);
+      for (let y = start; y < bottom; y+=bandHeight) {
+        const points = Array.from({length:last-first+1},(_,i)=>{
+          const column = first+i;
+          return [column*pitch,y+bandHeight/2+steps[column%period]];
+        });
+        line(ctx,points);
+        for (const [x,py] of points) dot(ctx,x,py,1.45);
+      }
     });
   }
 
@@ -437,12 +521,17 @@ export const JournalMarks = (() => {
     }
   }
 
-  const edgePaint = {tape, pencil, crop, seam, corner, thread};
+  const edgePaint = {
+    tape, pencil, crop, seam, corner, thread, 'slash-seam':slashSeam,
+    'crop-left':(ctx,w,h)=>cropSide(ctx,w,h,1),
+    'crop-right':(ctx,w,h)=>cropSide(ctx,w,h,-1)
+  };
   const fillPaint = {code, contours, notes, grid, halftone, stamps, coordinates};
 
   function draw(ctx, layer, w, h, bounds = [0,0,w,h]) {
     const patterns = layer.markGroup === 'edge' ? edgePaint : fillPaint;
-    if (!Object.hasOwn(patterns, layer.pattern) || w < 1 || h < 1 || bounds[0]>=bounds[2] || bounds[1]>=bounds[3]) return;
+    if (!Object.hasOwn(patterns, layer.pattern) || w < 1 || h < 1 || bounds[0]>=bounds[2] || bounds[1]>=bounds[3] ||
+        !Number.isSafeInteger(Math.ceil(Math.max(bounds[2],bounds[3])))) return;
     ctx.save();
     ctx.translate(-w / 2, -h / 2);
     ctx.beginPath();
@@ -454,5 +543,5 @@ export const JournalMarks = (() => {
     ctx.restore();
   }
 
-  return Object.freeze({edge, fill, draw, canExtend});
+  return Object.freeze({edge, fill, draw, canExtend, isCrop});
 })();
