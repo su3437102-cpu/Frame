@@ -17,16 +17,6 @@ export const CollageTemplates = (() => {
         {name: 'image-collage · 照片可独立裁切和移动', url: 'https://github.com/jo56/image-collage'},
         {name: '美国国会图书馆 · 透明剪影叠贴实验', url: 'https://github.com/LibraryOfCongress/collaging-space-time'}
       ]
-    },
-    {
-      id: 'field', title: '户外影像手记', source: '参考 飞书 144916',
-      description: '七张竖版作品把山野摄影做成手记。画面用一张主照片定调，较小的照片记录细节，手写批注进入空白。白纸页强调记录感，黄纸页把人像推成焦点。',
-      rules: ['白纸版的顶部横图占约四成高度，下方两张照片错开，以黑色批注填补各自的空位。', '黄纸版把橙红主体置于中央，主图约占画面六成宽。小图贴住主图边缘，题字集中在上下两端。']
-    },
-    {
-      id: 'garden', title: '黑底园林叠景', source: '参考 飞书 144903',
-      description: '九张方形作品用墨黑底、灰瓦、深绿和少量暖光形成园林夜色。大小不一的照片像窗景一样错开，花、人物或鱼沿窗缝跨到前景。',
-      rules: ['保持照片直切边，错开窗景的高低和宽窄，留出连续的黑色间隙。', '用一个浅色剪影跨过窗缝，或让小剪影沿弯曲路径由疏到密。暖色集中在灯光、花蕊或鱼背。']
     }
   ];
 
@@ -38,32 +28,32 @@ export const CollageTemplates = (() => {
       action: '打开示例后可替换建筑照片，保留各片的裁切和叠放关系。',
       slots: ['阔冠树剪影', '山城照片裁片', '金褐与旧红色纸', '行人剪影', '细线与点阵']
     },
-    ...MontageArt.designs,
+    ...MontageArt.designs
+  ];
+
+  // Saved projects and the journal import flow still use these layout IDs.
+  const legacyDesigns = [
     {
       id: 'field-notes', group: 'field', name: '山野手记', title: '山野手记', aspect: 'journal',
       background: '#faf8f1', palette: ['#ded2b8', '#51614b', '#243342'],
-      description: '以横幅山景开篇，下半页用两张局部与手写笔记拉开疏密。',
       action: '三张照片有一个观看顺序。上方用于定场，细节与题记在留白中错开。',
       slots: ['横幅主景', '左侧细节', '右下细节']
     },
     {
       id: 'yellow-pass', group: 'field', name: '黄纸旅签', title: '黄纸旅签', aspect: 'journal',
       background: '#e4c321', palette: ['#244553', '#a63c29', '#f1d981'],
-      description: '一张暖色人物照压在黄纸中央，小图与题字像行程里收集的碎片。',
       action: '用芥末黄统一底色，把鲜明的主体收在中央，给上、下题字留下空间。',
       slots: ['人物主图', '边缘小图', '底部小图']
     },
     {
       id: 'garden-window', group: 'garden', name: '夜园灯窗', title: '夜园灯窗', aspect: 'square',
       background: '#080a08', palette: ['#263729', '#aa7950', '#ede0c8'],
-      description: '三扇园林窗景沿对角错开，一枝浅色花跨过暗处和相片边缘。',
       action: '用直切相片安排明暗，再让一个浅色抠图跨过黑缝。',
       slots: ['上左园林', '中右灯窗', '下方倒影', '跨缝前景']
     },
     {
       id: 'pond-flow', group: 'garden', name: '池影鱼行', title: '池影鱼行', aspect: 'square',
       background: '#070907', palette: ['#354a38', '#bd684e', '#dac9a1'],
-      description: '两张竖向窗景之间留黑，大小渐变的鱼影从下往上折返。',
       action: '让透明素材沿弯曲路线几次重复，用大小变化带动视线。',
       slots: ['左侧树影', '右侧水面', '沿曲线重复的透明元素']
     }
@@ -99,7 +89,7 @@ export const CollageTemplates = (() => {
     'garden-window': [pavilion, windowView, pond, lotus],
     'pond-flow': [ferns, pond, fish]
   };
-  const byId = new Map(designs.map(design => [design.id, design]));
+  const byId = new Map([...designs, ...legacyDesigns].map(design => [design.id, design]));
 
   function cityMontage(materials) {
     const drawing = [];

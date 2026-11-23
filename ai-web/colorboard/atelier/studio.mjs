@@ -16,7 +16,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   const $ = id => root.getElementById(id);
   const stage = $('stage');
   const canvas = $('canvas');
-  const designs = [...Collage.designs, ...CollageTemplates.designs, JournalArt.design];
+  const designs = [...Collage.designs, ...CollageTemplates.byId.values(), JournalArt.design];
   const library = [...Collage.library, ...CollageTemplates.library, ...JournalArt.library];
   const styleById = new Map(designs.map(design => [design.id, design]));
   const images = new Map();
