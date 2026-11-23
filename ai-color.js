@@ -1,8 +1,10 @@
 // FrameLab keeps the input photo separate from its edited output.
 paths.ai='M4 4h16v16H4Z M7 15l3-6 3 6m-5-2h4 M16 9v6';
 paths.collage='M3 3h10v18H3zM16 3h5v8h-5zM16 14h5v7h-5z';
-paths.cutout='M5 9V5h4m6 0h4v4m0 6v4h-4m-6 0H5v-4m4-5 6 5m0-5-6 5';
 $('#tools').insertAdjacentHTML('beforeend',`<button class="palette-tool" data-tool="ai" title="拖到画布创建 AI 调色" aria-pressed="false"><i class="tool-glyph">${icon('ai')}</i><span>AI 调色</span></button>`);
+$('#tools').insertAdjacentHTML('beforeend',`<button type="button" class="palette-tool" id="atelier-launch" aria-haspopup="dialog" title="打开抠图拼图工作台"><i class="tool-glyph">${icon('collage')}</i><span>抠图拼图</span></button>`);
+$('#atelier-launch').addEventListener('click', () => openAI(null, 'collage'));
+
 function newAINode(p) {
   return {
     id:crypto.randomUUID(), type:'image', variant:'ai', name:'AI 调色',
@@ -90,13 +92,12 @@ function colorBoardSource(source) {
 
 const workbenchPanels = {
   advanced:{panel:'container', editor:'editor', back:'framelab-back', title:'调色工作台'},
-  collage:{panel:'collage', editor:'atelier', back:'atelier-back', title:'拼图工作台'},
-  cutout:{panel:'cutout', editor:'cutoutEditor', back:'cutout-back', title:'抠图工作台'}
+  collage:{panel:'collage', editor:'atelier', back:'atelier-back', title:'抠图拼图工作台'}
 };
 
 function openAI(id, mode, directInput) {
   const node = state.objects.find(object => object.id === id && object.variant === 'ai');
-  if ((!node && !directInput) || colorBoardSession) return;
+  if (colorBoardSession || (!node && mode !== 'collage')) return;
   const input = node ? aiInput(node) : directInput;
   const source = input?.src || '';
   const sameInput = node && (node.aiInput || '') === source;
@@ -108,14 +109,17 @@ function openAI(id, mode, directInput) {
   const modal = document.createElement('dialog');
   modal.id = 'colorboard-workbench';
   modal.setAttribute('aria-label', '照片工作台');
-  modal.innerHTML = `<div class="colorboard-state"><p role="status">正在打开工作台…</p><button type="button" data-colorboard-back>返回画布</button></div><div class="colorboard-root" inert hidden></div><div class="colorboard-root collage-root" inert hidden></div><div class="colorboard-root cutout-root" inert hidden></div>`;
+  modal.innerHTML = `
+    <div class="colorboard-state"><p role="status">正在打开工作台…</p><button type="button" data-colorboard-back>返回画布</button></div>
+    <div class="colorboard-root" inert hidden></div>
+    <div class="colorboard-root collage-root" inert hidden></div>`;
   const status = modal.querySelector('[role="status"]');
   const container = modal.querySelector('.colorboard-root');
   const collage = modal.querySelector('.collage-root');
-  const cutout = modal.querySelector('.cutout-root');
   const initial = {source, name:input ? objectName(input) : '', theme:state.theme, project, legacyPreview};
   const session = {
-    modal, container, collage, cutout, status, node, inputId:input?.id, source, savedPhoto, initial, collageProject,
+    modal, container, collage, status, node, inputId:input?.id, source, savedPhoto, initial, collageProject,
+    boardId:state.activeBoardId || null, returnFocus:document.activeElement,
     controller:new AbortController()
   };
   colorBoardSession = session;
@@ -202,29 +206,9 @@ async function showPhotoWorkbench(session, mode) {
         source, project:session.collageProject, theme:session.initial.theme, signal,
         onClose:() => { if (confirmWorkbenchClose(session)) closeColorBoard(session); },
         onGrade:session.editor ? () => void showPhotoWorkbench(session,'advanced') : null,
-        onCutout:() => void showPhotoWorkbench(session,'cutout'),
-        onSave:result => saveColorBoard(session,result,'collage')
-      });
-    } else if (mode === 'cutout') {
-      const {mountCutout} = await import('./ai-web/colorboard/atelier/cutout-mount.mjs');
-      signal.throwIfAborted();
-      session.cutout.hidden = false;
-      session.cutoutEditor = await mountCutout(session.cutout, {
-        theme:session.initial.theme, signal,
         linkedSource:(session.source || session.savedPhoto || session.editor?.hasPhoto())
           ? () => workbenchPhoto(session) : null,
-        onClose:() => { if (confirmWorkbenchClose(session)) closeColorBoard(session); },
-        onCollage:() => void showPhotoWorkbench(session,'collage'),
-        async onMaterials(records, options) {
-          await showPhotoWorkbench(session,'collage');
-          if (session.mode !== 'collage') throw new Error('无法打开拼图工作台，请重试。');
-          try {
-            return await session.atelier.useMaterials(records, options);
-          } catch (error) {
-            if (!signal.aborted) presentPhotoWorkbench(session,'cutout');
-            throw error;
-          }
-        }
+        onSave:result => saveColorBoard(session,result,'collage')
       });
     } else {
       const initial = session.initial;
@@ -247,8 +231,7 @@ async function showPhotoWorkbench(session, mode) {
         signal,
         onSave:result => saveColorBoard(session,result),
         onClose:() => { if (confirmWorkbenchClose(session,'advanced')) closeColorBoard(session); },
-        onCollage:() => void showPhotoWorkbench(session,'collage'),
-        onCutout:() => void showPhotoWorkbench(session,'cutout')
+        onCollage:() => void showPhotoWorkbench(session,'collage')
       });
       await session.editor.ready;
     }
@@ -287,6 +270,7 @@ function closeColorBoard(session) {
   session.modal.remove();
   const id = session.node?.id || session.inputId;
   if (id) focusCanvasObject(id);
+  else if (session.returnFocus?.isConnected) session.returnFocus.focus({preventScroll:true});
 }
 
 function aiBlobDataURL(blob) {
@@ -303,6 +287,10 @@ function ensureColorBoardInput(session) {
   if (colorBoardSession !== session || (session.node && !state.objects.includes(session.node)) ||
     input?.id !== session.inputId || (input?.src || '') !== session.source) {
     throw new Error('连接的照片已改变，请重新打开工作台');
+  }
+  if (!session.node && !input && session.boardId &&
+    !state.objects.some(object => object.id === session.boardId && object.type === 'board')) {
+    throw new Error('原画板已移除，请导出作品或返回画布。');
   }
   return input;
 }
@@ -326,18 +314,31 @@ async function saveColorBoard(session, {preview, project, width, height}, mode =
     if (!correctSize) throw new Error('未能保存，预览尺寸与调色结果不一致');
     const [src, edit] = await Promise.all([aiBlobDataURL(preview), aiBlobDataURL(project)]);
     const input = ensureColorBoardInput(session);
+    const aspect = height / width;
     checkpoint();
     if (!session.node) {
-      session.node = newAINode({x:input.x + input.w + 80, y:input.y});
-      state.objects.push(session.node);
-      (state.connections ??= []).push({
-        id:crypto.randomUUID(), from:input.id, to:session.node.id, bend:0, kind:'ai-input'
-      });
-      selected = new Set([session.node.id]);
+      const node = newAINode(input ? {x:input.x + input.w + 80, y:input.y} : null);
+      node.name = '拼图';
+      node.parentBoardId = input ? input.parentBoardId || null : session.boardId;
+      if (input) {
+        (state.connections ??= []).push({
+          id:crypto.randomUUID(), from:input.id, to:node.id, bend:0, kind:'ai-input'
+        });
+      } else {
+        const bounds = desk.getBoundingClientRect();
+        if (bounds.width && bounds.height && (state.activeBoardId || null) === session.boardId) {
+          const center = point({clientX:bounds.left + bounds.width / 2, clientY:bounds.top + bounds.height / 2});
+          node.x = center.x - node.w / 2;
+          node.y = center.y - ((node.w - 24) * aspect + 80) / 2;
+        }
+      }
+      state.objects.push(node);
+      session.node = node;
+      selected = new Set([node.id]);
     }
     Object.assign(session.node, {
       src, [mode === 'collage' ? 'collageEdit' : 'colorBoardEdit']:edit, aiEditor:mode, aiInput:session.source,
-      h: Math.max(80, (session.node.w - 24) * height / width + 80),
+      h: Math.max(80, (session.node.w - 24) * aspect + 80),
     });
     update();
     setTimeout(() => closeColorBoard(session), 0);
@@ -361,11 +362,10 @@ handleContext = function (action) {
     return;
   }
   if (action === 'ai-edit' && node) return openAI(node.id, 'advanced');
-  if ((action === 'open-collage' || action === 'open-cutout') && node) {
-    const mode = action === 'open-collage' ? 'collage' : 'cutout';
-    if (node.variant === 'ai') return openAI(node.id, mode);
+  if (action === 'open-atelier' && node) {
+    if (node.variant === 'ai') return openAI(node.id, 'collage');
     if (!node.src) return toast('请先选中一张照片。');
-    return openAI(null, mode, node);
+    return openAI(null, 'collage', node);
   }
   aiContext(action);
 };

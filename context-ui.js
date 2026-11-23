@@ -50,13 +50,13 @@ function syncContextRail(){
  }else{
   if(o.variant==='ai'){
    html+=contextButton('ai-edit','调色设置','ai')+
-    contextButton('open-collage','拼图工作台','collage')+contextButton('open-cutout','抠图工作台','cutout')+
+    contextButton('open-atelier','抠图拼图','collage')+
     contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+
     contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
   }
   else if(o.variant==='ps')html+=contextButton('ps-edit','进入编辑','ps')+contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
   else if(o.type==='image')html+=contextButton('preview','大图预览','eye')+contextButton('replace','替换照片','replace')+contextButton('size','尺寸','size')+contextButton('to-ps','连接 PS','ps')+contextButton('to-ai','AI 调色','ai')+
-    contextButton('open-collage','拼图工作台','collage')+contextButton('open-cutout','抠图工作台','cutout')+contextButton('download','下载','download');
+    contextButton('open-atelier','抠图拼图','collage')+contextButton('download','下载','download');
   else if(o.type==='zone')html+=contextButton('open-zone','打开功能','edit');
   else html+=contextButton('edit','编辑内容','edit');
   html+=contextButton('color',o.type==='image'?'色条':'颜色','color')+contextButton('labels','标签','tag')+contextButton('reactions','反应','reaction')+contextButton('comments','评论','comment')+contextButton('more','更多','more');

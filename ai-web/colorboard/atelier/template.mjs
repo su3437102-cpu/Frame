@@ -4,8 +4,8 @@ export function atelierMarkup(assetRoot) {
   return `<div class="atelier">${symbols}
   <header class="site-header">
     <div class="header-inner">
-      <div class="atelier-title"><button id="atelier-back" class="text-button" type="button" aria-label="返回画布">‹ <span>返回画布</span></button><span class="atelier-brand">FrameLab</span><h1 id="studio-title">拼图工作台</h1></div>
-      <div class="atelier-actions"><button id="atelier-grade" class="button compact outline" type="button" hidden>回到调色</button><button class="button compact outline" id="export" type="button">导出</button><button id="atelier-save" class="button compact primary" type="button" disabled>保存到画布</button></div>
+      <div class="atelier-title"><button id="atelier-back" class="text-button" type="button" aria-label="返回画布">‹ <span>返回画布</span></button><span class="atelier-brand">FrameLab</span><h1 id="studio-title">抠图拼图工作台</h1></div>
+      <div class="atelier-actions"><button id="atelier-grade" class="button compact outline" type="button" hidden>回到调色</button><button class="button compact outline" id="export" type="button" disabled>导出</button><button id="atelier-save" class="button compact primary" type="button" disabled>保存到画布</button></div>
     </div>
   </header>
   <main class="page">
@@ -52,7 +52,7 @@ export function atelierMarkup(assetRoot) {
             <div class="drop-overlay">放下图片添加图层</div>
           </div>
           <div class="board-footer">
-            <div class="work-name"><span id="work-title">错版练习</span><small id="work-subtitle">工作室示例</small></div>
+            <div class="work-name"><span id="work-title">我的拼贴</span><small id="work-subtitle">1200 × 800 px</small></div>
             <div class="view-options">
               <label class="sr-only" for="aspect">画布比例</label>
               <select id="aspect" title="画布比例"><option value="landscape">3∶2 横幅</option><option value="square">1∶1 方形</option><option value="portrait">4∶5 竖幅</option><option value="journal">3∶4 手记</option><option value="wide">16∶9 宽屏</option></select>
@@ -62,11 +62,11 @@ export function atelierMarkup(assetRoot) {
         </div>
         <aside class="inspector" aria-label="拼贴设置">
           <div class="inspector-tabs" role="tablist" aria-label="编辑面板">
-            <button id="tab-compose" role="tab" aria-selected="true" aria-controls="panel-compose" class="selected" type="button">构图</button>
-            <button id="tab-layers" role="tab" aria-selected="false" aria-controls="panel-layers" tabindex="-1" type="button">图层 <span id="layer-count"></span></button>
+            <button id="tab-compose" role="tab" aria-selected="false" aria-controls="panel-compose" tabindex="-1" type="button">构图</button>
+            <button id="tab-layers" role="tab" aria-selected="true" aria-controls="panel-layers" class="selected" type="button">图层 <span id="layer-count"></span></button>
           </div>
           <div class="inspector-content">
-            <div class="inspector-panel" id="panel-compose" role="tabpanel" aria-labelledby="tab-compose">
+            <div class="inspector-panel" id="panel-compose" role="tabpanel" aria-labelledby="tab-compose" hidden>
               <h2>艺术手法</h2>
               <div id="styles" class="style-grid" aria-label="艺术手法"></div>
               <p class="style-note" id="style-note"></p>
@@ -74,7 +74,7 @@ export function atelierMarkup(assetRoot) {
               <input type="range" id="variation" min="0" max="100" value="38">
               <button type="button" id="remix" class="button outline remix"><svg><use href="#i-shuffle"/></svg> 重组构图</button>
             </div>
-            <div class="inspector-panel" id="panel-layers" role="tabpanel" aria-labelledby="tab-layers" hidden>
+            <div class="inspector-panel" id="panel-layers" role="tabpanel" aria-labelledby="tab-layers">
               <div class="panel-title"><h2>图层顺序</h2><div class="add-layer-actions"><button type="button" class="text-button" id="add-type"><svg><use href="#i-plus"/></svg> 文字</button><button type="button" class="text-button" id="add-shape"><svg><use href="#i-plus"/></svg> 色纸</button></div></div>
               <details class="journal-layer-tools">
                 <summary>添加手记元素</summary>
@@ -141,7 +141,7 @@ export function atelierMarkup(assetRoot) {
                 <button id="layer-replace" class="button outline compact layer-replace" type="button" hidden><svg aria-hidden="true"><use href="#i-image"/></svg>替换图片</button>
                 <input id="layer-image-input" type="file" accept="image/*" hidden>
               </div>
-              <p id="layer-empty" hidden>在画布上点选图层，或从上方列表选择。</p>
+              <p id="layer-empty" hidden>导入照片或抠图后，素材会出现在图层中。</p>
             </div>
           </div>
         </aside>
@@ -150,11 +150,17 @@ export function atelierMarkup(assetRoot) {
         <div class="materials-title"><h2>素材盘</h2></div>
         <div class="material-list" id="material-list" aria-label="当前可用素材"></div>
         <div class="material-actions">
-          <button type="button" class="text-button" id="atelier-cutout">取用抠图素材</button>
+          <button type="button" class="button compact outline" id="atelier-cutout" aria-expanded="false" aria-controls="cutouts"><svg aria-hidden="true"><use href="#i-cut"/></svg>AI 抠图</button>
           <button type="button" class="text-button sample-button" id="restore">载入示例</button>
         </div>
       </div>
       <p id="message" class="status" role="status" aria-live="polite"></p>
+    </section>
+    <section id="cutouts" class="editorial cutout-workspace" aria-labelledby="cutout-title" hidden>
+      <div class="section-intro cutout-intro"><h2 id="cutout-title" tabindex="-1">AI 抠图</h2><button type="button" id="cutout-hide" class="text-button">收起抠图</button></div>
+      <p id="cutout-load-status" class="status" role="status"></p>
+      <button id="cutout-retry-load" type="button" class="button compact outline" hidden>重试加载</button>
+      <div id="cutout-content"></div>
     </section>
     <nav class="template-jumps" aria-label="模板快速定位"><a href="#journal">野外手记</a><a href="#templates">构图模板</a></nav>
     <section id="journal" class="editorial journal-section" aria-labelledby="journal-title">
@@ -231,7 +237,7 @@ export function atelierMarkup(assetRoot) {
           <div class="montage-input">
             <label><input type="checkbox" name="uploads" disabled> 用素材盘里的上传图片做主体</label>
             <span id="montage-materials" role="status"></span>
-            <button type="button" class="text-button" id="montage-cutouts">取用抠图素材</button>
+            <button type="button" class="text-button" id="montage-cutouts" aria-controls="cutouts">AI 抠图</button>
           </div>
           <button class="button primary" type="submit">生成可编辑拼贴</button>
         </form>

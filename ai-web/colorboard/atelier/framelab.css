@@ -50,7 +50,7 @@
   font: 1.375rem/1 var(--serif);
   letter-spacing: -.02em;
 }
-.atelier #studio-title, .atelier #cutout-heading {
+.atelier #studio-title {
   margin: 0;
   font-size: .9375rem;
   font-weight: 750;
@@ -153,7 +153,13 @@
   font-weight: 650;
   cursor: pointer;
 }
-.atelier .cutout-workspace { padding-top: 4px; }
+/* AI cutout is part of the same editor, directly below the material tray. */
+.atelier .cutout-workspace { padding-top: 20px; }
+.atelier .cutout-intro { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.atelier .cutout-intro h2 { font-size: 1.125rem; }
+.atelier #cutout-load-status:empty,
+.atelier .cutout-folder:has(#cutout-folder-button[hidden]) .cutout-folder-actions { display: none; }
+.atelier #atelier-cutout[aria-expanded="true"] { border-color: var(--accent); color: var(--accent-ink); background: var(--soft); }
 .atelier .cutout-sources { background: var(--sand); }
 .atelier .cutout-picker {
   border-color: var(--dots);
@@ -181,7 +187,7 @@
   .atelier-title, .atelier-actions { gap: 6px; }
   .atelier-title .text-button { padding-inline: 4px; }
   .atelier-brand { display: none; }
-  .atelier #studio-title, .atelier #cutout-heading { font-size: .875rem; }
+  .atelier #studio-title { font-size: .875rem; }
   .atelier .atelier-actions button { padding-inline: 7px; font-size: .75rem; }
   .atelier #studio .toolbar { gap: 3px; padding-inline: 7px; }
   .atelier #studio .toolbar .button { gap: 3px; padding-inline: 6px; font-size: .75rem; }
@@ -199,6 +205,8 @@
   .atelier-title .text-button span { display: none; }
   .atelier #studio .materials { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 9px; }
   .atelier .material-actions { grid-column: 1 / -1; justify-content: flex-end; }
+  .atelier #studio-title { font-size: .8125rem; }
+  .atelier .atelier-actions button { font-size: .6875rem; padding-inline: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .atelier *, .atelier *::before, .atelier *::after { scroll-behavior: auto; transition-duration: 0s; }

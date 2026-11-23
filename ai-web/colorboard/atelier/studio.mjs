@@ -9,7 +9,7 @@ import { BrushArt } from './brush.mjs';
 import { packProject, unpackProject } from '../framelab-project.mjs';
 import { canvasBlob, serializeMaterial, deserializeMaterial } from './project-materials.mjs';
 
-export function mountStudio({root, revealStudio, assetRoot, signal, source, project, onSave, loadJournalFonts}) {
+export function mountStudio({root, revealStudio, assetRoot, signal, source, project, onSave, loadJournalFonts, onPhotoChange}) {
   const $ = id => root.getElementById(id);
   const stage = $('stage');
   const canvas = $('canvas');
@@ -21,8 +21,8 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   const future = [];
   const MAX_UPLOADS = 16;
   let state = {
-    style: 'dada', aspect: 'landscape', bg: styleById.get('dada').background,
-    layers: Collage.sample('dada'), uploads: [], example: true, variation: 38
+    style: 'dada', aspect: 'landscape', bg: '#f2f1ed', flat: true,
+    layers: [], uploads: [], example: false, variation: 38
   };
   let selectedId = null;
   let layerClipboard = null;
@@ -30,7 +30,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   let reorderDrag = null;
   let dropCue = null;
   let curveEditId = null;
-  let activeTab = 'compose';
+  let activeTab = 'layers';
   let ready = false;
   let savedState = '';
   let saving = false;
@@ -378,7 +378,12 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     $('text-curve-row').hidden = current?.kind !== 'type';
     if (current?.id!==curveEditId) curveEditId=null;
     $('text-path-edit').setAttribute('aria-pressed',String(curveEditId!==null));
-    $('layer-empty').hidden = Boolean(current);
+    const empty = $('layer-empty');
+    empty.hidden = Boolean(current);
+    empty.textContent = state.layers.length
+      ? '在画布上点选图层，或从上方列表选择。'
+      : '导入照片或抠图后，素材会出现在图层中。';
+    onPhotoChange();
     if (!current) return;
     const index = state.layers.indexOf(current);
     $('layer-up').disabled = index === state.layers.length - 1;
@@ -422,6 +427,8 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     $('undo').disabled = !history.length;
     $('redo').disabled = !future.length;
     $('aspect').value = state.aspect;
+    $('atelier-save').disabled = saving || !state.layers.length;
+    $('export').disabled = saving || !state.layers.length;
     root.querySelectorAll('.style-card').forEach(button => {
       button.setAttribute('aria-pressed', String(button.dataset.id === state.style));
     });
@@ -533,7 +540,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     try {
       const image = await loadImage(src);
       signal.throwIfAborted();
-      const asset = {id: record.id, name: record.name, kind: record.kind, src, image, uploaded: true};
+      const asset = {id: record.id, name: record.name, kind: record.kind, blob:record.blob, src, image, uploaded: true};
       if (asset.kind === 'cutout') asset.alpha = alphaPreview(image);
       if (images.has(asset.id)) {
         URL.revokeObjectURL(src);
@@ -547,11 +554,21 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     }
   }
 
+  function cutoutPhoto() {
+    const sourceFor = layer => {
+      const asset = images.get(layer?.asset);
+      return asset?.kind === 'source' ? asset : undefined;
+    };
+    return sourceFor(currentLayer()) || sourceFor(state.layers.findLast(sourceFor));
+  }
+
   async function useMaterials(records, {append = false} = {}) {
     if (!ready) await loaded;
     if (!records.length) return 0;
     if (records.length > MAX_UPLOADS) throw new Error('一次最多可拼贴 ' + MAX_UPLOADS + ' 张素材。');
     const materials = await Promise.all(records.map(prepareMaterial));
+    signal.throwIfAborted();
+    if (saving) throw new Error('作品正在保存，请稍后添加素材。');
     const ids = materials.map(asset => asset.id);
     const combined = [...new Set([...state.uploads, ...ids])];
     if (append && combined.length > MAX_UPLOADS) {
@@ -1405,7 +1422,6 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     savedState = JSON.stringify(state);
     render();
     if (activeTab === 'compose') mountStyles();
-    $('atelier-save').disabled = false;
     if (problem) notice(problem);
     else if (results.some(item => item.status === 'rejected')) notice('有素材暂时加载失败，可重试打开这项素材。');
     else notice('');
@@ -1694,7 +1710,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   }
 
   async function saveStudio() {
-    if (!ready || saving) return;
+    if (!ready || saving || !state.layers.length) return;
     saving = true;
     const button = $('atelier-save');
     button.disabled = true;
@@ -1739,6 +1755,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   return {
     ready:loaded,
     useMaterials,
+    cutoutPhoto,
     mountTemplates,
     mountReferences,
     isDirty:() => ready && savedState !== JSON.stringify(state),
