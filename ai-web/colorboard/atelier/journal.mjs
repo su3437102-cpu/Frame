@@ -165,17 +165,15 @@ export const JournalArt = (() => {
     return [size*1.24,size];
   }
 
-  function edgePlacement(rect,pattern,index,rng) {
+  function edgePlacement(rect,index,rng) {
     const [x,y,w,h]=rect;
-    const compact=pattern==='crop';
-    const [width,height]=compact ? cropSize(w*1200,h*1600).map((value,i)=>value/[1200,1600][i])
-      : [Math.min(.172,w*.60), Math.min(.039,h*.61)];
+    const width=Math.min(.172,w*.60), height=Math.min(.039,h*.61);
     const swing=(rng()-.5)*14;
     switch (index%4) {
       case 0:return [[x+w*.15-width/2, y-height*.50, width,height], -9+swing];
-      case 1:return [[x+w-width*.67, y+h*.78-height/2,width,height], compact?5+swing:-22+swing];
+      case 1:return [[x+w-width*.67, y+h*.78-height/2,width,height], -22+swing];
       case 2:return [[x+w*.68-width/2, y+h-height*.50,width,height], -3+swing];
-      default:return [[x-width*.28,y+h*.32-height/2,width,height], compact?10+swing:28+swing];
+      default:return [[x-width*.28,y+h*.32-height/2,width,height], 28+swing];
     }
   }
 
@@ -246,21 +244,32 @@ export const JournalArt = (() => {
     const start=Math.floor(rng()*kinds.length);
     for (const [index,{rect}] of arranged.entries()) {
       const pattern=index===0?'tape':kinds[(start+index)%kinds.length].id;
-      const [position,rotation]=edgePlacement(rect,pattern,index,rng);
+      const [position,rotation]=edgePlacement(rect,index,rng);
       edges.push(createMark('edge',pattern,position,rotation,pattern==='tape'?paper:secondary,
         pattern==='tape'?78:66,Math.floor(rng()*1e7),'edge-'+arranged[index].photo.asset.id));
       used.push(position);
     }
     if (rich) {
-      const [position,rotation]=edgePlacement(arranged[0].rect,'seam',2,rng);
+      const [position,rotation]=edgePlacement(arranged[0].rect,2,rng);
       edges.push(createMark('edge','seam',position,rotation,secondary,65,Math.floor(rng()*1e7),'edge-main-accent'));
       used.push(position);
     }
 
+    const print=settings.print;
+    if (JournalMarks.isCrop(print)) {
+      const [x,y,w,h]=arranged[0].rect;
+      const [width,height]=cropSize(w*1200,h*1600);
+      const markW=width/1200, markH=height/1600;
+      const right=print==='crop-right';
+      const rect=[x+(right?w:0)-markW/2,y+(right?h:0)-markH/2,markW,markH];
+      const cropMark=createMark('fill',print,rect,0,secondary,80,Math.floor(rng()*1e7),'fill-crop');
+      return {layers:[...imageLayers,...edges,cropMark,...typography],background,profile,hero:main.asset.id};
+    }
+
     const fills=[];
     const fillCount=quiet ? 1 : rich ? 3 : 2;
-    const available=JournalMarks.fill;
-    const chosen=available.find(item=>item.id===settings.print);
+    const available=JournalMarks.fill.filter(item=>!JournalMarks.isCrop(item.id));
+    const chosen=available.find(item=>item.id===print);
     const focalX=arranged[0].rect[0]+arranged[0].rect[2]/2;
     const anchors=focalX>.52 ? [[.053,.74],[.737,.060],[.678,.865]] : [[.72,.72],[.059,.748],[.68,.055]];
     const manualIndex=Math.floor(rng()*available.length);

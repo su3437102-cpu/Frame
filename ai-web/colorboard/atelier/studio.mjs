@@ -827,7 +827,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       const layers = plan.layers.map(layer => {
         const saved = previous.get(layer.journalRole);
         if (!saved) return layer;
-        const adjusted = {...layer, ...saved, journalEdits:{...saved}};
+        const adjusted = normalizeCropMark({...layer, ...saved, journalEdits:{...saved}});
         if (adjusted.kind === 'mark' && saved.pattern) {
           const choices = adjusted.markGroup === 'edge' ? JournalMarks.edge : JournalMarks.fill;
           adjusted.name = markName(adjusted.markGroup, choices.find(item => item.id === saved.pattern)?.name || layer.name);
@@ -911,18 +911,49 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     return (group === 'edge' ? '破边 · ' : '填充 · ') + name;
   }
 
-  function sizeCropMark(layer) {
-    const photo = state.layers.find(item => item.id === cropTarget && item.kind === 'photo')
+  function normalizeCropMark(layer) {
+    if (layer.kind !== 'mark' || layer.markGroup === 'fill' || !JournalMarks.isCrop(layer.pattern)) return layer;
+    const style = JournalMarks.fill.find(item => item.id === layer.pattern);
+    return {...layer, markGroup:'fill', name:markName('fill',style.name)};
+  }
+
+  function placeCropMark(layer) {
+    const photo = state.layers.find(item => item.id === cropTarget && item.kind === 'photo' && !item.hidden)
       || state.layers.findLast(item => item.kind === 'photo' && !item.hidden);
-    const size = photo ? [photo.w*photo.scale*(photo.scaleX ?? 1)/100,photo.h*photo.scale*(photo.scaleY ?? 1)/100] : [440,310];
-    const [w,h] = JournalArt.cropSize(...size);
-    for (const [key,value] of Object.entries({w,h,scale:100,scaleX:1,scaleY:1})) updateLayer(layer,key,value);
+    const direction = layer.pattern === 'crop-left' ? -1 : 1;
+    const [width,height] = Renderer.sizes[state.aspect];
+    const scale = Math.min(width/1200,height/800);
+    const box = photo ? Renderer.placement(photo,width,height) : null;
+    let photoWidth = box?.w ?? 440*scale;
+    let photoHeight = box?.h ?? 310*scale;
+    const image = images.get(photo?.asset)?.image;
+    if (box && image && photo.fit === 'contain') {
+      const [dw,dh] = Renderer.photoDimensions(image,photo,box.contentW,box.contentH);
+      photoWidth = dw*box.sx;
+      photoHeight = dh*box.sy;
+    }
+    const [w,h] = JournalArt.cropSize(photoWidth/scale,photoHeight/scale);
+    const patch = {w,h,scale:100,scaleX:1,scaleY:1,rotation:photo?.rotation ?? 0};
+    if (box) {
+      const dx = direction*photoWidth/2, dy = direction*photoHeight/2;
+      const sin = Math.sin(box.angle), cos = Math.cos(box.angle);
+      patch.x = (box.x+dx*cos-dy*sin)*1200/width;
+      patch.y = (box.y+dx*sin+dy*cos)*800/height;
+    } else {
+      patch.x = layer.x+direction*w*.63;
+      patch.y = layer.y+direction*h*.58;
+    }
+    for (const [key,value] of Object.entries(patch)) updateLayer(layer,key,value);
   }
 
   function addJournalElement(group) {
     const layer = JournalArt.manual(group, sequence++);
-    if (group === 'edge') cropTarget = currentLayer()?.kind === 'photo' ? selectedId : null;
-    if (layer.pattern === 'crop') sizeCropMark(layer);
+    if (group === 'fill') {
+      const current = currentLayer();
+      if (current?.kind === 'photo') cropTarget = current.id;
+      else if (current?.markGroup !== 'fill') cropTarget = null;
+    }
+    if (JournalMarks.isCrop(layer.pattern)) placeCropMark(layer);
     if (group !== 'type') layer.name = markName(group, layer.name);
     edit(() => {
       state.layers.push(layer);
@@ -1134,7 +1165,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     const extendable=JournalMarks.canExtend(layer);
     $('transform-tape').hidden=!extendable;
     if (extendable) {
-      const label=layer.pattern==='seam' ? '沿长轴延长虚线' : '沿长轴拉伸胶带';
+      const label={tape:'沿长轴拉伸胶带',seam:'沿长轴延长虚线','slash-seam':'沿长轴延长斜线'}[layer.pattern];
       $('transform-tape').title=label;
       $('transform-tape').setAttribute('aria-label',label);
       marks.push(['tape',project(points.tape),[cos*25,sin*25]]);
@@ -1736,9 +1767,10 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     const list = layer.markGroup === 'edge' ? JournalMarks.edge : JournalMarks.fill;
     const pattern = list.find(item => item.id === event.target.value);
     if (!pattern) return;
+    const previousPattern = layer.pattern;
     edit(() => {
       updateLayer(layer, 'pattern', pattern.id);
-      if (pattern.id === 'crop') sizeCropMark(layer);
+      if (JournalMarks.isCrop(pattern.id) && !JournalMarks.isCrop(previousPattern)) placeCropMark(layer);
       if (pattern.id === 'code') updateLayer(layer,'opacity',Math.max(layer.opacity,88));
       layer.name = markName(layer.markGroup, pattern.name);
     });
@@ -1870,7 +1902,8 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       ...record, blob: deserializeMaterial(record)
     })));
     const {split, ...saved} = draft;
-    state = {...saved, regionCount:Renderer.grid(draft).count, layers:Collage.restoreLayerIds(packed.layers)};
+    const layers = Collage.restoreLayerIds(packed.layers).map(normalizeCropMark);
+    state = {...saved, regionCount:Renderer.grid(draft).count, layers};
     if (state.montage) setMontageControls(state.montage);
     else if (styleById.get(state.style).group === 'montage') setMontageControls();
     showTab(state.regionCount > 1 ? 'regions' : 'layers');

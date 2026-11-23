@@ -197,6 +197,7 @@ export function atelierMarkup(assetRoot) {
             <label for="journal-print">填充印纹
               <select id="journal-print">
                 <option value="auto">自动变化</option><option value="code">字码纹样</option><option value="coordinates">坐标</option><option value="contours">等高线</option><option value="grid">测绘网格</option><option value="halftone">半调点阵</option>
+                <option value="crop-left">左裁切角标</option><option value="crop-right">右裁切角标</option>
               </select>
             </label>
           </div>
