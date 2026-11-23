@@ -29,7 +29,10 @@ function isEditingControl(event) {
   return Boolean(event.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])'));
 }
 
-export function installCanvasViewport({ viewport, stage, onChange, keyboardRoot = viewport.ownerDocument }) {
+export function installCanvasViewport({
+  viewport, stage, onChange, keyboardRoot = viewport.ownerDocument,
+  allowRotation = true, modifierWheel = false
+}) {
   const document = viewport.ownerDocument;
   const window = document.defaultView;
   const listeners = new AbortController();
@@ -160,7 +163,7 @@ export function installCanvasViewport({ viewport, stage, onChange, keyboardRoot 
   }
 
   function rotateBy(degrees, about) {
-    if (!imageWidth || !imageHeight || !Number.isFinite(degrees)) return;
+    if (!allowRotation || !imageWidth || !imageHeight || !Number.isFinite(degrees)) return;
     const point = clientPoint(about) ?? viewportCenter();
     transformAround(point, toImagePoint(point), scale, rotation + degrees);
   }
@@ -185,10 +188,11 @@ export function installCanvasViewport({ viewport, stage, onChange, keyboardRoot 
   }
 
   function resize() {
-    if (viewportWidth === viewport.clientWidth && viewportHeight === viewport.clientHeight) return;
+    const { clientWidth: width, clientHeight: height } = viewport;
+    if (!width || !height || (viewportWidth === width && viewportHeight === height)) return;
     const previousFit = availableScale();
-    viewportWidth = viewport.clientWidth;
-    viewportHeight = viewport.clientHeight;
+    viewportWidth = width;
+    viewportHeight = height;
     const ratio = availableScale() / previousFit;
     scale *= ratio;
     pan = { x: pan.x * ratio, y: pan.y * ratio };
@@ -252,7 +256,7 @@ export function installCanvasViewport({ viewport, stage, onChange, keyboardRoot 
     const point = clientPoint(event);
     const primary = event.button === 0;
     const kind = event.button === 1 || (primary && (space || tool === 'pan')) ? 'pan' :
-      primary && (event.altKey || tool === 'rotate') ? 'rotate' : null;
+      allowRotation && primary && (event.altKey || tool === 'rotate') ? 'rotate' : null;
     if (event.pointerType === 'touch') {
       const editing = stage.matches('.comparing, .brushing') || stage.querySelector('#box-selection[data-active="true"]');
       if (kind || !editing) {
@@ -277,7 +281,7 @@ export function installCanvasViewport({ viewport, stage, onChange, keyboardRoot 
       const distance = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
       const angle = Math.atan2(b.y - a.y, b.x - a.x) / radians;
       transformAround(midpoint(a, b), gesture.anchor, gesture.scale * distance / gesture.distance,
-        gesture.rotation + normalizeRotation(angle - gesture.angle));
+        allowRotation ? gesture.rotation + normalizeRotation(angle - gesture.angle) : 0);
     } else if (gesture.id === event.pointerId) {
       if (gesture.kind === 'pan') {
         pan = { x: gesture.pan.x + point.x - gesture.start.x, y: gesture.pan.y + point.y - gesture.start.y };
@@ -309,11 +313,12 @@ export function installCanvasViewport({ viewport, stage, onChange, keyboardRoot 
 
   viewport.addEventListener('wheel', event => {
     if (!imageWidth || !imageHeight || isControl(event)) return;
+    if (modifierWheel && !event.ctrlKey && !event.metaKey) return;
     const multiplier = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewportHeight : 1;
     const delta = clamp((event.deltaY || event.deltaX) * multiplier, -300, 300);
     if (!delta) return;
     event.preventDefault();
-    if (event.altKey || event.shiftKey) rotateBy(delta * .13, event);
+    if (allowRotation && (event.altKey || event.shiftKey)) rotateBy(delta * .13, event);
     else zoomBy(Math.exp(-delta * .0018), event);
   }, { ...listenerOptions, passive: false });
 
@@ -363,6 +368,7 @@ export function installCanvasViewport({ viewport, stage, onChange, keyboardRoot 
       render();
     },
     setRotateMode(on) {
+      if (!allowRotation) return;
       if (on || tool === 'rotate') tool = on ? 'rotate' : null;
       render();
     },

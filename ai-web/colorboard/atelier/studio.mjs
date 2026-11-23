@@ -7,6 +7,7 @@ import { JournalMarks } from './journal-marks.mjs';
 import { LayerTransform } from './layer-transform.mjs';
 import { BrushArt } from './brush.mjs';
 import { packProject, unpackProject } from '../framelab-project.mjs';
+import { installCanvasViewport } from '../canvas-viewport.mjs';
 import { canvasBlob, serializeMaterial, deserializeMaterial } from './project-materials.mjs';
 
 export function mountStudio({root, revealStudio, assetRoot, signal, source, project, onSave, loadJournalFonts, onPhotoChange}) {
@@ -46,6 +47,28 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   let transformDrag = null;
   let brushMode = false;
   let brushDraft = null;
+  let viewportAspect;
+  let viewportState;
+
+  const panButton = $('atelier-pan');
+  const zoomReadout = $('atelier-zoom-readout');
+  const canvasView = installCanvasViewport({
+    viewport:stage, stage:canvas.parentElement, keyboardRoot:root,
+    allowRotation:false, modifierWheel:true,
+    onChange(view) {
+      viewportState = view;
+      panButton.setAttribute('aria-pressed', String(view.panMode));
+      const atFit = Math.abs(view.zoom - 1) < .001 && Math.hypot(view.panX, view.panY) < .5;
+      const label = atFit ? '适合' : Math.round(view.zoom * 100) + '%';
+      if (zoomReadout.textContent !== label) zoomReadout.textContent = label;
+      if (ready) positionTransformOverlay(currentLayer());
+    }
+  });
+
+  panButton.addEventListener('click', () => canvasView.setPanMode(!viewportState.panMode), {signal});
+  $('atelier-zoom-in').addEventListener('click', () => canvasView.zoomBy(1.25), {signal});
+  $('atelier-zoom-out').addEventListener('click', () => canvasView.zoomBy(1 / 1.25), {signal});
+  $('atelier-zoom-fit').addEventListener('click', () => canvasView.fit(), {signal});
 
   const svg = name => {
     const graphic = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -432,8 +455,10 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     root.querySelectorAll('.style-card').forEach(button => {
       button.setAttribute('aria-pressed', String(button.dataset.id === state.style));
     });
-    stage.style.setProperty('--art-ratio', w + ' / ' + h);
-    stage.style.setProperty('--max-art', Math.min(960, Math.max(150, stage.clientHeight - 46) * w / h) + 'px');
+    if (viewportAspect !== state.aspect) {
+      viewportAspect = state.aspect;
+      canvasView.setImageSize(w, h);
+    }
     renderLayerPanel();
     renderMaterials();
     syncMontageMaterials();
@@ -1578,7 +1603,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   });
 
   canvas.addEventListener('dblclick', event => {
-    if (!state.journal || brushMode) return;
+    if (!state.journal || brushMode || viewportState.panMode || viewportState.spacePan) return;
     const [x,y] = canvasPoint(event);
     const layer = Renderer.hitTest(canvas.getContext('2d'), state, x, y, images);
     if (layer?.kind === 'type') {
@@ -1614,13 +1639,6 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     stage.classList.remove('drop-active');
     queueFiles(event.dataTransfer.files);
   });
-  const resizeObserver = new ResizeObserver(() => {
-    const [w, h] = Renderer.sizes[state.aspect];
-    stage.style.setProperty('--max-art', Math.min(960, Math.max(150, stage.clientHeight - 46) * w / h) + 'px');
-    enqueuePaint();
-  });
-  resizeObserver.observe(stage);
-
   $('export').addEventListener('click', () => {
     if (!ready) return;
     renderExportSize();
@@ -1636,6 +1654,11 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     $('view-dialog').showModal();
   });
   root.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && viewportState.panMode && !root.querySelector('dialog[open]')) {
+      event.preventDefault();
+      canvasView.setPanMode(false);
+      return;
+    }
     if (event.key==='Escape' && (brushMode || transformDrag || curveEditId!==null)) {
       event.preventDefault();
       if (transformDrag) endTransform(null,true);
@@ -1651,6 +1674,14 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     const field = event.target.closest?.('input,select,textarea,dialog,[contenteditable]');
     if (field || event.defaultPrevented || !ready) return;
     const key = event.key.toLowerCase();
+    if (event.target === canvas && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (key === '0' || ['+','=','-'].includes(key)) {
+        event.preventDefault();
+        if (key === '0') canvasView.fit();
+        else canvasView.zoomBy(key === '-' ? 1 / 1.25 : 1.25);
+        return;
+      }
+    }
     if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey &&
         event.target.closest?.('#studio') && document.getSelection()?.isCollapsed!==false) {
       const layer = currentLayer();
@@ -1747,7 +1778,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
 
   $('atelier-save').addEventListener('click', saveStudio, {signal});
   signal.addEventListener('abort', () => {
-    resizeObserver.disconnect();
+    canvasView.destroy();
     for (const asset of images.values()) {
       if (asset.uploaded) URL.revokeObjectURL(asset.src);
     }

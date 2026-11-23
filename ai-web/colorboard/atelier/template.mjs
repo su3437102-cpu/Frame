@@ -38,7 +38,7 @@ export function atelierMarkup(assetRoot) {
           </div>
           <div class="stage" id="stage">
             <div class="stage-inner">
-              <canvas id="canvas" width="1200" height="800" tabindex="0" aria-label="拼贴画布。拖动图层，或在图层面板选择图层并用方向键移动。"></canvas>
+              <canvas id="canvas" width="1200" height="800" tabindex="0" aria-label="拼贴画布。拖动图层，按住空格拖动视图，按 0 回到适合窗口。"></canvas>
             </div>
             <div id="transform-overlay" class="transform-overlay" role="group" aria-label="所选图层的变换手柄" hidden>
               <div id="transform-outline" class="transform-outline" aria-hidden="true"></div>
@@ -56,6 +56,12 @@ export function atelierMarkup(assetRoot) {
             <div class="view-options">
               <label class="sr-only" for="aspect">画布比例</label>
               <select id="aspect" title="画布比例"><option value="landscape">3∶2 横幅</option><option value="square">1∶1 方形</option><option value="portrait">4∶5 竖幅</option><option value="journal">3∶4 手记</option><option value="wide">16∶9 宽屏</option></select>
+              <div class="atelier-view-tools" role="group" aria-label="画布视图">
+                <button id="atelier-pan" type="button" class="icon-button" aria-pressed="false" title="平移视图（也可按住空格拖动）" aria-label="平移视图"><svg aria-hidden="true"><use href="#i-hand"/></svg></button>
+                <button id="atelier-zoom-out" type="button" class="icon-button" title="缩小视图（− 或 Ctrl/⌘ 加滚轮）" aria-label="缩小视图"><svg aria-hidden="true"><use href="#i-minus"/></svg></button>
+                <button id="atelier-zoom-fit" type="button" title="适合窗口（0）" aria-label="适合窗口"><span id="atelier-zoom-readout">适合</span></button>
+                <button id="atelier-zoom-in" type="button" class="icon-button" title="放大视图（+ 或 Ctrl/⌘ 加滚轮）" aria-label="放大视图"><svg aria-hidden="true"><use href="#i-plus"/></svg></button>
+              </div>
               <button id="view" type="button" class="icon-button" title="预览作品" aria-label="预览作品"><svg><use href="#i-zoom"/></svg></button>
             </div>
           </div>
