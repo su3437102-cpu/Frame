@@ -1,80 +1,84 @@
+import { assets, mountWorkbenchDom } from './bench-dom.mjs';
 import { atelierMarkup } from './template.mjs';
-import { createTemplateGallery } from './template-gallery.mjs';
-import { createCutoutEngine } from './extract.mjs';
-import { createCutoutUI } from './cutout-ui.mjs';
-import { mountCutoutWorkspace } from './cutout-workspace.mjs';
 import { mountStudio } from './studio.mjs';
 
-const assets = new URL('./assets/', import.meta.url).href;
-const styles = ['studio', 'cutout', 'templates', 'journal', 'transform-ui', 'framelab'];
-let fontsRegistered = false;
+let journalFonts;
 
-export async function mountAtelier(container, {source, project, theme, signal, onClose, onGrade, onSave}) {
-  if (!fontsRegistered && globalThis.FontFace) {
-    for (const [family, name, weight] of [
-      ['Template Brush','template-brush.woff2','400'],
-      ['Journal Hand','journal-hand.woff2','600']
-    ]) {
-      document.fonts.add(new FontFace(family, 'url("' + assets + name + '")', {weight}));
-    }
-    fontsRegistered = true;
-  }
-  const root = container.attachShadow({mode:'open'});
-  container.dataset.framelabTheme = theme === 'dark' ? 'dark' : 'light';
-  const template = document.createElement('template');
-  template.innerHTML = atelierMarkup(assets);
-  const loadedStyles = styles.map(name => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = new URL(name + '.css', import.meta.url).href;
-    const loaded = new Promise((resolve,reject) => {
-      link.addEventListener('load', resolve, {once:true});
-      link.addEventListener('error', () => reject(new Error('无法加载拼贴工作台样式。')), {once:true});
-    });
-    root.append(link);
-    return loaded;
-  });
-  root.append(template.content);
-  await Promise.all(loadedStyles);
-  signal.throwIfAborted();
+function loadJournalFonts() {
+  if (!globalThis.FontFace) return Promise.resolve();
+  journalFonts ??= Promise.allSettled([
+    ['Template Brush', 'template-brush.woff2', '400'],
+    ['Journal Hand', 'journal-hand.woff2', '600']
+  ].map(async ([family, file, weight]) => {
+    const font = new FontFace(family, 'url("' + assets + file + '")', {weight});
+    await font.load();
+    document.fonts.add(font);
+  }));
+  return journalFonts;
+}
 
-  const menu = root.querySelector('.atelier-nav');
-  const pages = [...root.querySelector('.page').children];
+export async function mountAtelier(container, {source, project, theme, signal, onClose, onGrade, onCutout, onSave}) {
+  const root = await mountWorkbenchDom(container, atelierMarkup(assets),
+    ['studio', 'templates', 'journal', 'transform-ui', 'framelab'], theme, signal);
   const outlet = root.querySelector('.atelier');
-  function showSection(name) {
-    const id = name === 'repositories' ? 'handbook' : name;
-    if (!pages.some(page => page.id === id)) return;
-    for (const page of pages) page.hidden = page.id !== id;
-    for (const link of menu.querySelectorAll('a')) {
-      const active = link.getAttribute('href') === '#' + id;
-      link.classList.toggle('active', active);
-      if (active) link.setAttribute('aria-current', 'page');
-      else link.removeAttribute('aria-current');
-    }
-    outlet.scrollTop = 0;
+  const el = id => root.getElementById(id);
+  el('atelier-back').addEventListener('click', onClose, {signal});
+  el('atelier-cutout').addEventListener('click', onCutout, {signal});
+  if (onGrade) {
+    el('atelier-grade').hidden = false;
+    el('atelier-grade').addEventListener('click', onGrade, {signal});
   }
-  root.addEventListener('click', event => {
-    const link = event.target.closest?.('a[href^="#"]');
-    if (!link) return;
-    event.preventDefault();
-    const id = link.getAttribute('href').slice(1);
-    if (id === 'repositories' || pages.some(page => page.id === id)) showSection(id);
-    else root.getElementById(id)?.scrollIntoView({block:'start'});
-  }, {signal});
-  root.getElementById('atelier-back').addEventListener('click', onClose, {signal});
-  root.getElementById('atelier-grade').addEventListener('click', onGrade, {signal});
-  showSection('studio');
-  let cutouts;
+
   const studio = mountStudio({
-    root, showSection, assetRoot:assets, source, project, onSave, signal,
-    TemplateGallery:createTemplateGallery(root, assets),
-    upload:(...args) => cutouts.upload(...args)
+    root, revealStudio:() => { outlet.scrollTop = 0; },
+    assetRoot:assets, source, project, onSave, signal, loadJournalFonts
   });
-  cutouts = mountCutoutWorkspace({
-    CutoutUI:createCutoutUI(root, showSection),
-    CutoutEngine:createCutoutEngine(signal),
-    CollageStudio:studio,
-    signal
-  });
+  let gallery;
+  function openGallery() {
+    gallery ??= import('./template-gallery.mjs').then(({createTemplateGallery}) => {
+      if (!signal.aborted) studio.mountTemplates(createTemplateGallery(root, assets));
+    }).catch(() => {
+      gallery = undefined;
+      el('template-groups').textContent = '模板暂未载入，可点击「构图模板」重试。';
+    });
+    return gallery;
+  }
+  function openJournalPreviews() {
+    for (const image of el('journal').querySelectorAll('img[data-src]')) {
+      image.src = image.dataset.src;
+      image.removeAttribute('data-src');
+    }
+  }
+
+  root.addEventListener('click', event => {
+    if (event.target.closest?.('#montage-cutouts')) return onCutout();
+    const link = event.target.closest?.('a[href^="#"]');
+    const target = link && el(link.getAttribute('href').slice(1));
+    if (!target) return;
+    event.preventDefault();
+    if (target.id === 'templates') void openGallery();
+    if (target.id === 'journal') openJournalPreviews();
+    target.scrollIntoView({block:'start'});
+    target.querySelector('h2').focus({preventScroll:true});
+  }, {signal});
+  root.querySelector('.atelier-reference').addEventListener('toggle', event => {
+    if (event.currentTarget.open) studio.mountReferences();
+  }, {signal});
+
+  const observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      if (entry.target.id === 'templates') {
+        observer.unobserve(entry.target);
+        void openGallery();
+      } else if (entry.intersectionRatio >= .2) {
+        observer.unobserve(entry.target);
+        openJournalPreviews();
+      }
+    }
+  }, {root:outlet, threshold:[0, .2]});
+  observer.observe(el('journal').querySelector('.journal-examples'));
+  observer.observe(el('templates'));
+  signal.addEventListener('abort', () => observer.disconnect(), {once:true});
   return studio;
 }

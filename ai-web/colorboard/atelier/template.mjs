@@ -1,57 +1,28 @@
+import { symbols } from './symbols.mjs';
+
 export function atelierMarkup(assetRoot) {
-  return `<div class="atelier"><svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
-    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12m-5-5 5 5 5-5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
-    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 6 4 11l5 5m-5-5h10a5 5 0 0 1 5 5v2"/></symbol>
-    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 6 5 5-5 5m5-5H10a5 5 0 0 0-5 5v2"/></symbol>
-    <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 6h3c4 0 8 12 12 12h3m-3-3 3 3-3 3M3 18h3c1.6 0 3.3-2 5-4.7M13 10c1.7-2.5 3.3-4 5-4h3m-3-3 3 3-3 3"/></symbol>
-    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></symbol>
-    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m4 17 5-5 3 3 3-4 5 6"/><circle cx="8" cy="8.5" r=".75"/></symbol>
-    <symbol id="i-github" viewBox="0 0 24 24"><path d="M8 20c-4 1-4-2-6-2m12 4v-3.4c0-1 .1-1.4-.5-2 2.5-.3 5.1-1.2 5.1-5.5A4.2 4.2 0 0 0 17.5 8c.2-.8.2-1.9-.2-3 0 0-.9-.3-3.1 1.2a11.6 11.6 0 0 0-6 0C6 4.7 5 5 5 5c-.4 1.1-.4 2.2-.2 3a4.2 4.2 0 0 0-1.1 3.1c0 4.3 2.6 5.2 5.1 5.5-.5.4-.7 1.1-.7 2V22"/></symbol>
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
-    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
-    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V4m-6 6 6-6 6 6"/></symbol>
-    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v16m-6-6 6 6 6-6"/></symbol>
-    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
-    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7"/></symbol>
-    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-6 10-6 10 6 10 6-3 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
-    <symbol id="i-zoom" viewBox="0 0 24 24"><path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/></symbol>
-    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M3 9h18"/></symbol>
-    <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/><path d="m8.4 8.8 12.3 9.7M8.4 15.2l12.3-9.7"/></symbol>
-    <symbol id="i-resize" viewBox="0 0 24 24"><path d="M19 12v7h-7M19 19l-7-7M5 12V5h7"/></symbol>
-    <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 6v5h-5M20 11a8 8 0 1 0-1.5 6"/></symbol>
-    <symbol id="i-length" viewBox="0 0 24 24"><path d="M4 8v8m16-8v8M4 12h16m-9-4v8m2-8v8"/></symbol>
-    <symbol id="i-brush" viewBox="0 0 24 24"><path d="m9 14 9-10a2 2 0 0 1 3 3l-9 10M3 21c2-2 1-4 2.5-5.4a3.2 3.2 0 0 1 4.5 4.5C8.5 21.5 5.8 21.6 3 21Z"/></symbol>
-    <symbol id="i-tape" viewBox="0 0 24 24"><path d="m3 10 15-4 2 8-15 4-1-3 1-2-2-1Z"/><path d="m18 6 2 1-1 2 2 1-1 2 1 1-1 1"/></symbol>
-  </svg>
+  return `<div class="atelier">${symbols}
   <header class="site-header">
-  <div class="header-inner">
-    <div class="atelier-title"><button id="atelier-back" class="text-button" type="button">返回画布</button><span class="atelier-brand">FrameLab</span><h1 id="studio-title">拼贴工作台</h1></div>
-    <div class="atelier-actions"><button id="atelier-grade" class="button compact outline" type="button">回到调色</button><button id="atelier-save" class="button compact primary" type="button" disabled>保存到画布</button></div>
-  </div>
-  <nav class="atelier-nav" aria-label="拼贴工具">
-    <a href="#studio">构图与图层</a><a href="#cutouts">抠图素材</a><a href="#templates">构图模板</a><a href="#journal">野外手记</a><a href="#archive">灵感图鉴</a><a href="#handbook">构图手册</a>
-  </nav>
+    <div class="header-inner">
+      <div class="atelier-title"><button id="atelier-back" class="text-button" type="button" aria-label="返回画布">‹ <span>返回画布</span></button><span class="atelier-brand">FrameLab</span><h1 id="studio-title">拼图工作台</h1></div>
+      <div class="atelier-actions"><button id="atelier-grade" class="button compact outline" type="button" hidden>回到调色</button><button class="button compact outline" id="export" type="button">导出</button><button id="atelier-save" class="button compact primary" type="button" disabled>保存到画布</button></div>
+    </div>
   </header>
   <main class="page">
     <section id="studio" aria-labelledby="studio-title">
       <div class="workspace">
         <div class="board">
           <div class="toolbar">
-            <div class="board-name"><svg><use href="#i-layers"/></svg><span>拼贴画布</span></div>
+            <div class="editor-tool-actions">
+              <button type="button" class="button compact outline editor-tool" id="tool-brush" aria-pressed="false" aria-controls="brush-options"><svg aria-hidden="true"><use href="#i-brush"/></svg>画笔</button>
+              <button type="button" class="button compact outline editor-tool" id="tool-tape"><svg aria-hidden="true"><use href="#i-tape"/></svg>胶带</button>
+            </div>
             <div class="board-actions">
               <button type="button" class="icon-button" id="undo" aria-label="撤销" title="撤销 Ctrl/⌘+Z"><svg><use href="#i-undo"/></svg></button>
               <button type="button" class="icon-button" id="redo" aria-label="重做" title="重做 Ctrl/⌘+Shift+Z"><svg><use href="#i-redo"/></svg></button>
               <span class="separator"></span>
-              <button type="button" class="button compact outline" id="upload"><svg><use href="#i-upload"/></svg><span>导入并抠图</span></button>
+              <button type="button" class="button compact outline" id="upload"><svg><use href="#i-upload"/></svg><span>导入照片</span></button>
               <input type="file" accept="image/*,.heic,.heif" id="image-input" multiple hidden>
-            </div>
-          </div>
-          <div class="editor-tools" role="group" aria-label="画布工具">
-            <div class="editor-tool-actions">
-              <button type="button" class="button compact outline editor-tool" id="tool-brush" aria-pressed="false" aria-controls="brush-options"><svg aria-hidden="true"><use href="#i-brush"/></svg>画笔</button>
-              <button type="button" class="button compact outline editor-tool" id="tool-tape"><svg aria-hidden="true"><use href="#i-tape"/></svg>胶带</button>
             </div>
             <div class="transform-lock">
               <label class="transform-lock-label" title="拖动时按住 Shift 临时切换等比"><input type="checkbox" id="transform-lock" aria-describedby="transform-lock-hint">等比</label>
@@ -67,7 +38,6 @@ export function atelierMarkup(assetRoot) {
           </div>
           <div class="stage" id="stage">
             <div class="stage-inner">
-              <img class="poster-fallback" src="${assetRoot}study-dada.webp" alt="" id="poster-fallback">
               <canvas id="canvas" width="1200" height="800" tabindex="0" aria-label="拼贴画布。拖动图层，或在图层面板选择图层并用方向键移动。"></canvas>
             </div>
             <div id="transform-overlay" class="transform-overlay" role="group" aria-label="所选图层的变换手柄" hidden>
@@ -79,7 +49,7 @@ export function atelierMarkup(assetRoot) {
               <button type="button" id="text-path-control" class="transform-handle text-path-handle text-path-control" title="拖动曲线控制点" aria-label="曲线控制点" hidden></button>
               <button type="button" id="text-path-end" class="transform-handle text-path-handle" title="拖动曲线终点" aria-label="曲线终点" hidden></button>
             </div>
-            <div class="drop-overlay">放下图片，自动抠图</div>
+            <div class="drop-overlay">放下图片添加图层</div>
           </div>
           <div class="board-footer">
             <div class="work-name"><span id="work-title">错版练习</span><small id="work-subtitle">工作室示例</small></div>
@@ -174,70 +144,22 @@ export function atelierMarkup(assetRoot) {
               <p id="layer-empty" hidden>在画布上点选图层，或从上方列表选择。</p>
             </div>
           </div>
-          <div class="export-row">
-            <button class="button primary" id="export" type="button"><svg><use href="#i-download"/></svg> 导出作品</button>
-          </div>
         </aside>
       </div>
       <div class="materials">
-        <div class="materials-title"><h2>素材盘</h2><p>点选素材可再贴一层</p></div>
+        <div class="materials-title"><h2>素材盘</h2></div>
         <div class="material-list" id="material-list" aria-label="当前可用素材"></div>
-        <button type="button" class="text-button sample-button" id="restore" title="恢复可编辑的工作室示例">载入示例</button>
+        <div class="material-actions">
+          <button type="button" class="text-button" id="atelier-cutout">取用抠图素材</button>
+          <button type="button" class="text-button sample-button" id="restore">载入示例</button>
+        </div>
       </div>
       <p id="message" class="status" role="status" aria-live="polite"></p>
     </section>
-    <section id="cutouts" class="editorial cutout-workspace" aria-labelledby="cutout-title">
-      <div class="section-intro cutout-intro">
-        <div><h2 id="cutout-title" tabindex="-1">抠图工作区</h2><p>上传照片，自动提取前景元素。勾选想用的素材，再开始拼贴。</p></div>
-        <div class="cutout-folder">
-          <div class="cutout-folder-actions">
-            <button type="button" class="button outline compact" id="cutout-reconnect" hidden>重新连接</button>
-            <button type="button" class="button outline compact" id="cutout-folder-button" hidden><svg aria-hidden="true"><use href="#i-folder"/></svg><span>选择工作文件夹</span></button>
-          </div>
-          <p id="cutout-folder-state">素材缓存在当前浏览器。</p>
-        </div>
-      </div>
-      <div class="cutout-board">
-        <div class="cutout-sources">
-          <button type="button" id="cutout-picker" class="cutout-picker">
-            <span class="cutout-picker-icon"><svg aria-hidden="true"><use href="#i-upload"/></svg></span>
-            <strong>选择图片</strong><span>也可以拖到这里，支持多张</span>
-          </button>
-          <input id="cutout-files" type="file" accept="image/*,.heic,.heif" multiple hidden>
-          <div class="cutout-list-heading"><h3>原图</h3><button id="cutout-all-sources" class="text-button" type="button" hidden>查看全部</button></div>
-          <ul id="cutout-sources" class="cutout-source-list" aria-label="已导入原图"></ul>
-          <p id="cutout-source-empty" class="cutout-secondary">待导入图片</p>
-        </div>
-        <div class="cutout-results">
-          <div class="cutout-results-heading">
-            <h3>透明素材 <span id="cutout-result-count"></span></h3>
-            <div class="cutout-selection-tools">
-              <button id="cutout-select-all" type="button" class="text-button" hidden>全选可见素材</button>
-              <button id="cutout-clear" type="button" class="text-button" hidden>清空勾选</button>
-            </div>
-          </div>
-          <div id="cutout-empty" class="cutout-empty">
-            <svg aria-hidden="true"><use href="#i-cut"/></svg>
-            <p>上传后，提取出来的元素会出现在这里。</p>
-          </div>
-          <ul id="cutout-grid" class="cutout-grid" aria-label="提取的透明素材" hidden></ul>
-          <div class="cutout-footer">
-            <div>
-              <p id="cutout-selected">已选 0 个素材</p>
-              <p id="cutout-cache-state" class="cutout-secondary" hidden></p>
-            </div>
-            <div class="cutout-compose-actions">
-              <button id="cutout-add" type="button" class="button outline" hidden disabled><svg aria-hidden="true"><use href="#i-plus"/></svg>添加到画布</button>
-              <button id="cutout-compose" type="button" class="button primary" disabled><svg aria-hidden="true"><use href="#i-layers"/></svg>用所选素材拼贴</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <p id="cutout-notice" class="status" role="status" aria-live="polite" hidden></p>
-    </section>
+    <nav class="template-jumps" aria-label="模板快速定位"><a href="#journal">野外手记</a><a href="#templates">构图模板</a></nav>
     <section id="journal" class="editorial journal-section" aria-labelledby="journal-title">
       <div class="section-intro journal-intro">
-        <div><h2 id="journal-title">野外手记</h2></div>
+        <div><h2 id="journal-title" tabindex="-1">野外手记</h2></div>
         <p>上传照片，自动排成 3∶4 野外手记。主景、双语批注和印纹都可以在画布里调整。</p>
       </div>
       <div class="journal-board">
@@ -273,9 +195,9 @@ export function atelierMarkup(assetRoot) {
         <div class="journal-examples">
           <h3 id="journal-example-title">版式样例</h3>
           <ul aria-labelledby="journal-example-title">
-            <li><button type="button" class="journal-example" data-journal-layout="banner"><span class="journal-image-mat"><img src="${assetRoot}study-journal-banner.webp" loading="lazy" decoding="async" alt=""></span><span class="journal-example-title">上图下记</span></button></li>
-            <li><button type="button" class="journal-example" data-journal-layout="column"><span class="journal-image-mat"><img src="${assetRoot}study-journal-column.webp" loading="lazy" decoding="async" alt=""></span><span class="journal-example-title">纵向主景</span></button></li>
-            <li><button type="button" class="journal-example" data-journal-layout="drift"><span class="journal-image-mat"><img src="${assetRoot}study-journal-drift.webp" loading="lazy" decoding="async" alt=""></span><span class="journal-example-title">错落散页</span></button></li>
+            <li><button type="button" class="journal-example" data-journal-layout="banner"><span class="journal-image-mat"><img data-src="${assetRoot}study-journal-banner.webp" loading="lazy" decoding="async" alt=""></span><span class="journal-example-title">上图下记</span></button></li>
+            <li><button type="button" class="journal-example" data-journal-layout="column"><span class="journal-image-mat"><img data-src="${assetRoot}study-journal-column.webp" loading="lazy" decoding="async" alt=""></span><span class="journal-example-title">纵向主景</span></button></li>
+            <li><button type="button" class="journal-example" data-journal-layout="drift"><span class="journal-image-mat"><img data-src="${assetRoot}study-journal-drift.webp" loading="lazy" decoding="async" alt=""></span><span class="journal-example-title">错落散页</span></button></li>
           </ul>
         </div>
       </div>
@@ -288,10 +210,10 @@ export function atelierMarkup(assetRoot) {
     </section>
     <section id="templates" class="editorial template-library" aria-labelledby="template-title">
       <div class="section-intro">
-        <div><h2 id="template-title">构图模板</h2></div>
+        <div><h2 id="template-title" tabindex="-1">构图模板</h2></div>
         <p>选择模板开始构图。想换一张图时，在画布里选中对应图层，再点「替换图片」。</p>
       </div>
-      <div id="template-groups" class="template-groups"></div>
+      <div id="template-groups" class="template-groups"><p class="status" role="status">正在准备构图模板…</p></div>
       <template id="montage-composer-template">
         <form id="montage-rules" class="montage-rules" aria-labelledby="montage-title">
           <header>
@@ -309,22 +231,23 @@ export function atelierMarkup(assetRoot) {
           <div class="montage-input">
             <label><input type="checkbox" name="uploads" disabled> 用素材盘里的上传图片做主体</label>
             <span id="montage-materials" role="status"></span>
-            <a class="text-button" href="#cutouts">添加素材</a>
+            <button type="button" class="text-button" id="montage-cutouts">取用抠图素材</button>
           </div>
           <button class="button primary" type="submit">生成可编辑拼贴</button>
         </form>
       </template>
     </section>
+    <details class="atelier-reference"><summary>灵感图鉴与构图手册</summary>
     <section id="archive" class="editorial" aria-labelledby="archive-title">
       <div class="section-intro">
-        <div><p class="eyebrow"><span class="asterisk" aria-hidden="true">✳</span> VISUAL ARCHIVE</p><h2 id="archive-title">灵感图鉴</h2></div>
+        <div><h2 id="archive-title">灵感图鉴</h2></div>
         <p>沿着四件作品，看图像如何被剪开、排列，再获得新的含义。</p>
       </div>
       <div class="reference-grid" id="references"></div>
     </section>
     <section id="handbook" class="editorial" aria-labelledby="handbook-title">
       <div class="section-intro">
-        <div><p class="eyebrow"><span class="asterisk" aria-hidden="true">✳</span> COMPOSITION NOTES</p><h2 id="handbook-title">构图手册</h2></div>
+        <div><h2 id="handbook-title">构图手册</h2></div>
         <p>每条规则都可以在工作台里试一遍，也可以从样片开始逐层改写。</p>
       </div>
       <div class="rule-list" id="rules"></div>
@@ -341,6 +264,7 @@ export function atelierMarkup(assetRoot) {
         </div>
       </div>
     </section>
+    </details>
   </main>
 
   <dialog id="export-dialog">

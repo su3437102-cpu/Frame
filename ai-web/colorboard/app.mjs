@@ -15,7 +15,7 @@ import {
 } from './look-library.mjs';
 import { fromBase64, packLut, packProject, toBase64, unpackLut, unpackProject } from './framelab-project.mjs';
 
-export function mountColorBoard(root, { source = '', name = '', theme = 'light', project, legacyPreview, onSave, onClose, onCollage, signal } = {}) {
+export function mountColorBoard(root, { source = '', name = '', theme = 'light', project, legacyPreview, onSave, onClose, onCollage, onCutout, signal } = {}) {
   const document = root.ownerDocument;
   const window = document.defaultView;
   const host = root.host;
@@ -2138,6 +2138,8 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     save.disabled = locked || !state.photo || Boolean(state.aiRun) || state.lutPending;
     $('main').inert = locked;
     save.querySelector('span').textContent = frameLab.saving ? '正在保存…' : '保存到画布';
+    el('framelab-collage').disabled = locked;
+    el('framelab-cutout').disabled = locked;
     el('open-file').disabled = locked;
     el('extract-look-header').disabled = locked;
     el('export-open').disabled = locked || !state.photo;
@@ -2421,6 +2423,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   setTheme(theme);
   el('framelab-save').addEventListener('click', saveFrameLabPhoto, listenerOptions);
   el('framelab-collage').addEventListener('click', onCollage, listenerOptions);
+  el('framelab-cutout').addEventListener('click', onCutout, listenerOptions);
   el('framelab-back').addEventListener('click', () => {
     if (frameLab.saving || (frameLab.dirty && !window.confirm('当前调整尚未保存，确定要离开吗？'))) return;
     onClose();
@@ -2435,5 +2438,5 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     ctx.putImageData(render(ctx.getImageData(0, 0, canvas.width, canvas.height)), 0, 0);
     return {name:state.photo.name, blob:await frameCanvasBlob(canvas, 'image/webp', .94)};
   }
-  return { ready, dispose, setTheme, photoForCollage, isDirty:() => frameLab.dirty };
+  return { ready, dispose, setTheme, photoForCollage, hasPhoto:() => Boolean(state.photo), isDirty:() => frameLab.dirty };
 }

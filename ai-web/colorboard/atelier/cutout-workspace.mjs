@@ -1,5 +1,5 @@
 import { MaterialCache } from './material-cache.mjs';
-export function mountCutoutWorkspace({CutoutUI, CutoutEngine, CollageStudio, signal}) {
+export function mountCutoutWorkspace({CutoutUI, CutoutEngine, sendMaterials, signal}) {
   const records = new Map();
   const previews = new Map();
   const jobs = new Map();
@@ -7,6 +7,7 @@ export function mountCutoutWorkspace({CutoutUI, CutoutEngine, CollageStudio, sig
   const temporary = new Set();
   const maxFileSize = 32 * 1024 * 1024;
   const maxBatch = 12;
+  const materialLimit = 16;
   let queue = Promise.resolve();
   let directory = {supported: typeof window.showDirectoryPicker === 'function', status: 'idle'};
   let directoryBusy = false;
@@ -100,12 +101,11 @@ export function mountCutoutWorkspace({CutoutUI, CutoutEngine, CollageStudio, sig
     }
   }
 
-  function upload(files, {reveal = false} = {}) {
+  function upload(files) {
     const list = Array.from(files);
     if (!list.length) return;
-    if (reveal) ui.open();
     const batch = list.slice(0, maxBatch);
-    queue = queue.then(async () => {
+    return queue = queue.then(async () => {
       await initialized;
       const sources = [];
       for (const file of batch) {
@@ -184,7 +184,7 @@ export function mountCutoutWorkspace({CutoutUI, CutoutEngine, CollageStudio, sig
 
   function addSelection(id) {
     if (records.get(id)?.kind !== 'cutout' || selected.has(id)) return true;
-    if (selected.size >= CollageStudio.materialLimit) return false;
+    if (selected.size >= materialLimit) return false;
     selected.add(id);
     return true;
   }
@@ -192,7 +192,7 @@ export function mountCutoutWorkspace({CutoutUI, CutoutEngine, CollageStudio, sig
   function selectAll(ids) {
     for (const id of ids) {
       if (!addSelection(id)) {
-        ui.notice('一次最多可用 ' + CollageStudio.materialLimit + ' 张素材进行拼贴。');
+        ui.notice('一次最多可用 ' + materialLimit + ' 张素材进行拼贴。');
         break;
       }
     }
@@ -214,7 +214,7 @@ export function mountCutoutWorkspace({CutoutUI, CutoutEngine, CollageStudio, sig
     composing = true;
     render();
     try {
-      const count = await CollageStudio.useMaterials(materials, {append});
+      const count = await sendMaterials(materials, {append});
       ui.notice(append ? '已添加 ' + count + ' 张素材到当前画布。' : '已根据选中的素材生成拼贴。');
     } catch (error) {
       ui.notice(error.message || '这组素材暂时无法加入画布。');

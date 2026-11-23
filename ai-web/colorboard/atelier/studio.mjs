@@ -9,7 +9,7 @@ import { BrushArt } from './brush.mjs';
 import { packProject, unpackProject } from '../framelab-project.mjs';
 import { canvasBlob, serializeMaterial, deserializeMaterial } from './project-materials.mjs';
 
-export function mountStudio({root, showSection, assetRoot, TemplateGallery, upload, signal, source, project, onSave}) {
+export function mountStudio({root, revealStudio, assetRoot, signal, source, project, onSave, loadJournalFonts}) {
   const $ = id => root.getElementById(id);
   const stage = $('stage');
   const canvas = $('canvas');
@@ -104,6 +104,7 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
 
   function showTab(tab, focus = false) {
     activeTab = tab;
+    if (tab === 'compose') mountStyles();
     for (const name of ['compose', 'layers']) {
       const active = tab === name;
       const button = $('tab-' + name);
@@ -170,7 +171,9 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
   }
 
   function setMontageControls(settings = {...MontageArt.defaults,theme:state.style,shape:state.style}) {
-    const controls = $('montage-rules').elements;
+    const form = $('montage-rules');
+    if (!form) return;
+    const controls = form.elements;
     for (const key of Object.keys(MontageArt.choices)) controls.namedItem(key).value = settings[key];
     controls.namedItem('uploads').checked = Boolean(settings.useUploads);
   }
@@ -185,7 +188,7 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
   }
 
   function showStudio() {
-    showSection('studio');
+    revealStudio();
   }
 
   function applyDesign(id, remix = false, templateExample = false) {
@@ -290,7 +293,7 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
       const button = makeButton('', 'material-item', () => addMaterial(asset));
       button.setAttribute('aria-label', '贴上' + asset.name);
       button.title = '贴上' + asset.name;
-      button.append(imageElement(asset.src));
+      button.append(imageElement(asset.preview || asset.src));
       if (!asset.uploaded) {
         list.append(button);
         continue;
@@ -411,8 +414,8 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
     const [w, h] = Renderer.sizes[state.aspect];
     if (!currentLayer()) selectedId = null;
     $('work-title').textContent = state.montage ? '规则拼贴' : state.example || state.journal ? design.title : '我的拼贴';
-    $('work-subtitle').textContent = state.example ? (design.group ? '可编辑模板' : '工作室示例') : design.name;
-    templateGallery.setActive(state.style);
+    $('work-subtitle').textContent = state.example ? (design.group ? '可编辑模板' : '工作室示例') : w + ' × ' + h + ' px';
+    templateGallery?.setActive(state.style);
     $('style-note').textContent = design.action;
     $('variation').value = state.variation;
     $('variation-value').value = String(state.variation) + '%';
@@ -423,20 +426,27 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
       button.setAttribute('aria-pressed', String(button.dataset.id === state.style));
     });
     stage.style.setProperty('--art-ratio', w + ' / ' + h);
-    stage.style.setProperty('--max-art', Math.min(680, Math.max(150, stage.clientHeight - 46) * w / h) + 'px');
+    stage.style.setProperty('--max-art', Math.min(960, Math.max(150, stage.clientHeight - 46) * w / h) + 'px');
     renderLayerPanel();
     renderMaterials();
-    const reuse = $('montage-rules').elements.namedItem('uploads');
-    reuse.disabled = state.uploads.length === 0;
-    if (reuse.disabled) reuse.checked = false;
-    $('montage-materials').textContent = state.uploads.length ? '可用 ' + state.uploads.length + ' 张' : '默认用内置示例';
+    syncMontageMaterials();
     syncJournalControls();
     enqueuePaint();
     const pending = state.layers.map(layer => layer.asset).filter(id => images.has(id) && !images.get(id).image);
     if (pending.length) void loadAssets(pending).then(enqueuePaint);
   }
 
-  function buildEditorial() {
+  function syncMontageMaterials() {
+    const form = $('montage-rules');
+    if (!form) return;
+    const reuse = form.elements.namedItem('uploads');
+    reuse.disabled = state.uploads.length === 0;
+    if (reuse.disabled) reuse.checked = false;
+    $('montage-materials').textContent = state.uploads.length ? '可用 ' + state.uploads.length + ' 张' : '默认用内置示例';
+  }
+
+  function mountStyles() {
+    if ($('styles').childElementCount) return;
     for (const design of Collage.designs) {
       const card = makeButton('', 'style-card', () => applyDesign(design.id));
       card.dataset.id = design.id;
@@ -448,8 +458,14 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
       const check = svg('check');
       check.classList.add('style-check');
       card.append(art, caption, check);
+      card.setAttribute('aria-pressed', String(design.id === state.style));
       $('styles').append(card);
+    }
+  }
 
+  function mountReferences() {
+    if ($('references').childElementCount) return;
+    for (const design of Collage.designs) {
       const ref = document.createElement('article');
       ref.className = 'reference-card';
       const full = makeLink('', design.source);
@@ -572,7 +588,7 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
       selectedId = null;
       showTab('compose');
     }, append ? '已将 ' + ids.length + ' 张素材添加到画布。' : '已用选中的 ' + ids.length + ' 张素材生成拼贴。');
-    showSection('studio');
+    revealStudio();
     return ids.length;
   }
 
@@ -655,7 +671,7 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
   }
 
   function openStudio() {
-    showSection('studio');
+    revealStudio();
   }
 
   function updateLayer(layer, key, value) {
@@ -700,6 +716,7 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
       selectedId = null;
       showTab('layers');
     }, '点击虚线文字框修改文案，或在图层面板替换照片、印纹和字体。');
+    void loadJournalFonts().then(enqueuePaint);
     setJournalStatus((example ? '样例' : '已排版 ' + ids.length + ' 张照片') + ' · ' + JournalArt.labels[plan.profile]);
     if (reveal) openStudio();
   }
@@ -776,16 +793,32 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
       showTab('layers');
     });
     if (group === 'type') {
+      void loadJournalFonts().then(enqueuePaint);
       $('layer-text').focus();
       $('layer-text').select();
     }
   }
 
-  function queueFiles(files) {
-    if (files.length) upload(files, {reveal: true});
+  async function queueFiles(files) {
+    const selectedFiles = Array.from(files);
+    if (!selectedFiles.length) return;
+    if (selectedFiles.some(file => (file.type && !file.type.startsWith('image/')) || !file.size || file.size > 32 * 1024 * 1024)) {
+      notice('请选择 32 MB 以内的图片。');
+      return;
+    }
+    const records = selectedFiles.map(file => ({
+      id:crypto.randomUUID(), name:file.name, kind:'source', blob:file
+    }));
+    try {
+      await useMaterials(records, {append:true});
+    } catch (error) {
+      if (!signal.aborted) notice(error.message || '无法导入这组照片。');
+    }
   }
 
-
+  function hasJournalType(layers) {
+    return layers.some(layer => layer.kind === 'type');
+  }
 
   function arrangeLayer(step) {
     const current = currentLayer();
@@ -1268,6 +1301,7 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
     const type = $('file-format').value;
     try {
       const output = document.createElement('canvas');
+      if (hasJournalType(state.layers)) await loadJournalFonts();
       await loadAssets(state.layers.map(layer => layer.asset));
       Renderer.paint(output, state, images, {ratio: Number($('resolution').value)});
       const blob = await new Promise(resolve => output.toBlob(resolve, type === 'png' ? 'image/png' : 'image/jpeg', .94));
@@ -1288,35 +1322,43 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
     }
   }
 
-  buildEditorial();
-  templateGallery = TemplateGallery.create({
-    groups: CollageTemplates.groups, designs: CollageTemplates.designs,
-    async onApply(id) {
+  function mountTemplates(TemplateGallery) {
+    templateGallery = TemplateGallery.create({
+      groups: CollageTemplates.groups, designs: CollageTemplates.designs,
+      async onApply(id) {
+        if (!ready) await loaded;
+        applyDesign(id, false, true);
+        showTab('layers');
+        showStudio();
+      }
+    });
+    const montageForm = $('montage-rules');
+    for (const [key,choices] of Object.entries(MontageArt.choices)) {
+      montageForm.elements.namedItem(key).append(...choices.map(([id,label])=>new Option(label,id)));
+    }
+    setMontageControls(state.montage || (styleById.get(state.style).group === 'montage'
+      ? {...MontageArt.defaults, theme:state.style, shape:state.style} : MontageArt.defaults));
+    templateGallery.setActive(state.style);
+    syncMontageMaterials();
+    montageForm.addEventListener('submit',async event => {
+      event.preventDefault();
       if (!ready) await loaded;
-      applyDesign(id, false, true);
+      await loadAssets(CollageTemplates.library.map(asset => asset.id));
+      if (signal.aborted) return;
+      const settings = Object.fromEntries(Object.keys(MontageArt.choices).map(key=>[key,montageForm.elements.namedItem(key).value]));
+      settings.useUploads = montageForm.elements.namedItem('uploads').checked;
+      edit(()=>composeMontage(settings),'已按所选规则生成，可在图层面板继续调整。');
       showTab('layers');
       showStudio();
-    }
-  });
-  const montageForm = $('montage-rules');
-  for (const [key,choices] of Object.entries(MontageArt.choices)) {
-    montageForm.elements.namedItem(key).append(...choices.map(([id,label])=>new Option(label,id)));
+    });
   }
-  setMontageControls(MontageArt.defaults);
-  montageForm.addEventListener('submit',async event => {
-    event.preventDefault();
-    if (!ready) await loaded;
-    await loadAssets(CollageTemplates.library.map(asset => asset.id));
-    if (signal.aborted) return;
-    const settings = Object.fromEntries(Object.keys(MontageArt.choices).map(key=>[key,montageForm.elements.namedItem(key).value]));
-    settings.useUploads = montageForm.elements.namedItem('uploads').checked;
-    edit(()=>composeMontage(settings),'已按所选规则生成，可在图层面板继续调整。');
-    showTab('layers');
-    showStudio();
-  });
-  document.fonts?.load('400 44px "Template Brush"', '山野手记去有风的地方').then(enqueuePaint).catch(() => {});
-  document.fonts?.load('600 36px "Journal Hand"', 'Letters from the hills').then(enqueuePaint).catch(() => {});
-  for (const asset of library) images.set(asset.id, {...asset, src: assetRoot + asset.file});
+
+  const trayIds = new Set(Collage.library.map(asset => asset.id));
+  for (const asset of library) {
+    images.set(asset.id, {...asset, src:assetRoot + asset.file,
+      preview:trayIds.has(asset.id) ? assetRoot + 'tray/' + asset.file : undefined});
+  }
+
   function loadAssets(ids) {
     return Promise.allSettled([...new Set(ids)].map(id => {
       const asset = images.get(id);
@@ -1335,15 +1377,22 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
   const loaded = (async () => {
     let problem;
     try {
-      if (project) await restoreProject(project);
+      if (project) {
+        await restoreProject(project);
+        if (hasJournalType(state.layers)) await loadJournalFonts();
+      }
       else if (source?.blob) {
         const asset = await prepareMaterial({id:'framelab-input', name:source.name || '画布照片', kind:'source', blob:source.blob});
-        state.layers = [Collage.photo(asset, 600, 400, 1200, 800, {fit:'contain', mask:'rect'})];
+        const ratio = asset.image.naturalWidth / asset.image.naturalHeight;
+        const distance = ([, [w, h]]) => Math.abs(Math.log(ratio * h / w));
+        state.aspect = Object.entries(Renderer.sizes).sort((a, b) => distance(a) - distance(b))[0][0];
+        const [width, height] = Renderer.sizes[state.aspect];
+        const scale = Math.min(width / 1200, height / 800);
+        state.layers = [Collage.photo(asset, 600, 400, width / scale, height / scale, {fit:'contain', mask:'rect'})];
         state.uploads = [asset.id];
         state.example = false;
         state.flat = true;
         state.bg = '#f2f1ed';
-        selectedId = state.layers[0].id;
         showTab('layers');
       }
     } catch (error) {
@@ -1355,7 +1404,7 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
     ready = true;
     savedState = JSON.stringify(state);
     render();
-    $('poster-fallback').hidden = true;
+    if (activeTab === 'compose') mountStyles();
     $('atelier-save').disabled = false;
     if (problem) notice(problem);
     else if (results.some(item => item.status === 'rejected')) notice('有素材暂时加载失败，可重试打开这项素材。');
@@ -1507,7 +1556,9 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
   });
   $('journal-font').addEventListener('change', event => {
     const layer = currentLayer();
-    if (layer?.kind === 'type') edit(() => { updateLayer(layer, 'font', event.target.value); });
+    if (layer?.kind !== 'type') return;
+    edit(() => { updateLayer(layer, 'font', event.target.value); });
+    void loadJournalFonts().then(enqueuePaint);
   });
 
   canvas.addEventListener('dblclick', event => {
@@ -1549,7 +1600,7 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
   });
   const resizeObserver = new ResizeObserver(() => {
     const [w, h] = Renderer.sizes[state.aspect];
-    stage.style.setProperty('--max-art', Math.min(680, Math.max(150, stage.clientHeight - 46) * w / h) + 'px');
+    stage.style.setProperty('--max-art', Math.min(960, Math.max(150, stage.clientHeight - 46) * w / h) + 'px');
     enqueuePaint();
   });
   resizeObserver.observe(stage);
@@ -1648,14 +1699,15 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
     const button = $('atelier-save');
     button.disabled = true;
     const page = root.querySelector('.page');
-    const menu = root.querySelector('.atelier-nav');
-    page.inert = menu.inert = true;
-    $('atelier-back').disabled = $('atelier-grade').disabled = true;
+    page.inert = true;
+    const actions = ['atelier-back', 'atelier-grade', 'export'].map($);
+    for (const action of actions) action.disabled = true;
     try {
       finishFilter();
       const snapshot = JSON.stringify(state);
       const {layers, ...draft} = JSON.parse(snapshot);
       const used = [...new Set([...draft.uploads, ...layers.map(layer => layer.asset)])];
+      if (hasJournalType(layers)) await loadJournalFonts();
       await loadAssets(used);
       signal.throwIfAborted();
       const materials = await Promise.all(used.map(id => images.get(id)).filter(asset => asset?.uploaded).map(serializeMaterial));
@@ -1672,8 +1724,8 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
     } finally {
       saving = false;
       button.disabled = false;
-      page.inert = menu.inert = false;
-      $('atelier-back').disabled = $('atelier-grade').disabled = false;
+      page.inert = false;
+      for (const action of actions) action.disabled = false;
     }
   }
 
@@ -1687,7 +1739,8 @@ export function mountStudio({root, showSection, assetRoot, TemplateGallery, uplo
   return {
     ready:loaded,
     useMaterials,
-    materialLimit:MAX_UPLOADS,
+    mountTemplates,
+    mountReferences,
     isDirty:() => ready && savedState !== JSON.stringify(state),
     isSaving:() => saving
   };

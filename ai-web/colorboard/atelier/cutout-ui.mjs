@@ -1,4 +1,4 @@
-export function createCutoutUI(root, showSection) {
+export function createCutoutUI(root) {
   const get = id => root.getElementById('cutout-' + id);
   const namespace = 'http://www.w3.org/2000/svg';
 
@@ -78,11 +78,6 @@ export function createCutoutUI(root, showSection) {
       noticeText.hidden = !text;
       noticeText.textContent = text || '';
     };
-
-    function open() {
-      showSection('cutouts');
-      get('title').focus({preventScroll: true});
-    }
 
     function handleFiles(files) {
       if (files.length) handlers.upload(files);
@@ -292,7 +287,7 @@ export function createCutoutUI(root, showSection) {
       renderDirectory(directory);
     }
 
-    return {render, notice, open};
+    return {render, notice};
   }
 
   return {create};
