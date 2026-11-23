@@ -316,64 +316,29 @@ export const JournalMarks = (() => {
     });
   }
 
-  function traceContour(sink, x, y, step, corners, level) {
-    const [a,b,c,d] = corners;
-    const highA = a > level, highB = b > level, highC = c > level, highD = d > level;
-    if (highA === highB && highB === highC && highC === highD) return;
-    const crossings = [];
-    if (highA !== highB) crossings.push([x+step*(level-a)/(b-a),y]);
-    if (highB !== highC) crossings.push([x+step,y+step*(level-b)/(c-b)]);
-    if (highC !== highD) crossings.push([x+step*(level-d)/(c-d),y+step]);
-    if (highD !== highA) crossings.push([x,y+step*(level-a)/(d-a)]);
-    const segment = (start,end) => {
-      sink.moveTo(...crossings[start]);
-      sink.lineTo(...crossings[end]);
-    };
-    if (crossings.length === 2) {
-      segment(0,1);
-    } else {
-      // At an ambiguous cell, connect the regions separated by the interpolated saddle.
-      const split = (a-level)*(c-level) > (b-level)*(d-level);
-      segment(0,split ? 1 : 3);
-      segment(2,split ? 3 : 1);
-    }
-  }
-
   function contours(ctx, w, h, rng, bounds) {
-    const phase = rng()*Math.PI*2;
-    const [left,top,right,bottom] = bounds;
-    const step = 7;
-    const start = Math.floor(left/step)*step, end = Math.ceil(right/step)*step;
-    const first = Math.floor(top/step)*step, last = Math.ceil(bottom/step)*step;
-    const levels = [-.83,-.65,-.47,-.30,-.14,.14,.30,.47,.65,.83];
-    const bands = new Path2D(), valleys = new Path2D();
-    const sample = (x,y) => {
-      const ridge = Math.sin((x-43+17*Math.sin(y/42+phase)+9*Math.sin((x+y)/55))/36);
-      const fold = Math.sin((y-24+18*Math.sin(x/68+phase*.65)+9*Math.sin((x-y)/39))/28);
-      return [ridge*fold*(.84+.16*Math.sin(x/100-y/85+phase)),ridge,fold];
-    };
-    const row = y => Array.from({length: (end-start)/step+1}, (_,i) => sample(start+i*step,y));
-    let above = row(first);
-    for (let y = first; y < last; y += step) {
-      const below = row(y+step);
-      for (let i = 0; i < above.length-1; i++) {
-        const x = start+i*step;
-        const corners = [above[i],above[i+1],below[i+1],below[i]];
-        const heights = corners.map(point=>point[0]);
-        const min = Math.min(...heights), max = Math.max(...heights);
-        for (const level of levels) {
-          if (level > min && level <= max) traceContour(bands,x,y,step,heights,level);
-        }
-        // Both factors are zero at a saddle, so the zero contour can genuinely cross.
-        traceContour(valleys,x,y,step,corners.map(point=>point[1]),0);
-        traceContour(valleys,x,y,step,corners.map(point=>point[2]),0);
-      }
-      above = below;
+    const phase=rng()*Math.PI;
+    const warp=rng()*Math.PI*2;
+    const [left,top,right,bottom]=bounds;
+    const pitch=8;
+    const start=Math.max(0,left-6), end=Math.min(w,right+6);
+    const steps=Math.max(1,Math.min(880,Math.ceil((end-start)/4)));
+    const first=Math.max(-5,Math.floor(top/pitch)-6);
+    const last=Math.min(Math.ceil(h/pitch)+5,Math.ceil(bottom/pitch)+6);
+    ctx.lineWidth=.75;
+    ctx.lineCap='round';
+    for (let row=first,i=0;row<last&&i<350;row++,i++) {
+      const points=Array.from({length:steps+1},(_,index)=>{
+        const x=start+(end-start)*index/steps;
+        const shifted=x+13*Math.sin(row*.044+x/52+warp);
+        const y=(row+.5)*pitch+12*Math.sin(shifted/25+row*.088+phase)
+          +3.5*Math.sin(shifted/10.5-row*.070+phase*.71)
+          +6*Math.sin(x/69+row*.18+warp)
+          +2*Math.sin(x/17+row*.28-warp);
+        return [x,y];
+      });
+      alpha(ctx,row%4?.43:.59,()=>line(ctx,points));
     }
-    ctx.lineWidth = .76;
-    alpha(ctx,.59,()=>ctx.stroke(bands));
-    ctx.lineWidth = .96;
-    alpha(ctx,.75,()=>ctx.stroke(valleys));
   }
 
   function notes(ctx, w, h, rng) {
@@ -419,23 +384,6 @@ export const JournalMarks = (() => {
         ctx.lineTo(right,y);
       }
       ctx.stroke();
-    });
-
-    const bandHeight = pitch*4, period = 7;
-    const first = Math.max(0,Math.floor(left/pitch)-1);
-    const last = Math.ceil(right/pitch)+1;
-    const steps = Array.from({length:period},(_,i)=>Math.sin(i/period*2*Math.PI)*pitch*.94+(rng()-.5)*pitch*.55);
-    ctx.lineWidth = 1.08;
-    alpha(ctx,.55,()=>{
-      const start = Math.max(0,Math.floor(top/bandHeight)*bandHeight);
-      for (let y = start; y < bottom; y+=bandHeight) {
-        const points = Array.from({length:last-first+1},(_,i)=>{
-          const column = first+i;
-          return [column*pitch,y+bandHeight/2+steps[column%period]];
-        });
-        line(ctx,points);
-        for (const [x,py] of points) dot(ctx,x,py,1.45);
-      }
     });
   }
 
