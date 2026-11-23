@@ -249,7 +249,17 @@
   border-radius: 4px;
 }
 
-.text-curve-row {
+#text-row {
+  display: grid;
+  gap: 6px;
+}
+
+#text-row #layer-text {
+  width: 100%;
+  resize: vertical;
+}
+
+.text-path-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -257,53 +267,10 @@
   margin: 8px 0;
 }
 
-.text-curve-field label {
-  font-size: .8125rem;
-  font-weight: 700;
-}
-
-.text-curve-field input[type="range"] {
-  margin: 2px 0 0;
-}
-
 #text-path-edit[aria-pressed="true"] {
   border-color: #5480b2;
   background: #e9f1fb;
   color: #234c7c;
-}
-
-.text-path-handle {
-  z-index: 2;
-  cursor: grab;
-}
-
-.text-path-handle:active {
-  cursor: grabbing;
-}
-
-.text-path-handle::before {
-  inset: 15px;
-  border: 2px solid #245c9d;
-  background: #fffefa;
-  box-shadow: 0 0 0 1px #fffefa, 0 2px 4px #18344f60;
-}
-
-.text-path-control::before {
-  inset: 15.5px;
-  transform: rotate(45deg);
-  border-radius: 3px;
-  background: #245c9d;
-}
-
-.text-path-handle:hover::before,
-.text-path-handle:focus-visible::before {
-  border-color: #245c9d;
-  background: #e3f0ff;
-}
-
-.text-path-control:hover::before,
-.text-path-control:focus-visible::before {
-  background: #3a79bd;
 }
 
 #layer-list li:has(.layer-reorder-grip) {

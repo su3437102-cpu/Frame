@@ -146,21 +146,66 @@ export const Renderer = (() => {
     return [{x:left,y:bump/2}, {x:left+span/2,y:-1.5*bump}, {x:left+span,y:bump/2}];
   }
 
-  function textPathControls(ctx, layer, w, h) {
-    const lines = layer.text.split('\n');
-    const lineHeight = h / lines.length;
-    const baseline = -h/2 + .55*lineHeight;
-    ctx.save();
-    const stretch = textFont(ctx, layer, lineHeight);
-    const path = layer.curvePath || defaultPath(ctx,layer,lines[0],w,stretch);
-    ctx.restore();
-    return {path, lineHeight, baseline, points:path.map(point=>[point.x*w, baseline+point.y*lineHeight])};
+  function smoothPath(points) {
+    const samples = [points[0]];
+    let start = points[0];
+    for (let i = 1; i < points.length - 1; i++) {
+      const [cx, cy] = points[i];
+      const [nx, ny] = points[i+1];
+      const end = [(cx+nx)/2, (cy+ny)/2];
+      for (let step = 1; step <= 5; step++) {
+        const t = step/5, u = 1-t;
+        samples.push([u*u*start[0]+2*u*t*cx+t*t*end[0], u*u*start[1]+2*u*t*cy+t*t*end[1]]);
+      }
+      start = end;
+    }
+    samples.push(points.at(-1));
+    return samples;
   }
 
+  function drawPathText(ctx, layer, w, h) {
+    const points = smoothPath(layer.textPath.map(([x,y]) => [x*w, y*h]));
+    const samples = [{x:points[0][0], y:points[0][1], length:0}];
+    for (const [x,y] of points.slice(1)) {
+      const previous = samples.at(-1);
+      const step = Math.hypot(x-previous.x,y-previous.y);
+      if (step > .0001) samples.push({x,y,length:previous.length+step});
+    }
+    if (samples.length < 2) return;
+    const line = layer.text.replace(/\s*\n\s*/g, ' ');
+    const glyphs = segmenter ? Array.from(segmenter.segment(line), item => item.segment) : Array.from(line);
+    const length = samples.at(-1).length;
+    const lineHeight = h*layer.pathTextHeight;
+    textFont(ctx, layer, lineHeight);
+    const natural = ctx.measureText(line).width;
+    if (natural > length) textFont(ctx, layer, lineHeight*length/natural);
+    const advances = glyphs.map(glyph => ctx.measureText(glyph).width);
+    const total = advances.reduce((sum,value) => sum+value, 0);
+    const scale = total ? Math.min(1,length/total) : 1;
+    let offset = layer.align === 'left' ? 0 : layer.align === 'right' ? length-total*scale : (length-total*scale)/2;
+    let index = 1;
+    ctx.textAlign = 'center';
+    for (const [i,glyph] of glyphs.entries()) {
+      const width = advances[i]*scale;
+      const at = offset+width/2;
+      while (index+1 < samples.length && samples[index].length < at) index++;
+      const before = samples[index-1], after = samples[index];
+      const step = (at-before.length)/(after.length-before.length);
+      ctx.save();
+      ctx.translate(before.x+(after.x-before.x)*step,before.y+(after.y-before.y)*step);
+      ctx.rotate(Math.atan2(after.y-before.y,after.x-before.x));
+      ctx.scale(scale,1);
+      ctx.fillText(glyph,0,0);
+      ctx.restore();
+      offset += width;
+    }
+  }
+
+  const segmenter = typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter(undefined, {granularity:'grapheme'}) : null;
+
   function drawCurvedLine(ctx, line, points, stretch) {
-    const glyphs = typeof Intl.Segmenter === 'function'
-      ? [...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(line)].map(item=>item.segment)
-      : Array.from(line);
+    const glyphs = segmenter ? Array.from(segmenter.segment(line), item => item.segment) : Array.from(line);
     const advances = glyphs.map(glyph=>ctx.measureText(glyph).width);
     const total = advances.reduce((sum,value)=>sum+value,0);
     if (!total) return;
@@ -208,6 +253,10 @@ export const Renderer = (() => {
     ctx.fillStyle = layer.color;
     ctx.textAlign = layer.align || 'center';
     ctx.textBaseline = 'middle';
+    if (layer.textPath?.length >= 2) {
+      drawPathText(ctx,layer,w,h);
+      return;
+    }
     lines.forEach((line, i) => {
       const baseline = -h/2+(i+.55)*lineHeight;
       ctx.save();
@@ -261,7 +310,7 @@ export const Renderer = (() => {
       if (layer.kind === 'photo') drawPhoto(ctx, images.get(layer.asset)?.image, layer, w, h);
       if (layer.kind === 'type') drawType(ctx, layer, w, h);
       if (layer.kind === 'mark') {
-        if (layer.markGroup === 'fill' && ['halftone','contours','code'].includes(layer.pattern)) {
+        if (layer.markGroup === 'fill' && ['halftone','contours','code','coordinates'].includes(layer.pattern)) {
           ctx.scale(1/sx,1/sy);
           JournalMarks.draw(ctx,layer,box.w,box.h,visiblePatternBounds(box,width,height));
         } else JournalMarks.draw(ctx, layer, w, h);
@@ -276,7 +325,7 @@ export const Renderer = (() => {
     ctx.restore();
   }
 
-  function paint(canvas, scene, images, {ratio = 1, region, selected, showTextBoxes = false, draft, drawSelection = true, showCurve = false} = {}) {
+  function paint(canvas, scene, images, {ratio = 1, region, selected, showTextBoxes = false, draft, drawSelection = true, pathDraft} = {}) {
     const [width, height] = dimensions(scene);
     const panelWidth = sizes[scene.aspect][0];
     const panelHeight = sizes[scene.aspect][1];
@@ -317,30 +366,19 @@ export const Renderer = (() => {
         ctx.restore();
       }
     }
-    if (showCurve && selected?.kind==='type' && !selected.hidden) {
-      const box=placement(selected,panelWidth,panelHeight);
-      if (validBox(box)) {
-        const {points}=textPathControls(ctx,selected,box.contentW,box.contentH);
-        const [start,control,end]=points.map(([x,y])=>[x*box.sx,y*box.sy]);
-        ctx.save();
-        ctx.translate(box.x,box.y);
-        ctx.rotate(box.angle);
-        ctx.strokeStyle='#1673bc';
-        ctx.lineWidth=1.5;
-        ctx.setLineDash([5,4]);
-        ctx.beginPath();
-        ctx.moveTo(...start);
-        ctx.quadraticCurveTo(...control,...end);
-        ctx.stroke();
-        ctx.strokeStyle='#1673bc80';
-        ctx.setLineDash([2,4]);
-        ctx.beginPath();
-        ctx.moveTo(...start);
-        ctx.lineTo(...control);
-        ctx.lineTo(...end);
-        ctx.stroke();
-        ctx.restore();
-      }
+    if (pathDraft?.length >= 2) {
+      const points = smoothPath(pathDraft);
+      ctx.save();
+      ctx.strokeStyle = '#1673bc';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.setLineDash([6,4]);
+      ctx.beginPath();
+      ctx.moveTo(...points[0]);
+      for (const point of points.slice(1)) ctx.lineTo(...point);
+      ctx.stroke();
+      ctx.restore();
     }
     if (drawSelection && selected && !selected.hidden) {
       const box = placement(selected, panelWidth, panelHeight);
@@ -387,5 +425,5 @@ export const Renderer = (() => {
     });
   }
 
-  return {sizes, grid, dimensions, regionBounds, placement, paint, hitTest, textPathControls};
+  return {sizes, grid, dimensions, regionBounds, placement, paint, hitTest};
 })();

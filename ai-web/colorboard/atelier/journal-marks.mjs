@@ -3,20 +3,16 @@ export const JournalMarks = (() => {
 
   const edge = [
     {id: 'tape', name: '半透撕边胶带'},
-    {id: 'pencil', name: '手绘划线'},
     {id: 'crop', name: '裁切角标'},
     {id: 'seam', name: '虚线缝迹'},
-    {id: 'corner', name: '折角纸屑'},
     {id: 'thread', name: '穿越棉线'}
   ];
 
   const fill = [
     {id: 'code', name: '字码碎片'},
     {id: 'contours', name: '等高线'},
-    {id: 'notes', name: '批注碎片'},
     {id: 'grid', name: '方格图线'},
     {id: 'halftone', name: '半调网点'},
-    {id: 'stamps', name: '档案印记'},
     {id: 'coordinates', name: '坐标刻度'}
   ];
 
@@ -55,8 +51,9 @@ export const JournalMarks = (() => {
     ctx.restore();
   }
 
-  function isTape(layer) {
-    return layer?.kind === 'mark' && layer.markGroup === 'edge' && layer.pattern === 'tape';
+  function canExtend(layer) {
+    return layer?.kind === 'mark' && layer.markGroup === 'edge' &&
+      (layer.pattern === 'tape' || layer.pattern === 'seam');
   }
 
   function tornEnd(width, thickness, rng, fromRight) {
@@ -183,19 +180,26 @@ export const JournalMarks = (() => {
   }
 
   function seam(ctx, w, h, rng) {
-    const count = Math.max(4, Math.min(24, Math.round(w / Math.max(h * .48, 8))));
-    const step = w * .88 / count;
+    const unit = Math.max(5, h * .42);
+    const start = Math.min(unit * .35, w * .08);
+    const end = w - start;
+    const phase = rng() * Math.PI;
+    const wave = x => h * (.50 + .17 * Math.sin(x / (unit * 2.7) + phase)
+      + .08 * Math.sin(x / (unit * .92) - phase));
     ctx.lineCap = 'round';
-    ctx.lineWidth = Math.max(.65, Math.min(h * .067, step * .20));
-    for (let i = 0; i < count; i++) {
-      const x = w * .055 + i * step;
-      const y = h * (.49 + Math.sin(i / count * 2.5) * .15 + (rng() - .5) * .14);
-      const length = h * (.1 + rng() * .19);
-      alpha(ctx, .58 + rng() * .34, () => {
-        line(ctx, [[x, y], [x + step * .58, y - length]]);
-        dot(ctx, x, y, ctx.lineWidth * .72);
-      });
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(.65, h * .049);
+    ctx.setLineDash([unit * .69, unit * .29]);
+    ctx.beginPath();
+    ctx.moveTo(start, wave(start));
+    const step = Math.max(unit * .45, (end - start) / 1200);
+    for (let x = start; x < end;) {
+      const next = Math.min(x + step,end);
+      const middle = (x + next) / 2;
+      ctx.quadraticCurveTo(middle, 2*wave(middle)-(wave(x)+wave(next))/2, next, wave(next));
+      x = next;
     }
+    ctx.stroke();
   }
 
   function corner(ctx, w, h, rng) {
@@ -248,7 +252,7 @@ export const JournalMarks = (() => {
   }
 
   function code(ctx, w, h, rng, bounds) {
-    const size=5.1;
+    const size=5.6;
     const columns=Math.floor(w/3.4);
     const rows=Math.floor(h/6.4);
     const seed=Math.floor(rng()*0xffffffff);
@@ -257,7 +261,7 @@ export const JournalMarks = (() => {
     const [left,top,right,bottom]=bounds;
     ctx.font=size+'px monospace';
     ctx.textBaseline='middle';
-    alpha(ctx,.32,()=>{
+    alpha(ctx,.77,()=>{
       const last=Math.min(rows,Math.ceil(bottom/6.4));
       const first=Math.max(0,Math.floor(top/6.4));
       for (let row=first,i=0;row<last&&i<360;row++,i++) {
@@ -280,19 +284,23 @@ export const JournalMarks = (() => {
 
   function contours(ctx, w, h, rng, bounds) {
     const phase=rng()*Math.PI;
+    const warp=rng()*Math.PI*2;
     const [left,top,right,bottom]=bounds;
     const pitch=8;
     const start=Math.max(0,left-6), end=Math.min(w,right+6);
     const steps=Math.max(1,Math.min(880,Math.ceil((end-start)/4)));
-    const first=Math.max(-2,Math.floor(top/pitch)-3);
-    const last=Math.min(Math.ceil(h/pitch)+2,Math.ceil(bottom/pitch)+3);
+    const first=Math.max(-5,Math.floor(top/pitch)-6);
+    const last=Math.min(Math.ceil(h/pitch)+5,Math.ceil(bottom/pitch)+6);
     ctx.lineWidth=.75;
     ctx.lineCap='round';
     for (let row=first,i=0;row<last&&i<350;row++,i++) {
       const points=Array.from({length:steps+1},(_,index)=>{
         const x=start+(end-start)*index/steps;
-        const y=(row+.5)*pitch+11*Math.sin(x/23+row*.08+phase)
-          +4*Math.sin(x/9.6-row*.065+phase*.71);
+        const shifted=x+13*Math.sin(row*.044+x/52+warp);
+        const y=(row+.5)*pitch+12*Math.sin(shifted/25+row*.088+phase)
+          +3.5*Math.sin(shifted/10.5-row*.070+phase*.71)
+          +6*Math.sin(x/69+row*.18+warp)
+          +2*Math.sin(x/17+row*.28-warp);
         return [x,y];
       });
       alpha(ctx,row%4?.43:.59,()=>line(ctx,points));
@@ -328,8 +336,8 @@ export const JournalMarks = (() => {
   }
 
   function grid(ctx, w, h, rng) {
-    const spacing = Math.max(5, Math.min(19, Math.min(w, h) * .123));
-    ctx.lineWidth = Math.max(.46, spacing * .053);
+    const spacing = Math.max(Math.min(w,h)*.123,w/300,h/300);
+    ctx.lineWidth = spacing * .053;
     const x0 = w * .05;
     const y0 = h * .05;
     const x1 = w * .95;
@@ -402,24 +410,28 @@ export const JournalMarks = (() => {
     }
   }
 
-  function coordinates(ctx, w, h, rng) {
-    const bands = Math.max(2, Math.min(5, Math.floor(h / 24)));
-    const ticks = Math.max(5, Math.min(21, Math.floor(w / 12)));
-    const labelSize = Math.min(10, h / bands * .29, w / 20);
-    ctx.lineWidth = Math.min(1.1, Math.max(.48, h * .01));
-    ctx.font = labelSize + 'px ui-monospace, monospace';
-    ctx.textAlign = 'center';
-    for (let band = 0; band < bands; band++) {
-      const y = h * (.19 + band * .65 / (bands - 1));
-      alpha(ctx, .40, () => line(ctx, [[w * .08, y], [w * .92, y]]));
-      alpha(ctx, .62, () => {
-        for (let tick = 0; tick < ticks; tick++) {
-          const x = w * (.08 + tick * .84 / (ticks - 1));
-          const strong = tick % 4 === 0;
-          line(ctx, [[x, y], [x, y + h / bands * (strong ? .24 : .12)]]);
-          if (strong && labelSize >= 4) {
-            ctx.fillText(String(12 + tick + band * 17 + Math.floor(rng() * 4)), x, y - labelSize * .40);
-          }
+  function coordinates(ctx, w, h, rng, bounds) {
+    const pitch=10, rowHeight=26, inset=12;
+    const [left,top,right,bottom]=bounds;
+    const ticks=Math.max(0,1+Math.floor((w-2*inset)/pitch));
+    if (!ticks) return;
+    const first=Math.max(0,Math.floor((left-inset)/pitch)-3);
+    const last=Math.min(ticks,Math.ceil((right-inset)/pitch)+3,first+780);
+    const firstRow=Math.max(0,Math.floor(top/rowHeight)-1);
+    const lastRow=Math.min(Math.floor(h/rowHeight),Math.ceil(bottom/rowHeight)+1,firstRow+360);
+    ctx.lineWidth=.85;
+    ctx.font='8px ui-monospace, monospace';
+    ctx.textAlign='center';
+    for (let row=firstRow; row<lastRow; row++) {
+      const y=row*rowHeight+14;
+      alpha(ctx,.45,()=>line(ctx,[[inset,y],[Math.max(inset,w-inset),y]]));
+      alpha(ctx,.80,()=>{
+        for (let tick=first; tick<last; tick++) {
+          const number=row*ticks+tick;
+          const x=inset+tick*pitch;
+          const major=number%5===0;
+          line(ctx,[[x,y],[x,y+(major ? 8 : 4)]]);
+          if (major) ctx.fillText(String(number),x,y-3);
         }
       });
     }
@@ -442,5 +454,5 @@ export const JournalMarks = (() => {
     ctx.restore();
   }
 
-  return Object.freeze({edge, fill, draw, isTape});
+  return Object.freeze({edge, fill, draw, canExtend});
 })();

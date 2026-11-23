@@ -135,8 +135,8 @@ export const JournalArt = (() => {
     return {...origin,kind:'mark',markGroup:group,pattern:style.id,seed,opacity,journalRole:role};
   }
 
-  function letter(text,font,rect,color,role) {
-    return Collage.label(text,color,...box(rect),0,{font,align:'left',journalRole:role});
+  function letter(text,rect,color,role) {
+    return Collage.label(text,color,...box(rect),0,{font:'zh-brush',align:'left',journalRole:role});
   }
 
   function findPocket(used,sizes,anchor,preferOuter = false) {
@@ -160,11 +160,16 @@ export const JournalArt = (() => {
     return best;
   }
 
+  function cropSize(width,height) {
+    const size=Math.min(112,Math.max(28,Math.min(width,height)*.18));
+    return [size*1.24,size];
+  }
+
   function edgePlacement(rect,pattern,index,rng) {
     const [x,y,w,h]=rect;
-    const compact=pattern==='crop'||pattern==='corner';
-    const width=Math.min(compact ? .12 : .172, w*(compact?.53:.60));
-    const height=Math.min(compact ? .102 : .039, h*.61);
+    const compact=pattern==='crop';
+    const [width,height]=compact ? cropSize(w*1200,h*1600).map((value,i)=>value/[1200,1600][i])
+      : [Math.min(.172,w*.60), Math.min(.039,h*.61)];
     const swing=(rng()-.5)*14;
     switch (index%4) {
       case 0:return [[x+w*.15-width/2, y-height*.50, width,height], -9+swing];
@@ -217,23 +222,23 @@ export const JournalArt = (() => {
     const titleSpot=findPocket(used, [[.392,.083],[.320,.078],[.277,.068],[.209,.078]],recipe.title);
     if (titleSpot) {
       used.push(titleSpot);
-      typography.push(letter(title, 'zh-brush',titleSpot,ink,'text-main'));
+      typography.push(letter(title, titleSpot,ink,'text-main'));
     }
     const adjacent=titleSpot ? [titleSpot[0],titleSpot[1]+titleSpot[3]+.017] : recipe.title;
     const subtitleSpot=findPocket(used,[[.314,.046],[.262,.042],[.207,.043],[.170,.040]],adjacent);
     if (subtitleSpot) {
       used.push(subtitleSpot);
-      typography.push(letter('Letters from the hills','en-hand',subtitleSpot,secondary,'text-en'));
+      typography.push(letter('Letters from the hills',subtitleSpot,secondary,'text-en'));
     }
     const detailSpot=findPocket(used,[[.278,.082],[.238,.066],[.189,.066],[.148,.053]],recipe.detail);
     if (detailSpot) {
       used.push(detailSpot);
-      typography.push(letter('沿着溪水\n往山里走','zh-ink',detailSpot,ink,'text-note'));
+      typography.push(letter('沿着溪水\n往山里走',detailSpot,ink,'text-note'));
     }
     const last=findPocket(used,[[.267,.026],[.184,.027]], [.062,.917],true);
     if (last) {
       used.push(last);
-      typography.push(letter('FIELD NOTES  /  ON FOOT','en-mono',last,secondary,'text-meta'));
+      typography.push(letter('FIELD NOTES  /  ON FOOT',last,secondary,'text-meta'));
     }
 
     const edges=[];
@@ -242,13 +247,13 @@ export const JournalArt = (() => {
     for (const [index,{rect}] of arranged.entries()) {
       const pattern=index===0?'tape':kinds[(start+index)%kinds.length].id;
       const [position,rotation]=edgePlacement(rect,pattern,index,rng);
-      edges.push(createMark('edge',pattern,position,rotation,pattern==='tape'||pattern==='corner'?paper:secondary,
+      edges.push(createMark('edge',pattern,position,rotation,pattern==='tape'?paper:secondary,
         pattern==='tape'?78:66,Math.floor(rng()*1e7),'edge-'+arranged[index].photo.asset.id));
       used.push(position);
     }
     if (rich) {
-      const [position,rotation]=edgePlacement(arranged[0].rect,'pencil',2,rng);
-      edges.push(createMark('edge','pencil',position,rotation,secondary,65,Math.floor(rng()*1e7),'edge-main-accent'));
+      const [position,rotation]=edgePlacement(arranged[0].rect,'seam',2,rng);
+      edges.push(createMark('edge','seam',position,rotation,secondary,65,Math.floor(rng()*1e7),'edge-main-accent'));
       used.push(position);
     }
 
@@ -265,11 +270,12 @@ export const JournalArt = (() => {
       const id=chosen?.id || (i===0 ? signature : alternatives[(manualIndex+i*2)%alternatives.length].id);
       const shapes=[[.205,.072],[.163,.066],[.224,.042],[.132,.053],[.113,.043]];
       if (id==='code') shapes.unshift([.232,.193],[.120,.274],[.188,.157]);
-      else if (id==='coordinates'||id==='notes') shapes.unshift([.108,.171],[.139,.119]);
+      else if (id==='coordinates') shapes.unshift([.108,.171],[.139,.119]);
       const target=findPocket(used,shapes,anchors[i],true);
       if (!target) continue;
       used.push(target);
-      fills.push(createMark('fill',id,target,0,secondary,quiet?49:rich?67:57,Math.floor(rng()*1e7),'fill-'+i));
+      const opacity=id==='code' ? (quiet?64:rich?81:74) : (quiet?49:rich?67:57);
+      fills.push(createMark('fill',id,target,0,secondary,opacity,Math.floor(rng()*1e7),'fill-'+i));
     }
 
     const layers=[...fills,...imageLayers,...edges,...typography];
@@ -278,13 +284,15 @@ export const JournalArt = (() => {
 
   function manual(group,index = 0) {
     if (group==='type') {
-      return {...letter('沿途手记 / Field notes','zh-brush',[.31,.51,.40,.09],'#373629'),journalManual:true};
+      return {...letter('沿途手记 / Field notes',[.31,.51,.40,.09],'#373629'),journalManual:true};
     }
     const list=groupList(group);
-    const mark=createMark(group,list[index%list.length].id,group==='edge'?[.41,.49,.18,.049]:(list[index%list.length].id==='code'?[.32,.38,.36,.23]:[.38,.45,.25,.12]),
-      group==='edge'?-9:0,'#7a715e',group==='edge'?80:61,Date.now()%10000000);
+    const {id}=list[index%list.length];
+    const rect=group==='edge' ? [.41,.49,.18,.049] : id==='code' ? [.32,.38,.36,.23] : [.38,.45,.25,.12];
+    const opacity=group==='edge' ? 80 : id==='code' ? 88 : 61;
+    const mark=createMark(group,id,rect,group==='edge'?-9:0,'#7a715e',opacity,Date.now()%10000000);
     return {...mark,journalManual:true};
   }
 
-  return {design,library,examples,fonts,labels,measure,compose,manual};
+  return {design,library,examples,fonts,labels,measure,compose,manual,cropSize};
 })();

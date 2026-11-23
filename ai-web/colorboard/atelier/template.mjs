@@ -46,9 +46,6 @@ export function atelierMarkup(assetRoot) {
               <button type="button" id="transform-resize" class="transform-handle transform-resize" title="拖动缩放图层" aria-label="拖动缩放图层"><svg aria-hidden="true"><use href="#i-resize"/></svg></button>
               <button type="button" id="transform-rotate" class="transform-handle transform-rotate" title="拖动旋转图层" aria-label="拖动旋转图层"><svg aria-hidden="true"><use href="#i-rotate"/></svg></button>
               <button type="button" id="transform-tape" class="transform-handle transform-tape" title="沿长轴拉伸胶带" aria-label="沿长轴拉伸胶带" hidden><svg aria-hidden="true"><use href="#i-length"/></svg></button>
-              <button type="button" id="text-path-start" class="transform-handle text-path-handle" title="拖动曲线起点" aria-label="曲线起点" hidden></button>
-              <button type="button" id="text-path-control" class="transform-handle text-path-handle text-path-control" title="拖动曲线控制点" aria-label="曲线控制点" hidden></button>
-              <button type="button" id="text-path-end" class="transform-handle text-path-handle" title="拖动曲线终点" aria-label="曲线终点" hidden></button>
             </div>
             <div class="drop-overlay">放下图片添加图层</div>
           </div>
@@ -142,18 +139,10 @@ export function atelierMarkup(assetRoot) {
                 <label class="color-row" id="journal-pattern-row" hidden>印纹样式
                   <select id="journal-pattern"></select>
                 </label>
-                <div id="text-curve-row" class="text-curve-row" hidden>
-                  <div class="text-curve-field">
-                    <label for="text-curve">文字弧度</label>
-                    <input type="range" id="text-curve" min="-100" max="100" value="0">
-                  </div>
-                  <button type="button" id="text-path-edit" class="button compact outline" aria-pressed="false" title="在画布上拖动曲线起点、控制点和终点">编辑曲线</button>
+                <div id="text-path-row" class="text-path-row" hidden>
+                  <button type="button" id="text-path-edit" class="button compact outline" aria-pressed="false">绘制文字路径</button>
+                  <button type="button" id="text-path-clear" class="text-button" hidden>恢复直排</button>
                 </div>
-                <label class="color-row" id="journal-font-row" hidden>手记字体
-                  <select id="journal-font">
-                    <option value="zh-brush">中文 · 手写笔触</option><option value="zh-ink">中文 · 墨迹</option><option value="zh-song">中文 · 宋体</option><option value="en-hand">英文 · 手写</option><option value="en-serif">英文 · 衬线</option><option value="en-mono">英文 · 等宽</option>
-                  </select>
-                </label>
                 <button id="layer-replace" class="button outline compact layer-replace" type="button" hidden><svg aria-hidden="true"><use href="#i-image"/></svg>替换图片</button>
                 <input id="layer-image-input" type="file" accept="image/*" hidden>
               </div>
@@ -207,7 +196,7 @@ export function atelierMarkup(assetRoot) {
             </label>
             <label for="journal-print">填充印纹
               <select id="journal-print">
-                <option value="auto">自动变化</option><option value="code">字码纹样</option><option value="coordinates">坐标</option><option value="contours">等高线</option><option value="grid">测绘网格</option><option value="notes">笔记字样</option><option value="halftone">半调点阵</option><option value="stamps">档案印戳</option>
+                <option value="auto">自动变化</option><option value="code">字码纹样</option><option value="coordinates">坐标</option><option value="contours">等高线</option><option value="grid">测绘网格</option><option value="halftone">半调点阵</option>
               </select>
             </label>
           </div>

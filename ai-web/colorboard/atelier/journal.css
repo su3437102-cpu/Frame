@@ -233,8 +233,7 @@
   min-height: 28px;
 }
 
-#journal-pattern,
-#journal-font {
+#journal-pattern {
   max-width: calc(100% - 5rem);
 }
 

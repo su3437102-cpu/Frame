@@ -32,7 +32,9 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   let draggedLayerId = null;
   let reorderDrag = null;
   let dropCue = null;
-  let curveEditId = null;
+  let pathDrawing = false;
+  let pathDraft = null;
+  let cropTarget = null;
   const inspectorTabs = ['compose', 'layers', 'regions'];
   let activeTab = 'layers';
   let selectedRegion = 1;
@@ -96,7 +98,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       if (signal.aborted) return;
       const selected=currentLayer();
       const draft=brushDraft ? BrushArt.create(brushDraft.samples,...Renderer.sizes[state.aspect],brushDraft.settings) : null;
-      Renderer.paint(canvas, state, images, {selected, draft, showTextBoxes:Boolean(state.journal)&&!brushMode, drawSelection:false, showCurve:selected?.id===curveEditId&&!brushMode});
+      Renderer.paint(canvas, state, images, {selected, draft, showTextBoxes:Boolean(state.journal)&&!brushMode&&!pathDrawing, drawSelection:false, pathDraft:pathDraft?.points});
       positionTransformOverlay(selected);
     });
   }
@@ -146,7 +148,10 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   }
 
   function chooseLayer(id, showControls) {
-    if (id !== selectedId) finishFilter();
+    if (id !== selectedId) {
+      finishFilter();
+      if (pathDrawing) toggleTextPath(false);
+    }
     selectedId = id;
     if (showControls) showTab('layers');
     renderLayerPanel();
@@ -288,11 +293,12 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   }
 
   function addText() {
-    const layer = Collage.label('文字', '#26211d', 596, 416, 320, 91);
+    const layer = Collage.label('文字', '#26211d', 596, 416, 320, 91, 0, {font:'zh-brush'});
     edit(() => {
       state.layers.push(layer);
       selectedId = layer.id;
     });
+    void loadJournalFonts().then(enqueuePaint);
     $('layer-text').focus();
     $('layer-text').select();
   }
@@ -403,10 +409,10 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     $('layer-controls').hidden = !current;
     $('layer-replace').hidden = current?.kind !== 'photo';
     $('journal-pattern-row').hidden = current?.kind !== 'mark';
-    $('journal-font-row').hidden = current?.kind !== 'type';
-    $('text-curve-row').hidden = current?.kind !== 'type';
-    if (current?.id!==curveEditId) curveEditId=null;
-    $('text-path-edit').setAttribute('aria-pressed',String(curveEditId!==null));
+    $('text-path-row').hidden = current?.kind !== 'type';
+    if (pathDrawing && (current?.kind !== 'type' || current.hidden)) toggleTextPath(false);
+    $('text-path-edit').disabled = Boolean(current?.hidden);
+    $('text-path-clear').hidden = !(current?.textPath || current?.curvePath || current?.curve);
     const empty = $('layer-empty');
     empty.hidden = Boolean(current);
     empty.textContent = state.layers.length
@@ -431,15 +437,17 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     $('color-row').hidden = !current.color;
     $('text-row').hidden = current.kind !== 'type';
     if (current.color) $('layer-color').value = current.color;
-    if (current.kind === 'type') {
-      $('layer-text').value = current.text;
-      $('text-curve').value = current.curve || 0;
-      $('journal-font').value = current.font || (current.style === 'brush' ? 'zh-brush' : current.mono ? 'en-mono' : '');
-    }
+    if (current.kind === 'type') $('layer-text').value = current.text;
     if (current.kind === 'mark') {
       const options = current.markGroup === 'edge' ? JournalMarks.edge : JournalMarks.fill;
-      $('journal-pattern').replaceChildren(...options.map(item => new Option(item.name,item.id)));
-      $('journal-pattern').value = current.pattern;
+      const select = $('journal-pattern');
+      select.replaceChildren(...options.map(item => new Option(item.name,item.id)));
+      if (!options.some(item => item.id === current.pattern)) {
+        const legacy = new Option('旧印纹',current.pattern);
+        legacy.disabled = true;
+        select.prepend(legacy);
+      }
+      select.value = current.pattern;
     }
   }
 
@@ -895,8 +903,18 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     return (group === 'edge' ? '破边 · ' : '填充 · ') + name;
   }
 
+  function sizeCropMark(layer) {
+    const photo = state.layers.find(item => item.id === cropTarget && item.kind === 'photo')
+      || state.layers.findLast(item => item.kind === 'photo' && !item.hidden);
+    const size = photo ? [photo.w*photo.scale*(photo.scaleX ?? 1)/100,photo.h*photo.scale*(photo.scaleY ?? 1)/100] : [440,310];
+    const [w,h] = JournalArt.cropSize(...size);
+    for (const [key,value] of Object.entries({w,h,scale:100,scaleX:1,scaleY:1})) updateLayer(layer,key,value);
+  }
+
   function addJournalElement(group) {
     const layer = JournalArt.manual(group, sequence++);
+    if (group === 'edge') cropTarget = currentLayer()?.kind === 'photo' ? selectedId : null;
+    if (layer.pattern === 'crop') sizeCropMark(layer);
     if (group !== 'type') layer.name = markName(group, layer.name);
     edit(() => {
       state.layers.push(layer);
@@ -1001,8 +1019,6 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     edit(() => { updateLayer(layer, key, value); });
   }
 
-  const curveHandles=['start','control','end'];
-
   function clearDropCue() {
     dropCue?.classList.remove('is-drop-before','is-drop-after');
     dropCue=null;
@@ -1067,65 +1083,9 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     });
   }
 
-  function currentCurveAmount(path) {
-    return Math.max(-100,Math.min(100,Math.round(((path[0].y+path[2].y)/2-path[1].y)/.0064)));
-  }
-
-  function applyCurvePoint(layer,path,index,x,y) {
-    const adjusted=path.map(point=>({...point}));
-    const min=index===0 ? -.47 : adjusted[index-1].x+.018;
-    const max=index===2 ? .47 : adjusted[index+1].x-.018;
-    adjusted[index]={
-      x:Math.max(min,Math.min(max,x)),
-      y:Math.max(index===1?-.55:-.31,Math.min(index===1?.55:.31,y))
-    };
-    updateLayer(layer,'curvePath',adjusted);
-    updateLayer(layer,'curve',currentCurveAmount(adjusted));
-  }
-
-  function startCurveDrag(event,index) {
-    const layer=currentLayer();
-    if (!ready || layer?.kind!=='type' || layer.id!==curveEditId || brushMode ||
-        transformDrag || drag || event.button!==0) return;
-    event.preventDefault();
-    finishFilter();
-    const box=Renderer.placement(layer,...Renderer.sizes[state.aspect]);
-    const controls=Renderer.textPathControls(canvas.getContext('2d'),layer,box.contentW,box.contentH);
-    transformDrag={layer,pointerId:event.pointerId,before:structuredClone(state),changed:false,
-      curveIndex:index,controls,box,start:canvasPoint(event)};
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  }
-
-  function moveCurveHandle(gesture,event) {
-    const [x,y]=canvasPoint(event);
-    const [dx,dy]=[x-gesture.start[0],y-gesture.start[1]];
-    if (!gesture.changed && Math.hypot(dx,dy)<.3) return;
-    const {box,controls,layer,curveIndex:index}=gesture;
-    const cos=Math.cos(box.angle), sin=Math.sin(box.angle);
-    const point=controls.path[index];
-    applyCurvePoint(layer,controls.path,index,point.x+(dx*cos+dy*sin)/box.w,
-      point.y+(-dx*sin+dy*cos)/(controls.lineHeight*box.sy));
-    gesture.changed=true;
-    $('text-curve').value=layer.curve;
-    enqueuePaint();
-  }
-
-  function curveHandleKey(event,index) {
-    const directions={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
-    const direction=directions[event.key];
-    const layer=currentLayer();
-    if (!direction || layer?.kind!=='type') return;
-    event.preventDefault();
-    const box=Renderer.placement(layer,...Renderer.sizes[state.aspect]);
-    const {path}=Renderer.textPathControls(canvas.getContext('2d'),layer,box.contentW,box.contentH);
-    const point=path[index];
-    const step=event.shiftKey?.04:.012;
-    edit(()=>applyCurvePoint(layer,path,index,point.x+direction[0]*step,point.y+direction[1]*step));
-  }
-
   function positionTransformOverlay(layer) {
     const overlay = $('transform-overlay');
-    if (!layer || layer.hidden || brushMode) {
+    if (!layer || layer.hidden || brushMode || pathDrawing) {
       overlay.hidden = true;
       return;
     }
@@ -1163,20 +1123,13 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       ['resize',project(points.resize),[0,0]],
       ['rotate',project(points.rotate),[sin*22,-cos*22]]
     ];
-    const editing=layer.kind==='type' && layer.id===curveEditId;
-    const tape=JournalMarks.isTape(layer) && !editing;
-    $('transform-tape').hidden=!tape;
-    $('transform-resize').hidden=editing;
-    $('transform-rotate').hidden=editing;
-    for (const key of curveHandles) $('text-path-'+key).hidden=!editing;
-    if (tape) marks.push(['tape',project(points.tape),[cos*25,sin*25]]);
-    if (editing) {
-      const controls=Renderer.textPathControls(canvas.getContext('2d'),layer,box.contentW,box.contentH);
-      marks.length=0;
-      for (const [index,[px,py]] of controls.points.entries()) {
-        const x=px*box.sx,y=py*box.sy;
-        marks.push(['path-'+curveHandles[index],project([box.x+x*cos-y*sin,box.y+x*sin+y*cos]),[0,0]]);
-      }
+    const extendable=JournalMarks.canExtend(layer);
+    $('transform-tape').hidden=!extendable;
+    if (extendable) {
+      const label=layer.pattern==='seam' ? '沿长轴延长虚线' : '沿长轴拉伸胶带';
+      $('transform-tape').title=label;
+      $('transform-tape').setAttribute('aria-label',label);
+      marks.push(['tape',project(points.tape),[cos*25,sin*25]]);
     }
     const inset=22;
     const clamp=(value,max)=>Math.max(inset,Math.min(Math.max(inset,max-inset),value));
@@ -1187,7 +1140,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       const point=alternatives.map(([a,b])=>[clamp(preferred[0]+a,stageRect.width),clamp(preferred[1]+b,stageRect.height)])
         .find(candidate=>placed.every(previous=>Math.hypot(candidate[0]-previous[0],candidate[1]-previous[1])>=42)) || preferred;
       placed.push(point);
-      const button=$(key.startsWith('path-')?'text-'+key:'transform-'+key);
+      const button=$('transform-'+key);
       button.style.left=point[0]+'px';
       button.style.top=point[1]+'px';
       if (key==='tape') {
@@ -1225,10 +1178,6 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   function moveTransform(event) {
     const gesture=transformDrag;
     if (!gesture || gesture.pointerId!==event.pointerId || !state.layers.includes(gesture.layer)) return;
-    if (gesture.curveIndex!==undefined) {
-      moveCurveHandle(gesture,event);
-      return;
-    }
     const lock=$('transform-lock').checked!==Boolean(event.shiftKey);
     const patch=LayerTransform.update(gesture.session,canvasPoint(event),{lock});
     if (useTransformPatch(gesture.layer,patch)) {
@@ -1273,6 +1222,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   }
 
   function toggleBrush(enabled) {
+    if (enabled && pathDrawing) toggleTextPath(false);
     brushMode=enabled;
     stage.classList.toggle('is-drawing',enabled);
     $('tool-brush').setAttribute('aria-pressed',String(enabled));
@@ -1351,8 +1301,75 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     return [(event.clientX - rect.left) * canvas.width / rect.width, (event.clientY - rect.top) * canvas.height / rect.height];
   }
 
+  function toggleTextPath(enabled) {
+    if (!enabled && pathDrawing) notice('已退出文字路径绘制。');
+    pathDrawing = enabled;
+    if (!enabled) pathDraft = null;
+    stage.classList.toggle('is-drawing',enabled || brushMode);
+    const button = $('text-path-edit');
+    button.setAttribute('aria-pressed',String(enabled));
+    button.textContent = enabled ? '取消绘制' : '绘制文字路径';
+    if (enabled) notice('在画布上按住拖动，按阅读方向画出文字路径。松开即可排字。');
+    enqueuePaint();
+  }
+
+  function addPathSamples(event) {
+    const {points} = pathDraft;
+    for (const sample of event.getCoalescedEvents?.() || []) append(sample);
+    append(event);
+
+    function append(sample) {
+      const [x,y] = canvasPoint(sample);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      const previous = points.at(-1);
+      if (previous && Math.hypot(x-previous[0],y-previous[1]) < pathDraft.spacing) return;
+      points.push([x,y]);
+      if (points.length >= 720) {
+        for (let i=1; i<360; i++) points[i]=points[i*2];
+        points.length=360;
+        pathDraft.spacing *= 2;
+      }
+    }
+    enqueuePaint();
+  }
+
+  function finishTextPath(event,cancel) {
+    if (pathDraft.pointerId !== event.pointerId) return;
+    if (!cancel) addPathSamples(event);
+    const {points,layer} = pathDraft;
+    pathDraft = null;
+    if (cancel || points.length < 2 || !state.layers.includes(layer)) {
+      enqueuePaint();
+      return;
+    }
+    const [width,height] = Renderer.sizes[state.aspect];
+    const scale = Math.min(width/1200,height/800);
+    const oldBox = Renderer.placement(layer,width,height);
+    const fontHeight = layer.textPath ? oldBox.h*layer.pathTextHeight : oldBox.h/layer.text.split('\n').length;
+    const xs = points.map(([x]) => x), ys = points.map(([,y]) => y);
+    const left = Math.min(...xs), right = Math.max(...xs);
+    const top = Math.min(...ys), bottom = Math.max(...ys);
+    const x = (left+right)/2, y = (top+bottom)/2;
+    const w = right-left+fontHeight*2, h = bottom-top+fontHeight*2;
+    toggleTextPath(false);
+    edit(() => {
+      const changes = {x:x*1200/width,y:y*800/height,w:w/scale,h:h/scale,rotation:0,scale:100,scaleX:1,scaleY:1,
+        mask:'rect',curve:0,curvePath:null,font:'zh-brush',pathTextHeight:fontHeight/h,
+        textPath:points.map(([px,py]) => [(px-x)/w,(py-y)/h])};
+      for (const [key,value] of Object.entries(changes)) updateLayer(layer,key,value);
+    },'已沿路径排字。可以修改文字、移动图层或重新绘制路径。');
+  }
+
   function startDrag(event) {
     if (!ready || drag || transformDrag || event.button !== 0) return;
+    if (pathDrawing) {
+      if (pathDraft) return;
+      const spacing = Math.max(1, 2*canvas.width/canvas.getBoundingClientRect().width);
+      pathDraft = {pointerId:event.pointerId,layer:currentLayer(),points:[],spacing};
+      addPathSamples(event);
+      canvas.setPointerCapture?.(event.pointerId);
+      return;
+    }
     if (brushMode) {
       startBrush(event);
       return;
@@ -1370,6 +1387,10 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   }
 
   function moveDrag(event) {
+    if (pathDraft?.pointerId===event.pointerId) {
+      addPathSamples(event);
+      return;
+    }
     if (brushMode) {
       moveBrush(event);
       return;
@@ -1387,6 +1408,10 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   }
 
   function endDrag(event, cancel = false) {
+    if (pathDraft) {
+      finishTextPath(event,cancel);
+      return;
+    }
     if (brushDraft) {
       endBrush(event,cancel);
       return;
@@ -1569,7 +1594,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   $('redo').addEventListener('click', () => navigateHistory(future, history, '已重做。'));
   $('aspect').addEventListener('change', event => edit(() => { state.aspect = event.target.value; }));
   $('region-count').addEventListener('change', event => {
-    if (!ready || saving || drag || brushDraft || transformDrag) {
+    if (!ready || saving || drag || brushDraft || pathDraft || transformDrag) {
       event.target.value = state.regionCount;
       return;
     }
@@ -1612,35 +1637,31 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     }, '已粘贴图层。');
   }
   $('layer-copy').addEventListener('click', () => pasteLayer(currentLayer()));
-  $('text-curve').addEventListener('input', event => {
-    const layer = currentLayer();
-    if (layer?.kind !== 'type') return;
-    filterEdit ??= structuredClone(state);
-    const amount=Number(event.target.value);
-    if (layer.curvePath) {
-      const path=layer.curvePath;
-      applyCurvePoint(layer,path,1,path[1].x,(path[0].y+path[2].y)/2-.0064*amount);
-    } else updateLayer(layer,'curve',amount);
-    enqueuePaint();
-  });
   $('text-path-edit').addEventListener('click',()=>{
     const layer=currentLayer();
-    if (layer?.kind!=='type') return;
-    curveEditId=curveEditId===layer.id?null:layer.id;
-    renderLayerPanel();
-    enqueuePaint();
+    if (layer?.kind!=='type' || layer.hidden || drag || transformDrag) return;
+    if (brushMode) toggleBrush(false);
+    if (!pathDrawing) canvasView.setPanMode(false);
+    toggleTextPath(!pathDrawing);
+    if (pathDrawing) {
+      stage.scrollIntoView({block:'nearest'});
+      canvas.focus({preventScroll:true});
+    }
+    void loadJournalFonts().then(enqueuePaint);
   });
-  for (const [index,key] of curveHandles.entries()) {
-    const handle=$('text-path-'+key);
-    handle.addEventListener('pointerdown',event=>startCurveDrag(event,index));
-    handle.addEventListener('pointermove',moveTransform);
-    handle.addEventListener('pointerup',endTransform);
-    handle.addEventListener('pointercancel',event=>endTransform(event,true));
-    handle.addEventListener('lostpointercapture',event=>endTransform(event,true));
-    handle.addEventListener('keydown',event=>curveHandleKey(event,index));
-  }
-  $('text-curve').addEventListener('change', finishFilter);
-  $('text-curve').addEventListener('blur', finishFilter);
+  $('text-path-clear').addEventListener('click',()=>{
+    const layer=currentLayer();
+    if (layer?.kind!=='type') return;
+    toggleTextPath(false);
+    edit(() => {
+      if (layer.textPath) {
+        const size=layer.h*layer.pathTextHeight;
+        updateLayer(layer,'h',size*layer.text.split('\n').length);
+        updateLayer(layer,'w',Math.max(size*2,Math.min(layer.w,size*8)));
+      }
+      for (const key of ['textPath','curvePath','curve']) updateLayer(layer,key,null);
+    },'已恢复直排文字。');
+  });
   rangeLayer('opacity');
   for (const id of Object.keys(transformFields)) {
     $(id).addEventListener('change',()=>updateTransformValue(id));
@@ -1709,18 +1730,13 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     if (!pattern) return;
     edit(() => {
       updateLayer(layer, 'pattern', pattern.id);
+      if (pattern.id === 'crop') sizeCropMark(layer);
+      if (pattern.id === 'code') updateLayer(layer,'opacity',Math.max(layer.opacity,88));
       layer.name = markName(layer.markGroup, pattern.name);
     });
   });
-  $('journal-font').addEventListener('change', event => {
-    const layer = currentLayer();
-    if (layer?.kind !== 'type') return;
-    edit(() => { updateLayer(layer, 'font', event.target.value); });
-    void loadJournalFonts().then(enqueuePaint);
-  });
-
   canvas.addEventListener('dblclick', event => {
-    if (!state.journal || brushMode || viewportState.panMode || viewportState.spacePan) return;
+    if (brushMode || pathDrawing || viewportState.panMode || viewportState.spacePan) return;
     const [x,y] = canvasPoint(event);
     const layer = Renderer.hitTest(canvas.getContext('2d'), state, x, y, images);
     if (layer?.kind === 'type') {
@@ -1774,18 +1790,14 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       canvasView.setPanMode(false);
       return;
     }
-    if (event.key==='Escape' && (brushMode || transformDrag || curveEditId!==null)) {
+    if (event.key==='Escape' && (brushMode || transformDrag || pathDrawing)) {
       event.preventDefault();
       if (transformDrag) endTransform(null,true);
       if (brushMode) toggleBrush(false);
-      if (curveEditId!==null) {
-        curveEditId=null;
-        renderLayerPanel();
-        enqueuePaint();
-      }
+      if (pathDrawing) toggleTextPath(false);
       return;
     }
-    if (brushDraft || transformDrag) return;
+    if (brushDraft || pathDraft || transformDrag) return;
     const field = event.target.closest?.('input,select,textarea,dialog,[contenteditable]');
     if (field || event.defaultPrevented || !ready) return;
     const key = event.key.toLowerCase();
