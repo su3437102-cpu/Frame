@@ -1,14 +1,34 @@
 // Pikado is bundled locally; only this frame may return a project to its owner.
 let pikaSession=null;
 function pikaRecord(id){return (state.pikadoProjects??={})[id]}
+function currentPikadoNode(session){
+ if(session.stale||session.exiting)return;
+ const node=state.objects.find(object=>object.id===session.id);
+ if(node){
+  const graph=node.variant==='ps'?createWorkbenchGraph():null;
+  const input=graph?.input(node);
+  const src=graph?.source(node)||null;
+  if(src===session.src&&input?.id===session.inputId)return node;
+ }
+ clearTimeout(session.loadTimer);
+ clearTimeout(session.flushTimer);
+ session.stale=true;
+ session.closing=false;
+ session.button.disabled=true;
+ session.cancel.hidden=false;
+ session.status.textContent='输入或节点已更新，请返回画布后重新打开 PS';
+ session.cancel.focus({preventScroll:true});
+}
 function openPikado(id){
  if(pikaSession){toast('请先保存并关闭当前编辑器');return}
  const o=state.objects.find(o=>o.id===id);if(!o)return;
- if(o.variant==='ps'&&!o.src){toast('请先将照片连接到 PS 模块');return}
- const record=pikaRecord(id),src=o.variant==='ps'?(o.psInputSrc||o.src):null;
+ const graph=o.variant==='ps'?createWorkbenchGraph():null;
+ const input=graph?.input(o),src=graph?.source(o)||null;
+ if(graph&&!src){toast(input?'请先在上一级工作台保存输出':'请先将照片连接到 PS 模块');return}
+ const record=pikaRecord(id);
  const source=[...document.querySelectorAll('[data-id]')].find(el=>el.dataset.id===id);
  const rect=source?.getBoundingClientRect();
- const preview=o.src||src;
+ const preview=graph?(graph.output(o)||src):o.src;
  if(dialog.open)dialog.close();
  const panel=document.createElement('section');panel.id='pikadoPanel';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label','Pikado 图像编辑器');
  if(rect)panel.style.transformOrigin=Math.max(0,Math.min(innerWidth,rect.x+rect.width/2))+'px '+Math.max(0,Math.min(innerHeight,rect.y+rect.height/2))+'px';
@@ -18,22 +38,22 @@ function openPikado(id){
  panel.querySelector('header').focus({preventScroll:true});renderCamera();
  const frame=panel.querySelector('iframe'),status=panel.querySelector('[role=status]'),button=panel.querySelector('[data-editor-save]'),cancel=panel.querySelector('[data-editor-cancel]');
  frame.inert=true;
- const session=pikaSession={id,token:crypto.randomUUID(),panel,frame,status,button,cancel,src,ready:false,closing:false};
+ const session=pikaSession={id,token:crypto.randomUUID(),panel,frame,status,button,cancel,src,inputId:input?.id,ready:false,closing:false};
  session.loadTimer=setTimeout(()=>{if(pikaSession===session&&!session.ready)status.textContent='编辑器暂未就绪，返回后可重新打开'},20000);
- cancel.onclick=()=>{if(!session.ready)closePikado(session)};
- panel.addEventListener('keydown',event=>{if(event.key==='Escape'&&!session.ready)cancel.click()});
+ cancel.onclick=()=>{if(!session.ready||session.stale)closePikado(session)};
+ panel.addEventListener('keydown',event=>{if(event.key==='Escape'&&(!session.ready||session.stale))cancel.click()});
  pikaSession.initial={theme:state.theme,src:src?new URL(src,location.href).href:null,pkd:record?.pkd,sourceLayerId:record?.sourceLayerId,replaceSource:!!record&&record.inputSrc!==src,name:o.name};
- button.onclick=()=>{if(!session.ready||session.closing)return;session.closing=true;button.disabled=true;status.textContent='正在保存工程…';frame.contentWindow.postMessage({channel:'framelab-pikado',type:'flush'},location.origin);session.flushTimer=setTimeout(()=>{session.closing=false;button.disabled=false;status.textContent='工程尚未回传，请重试保存'},20000)};
+ button.onclick=()=>{if(!session.ready||session.closing||!currentPikadoNode(session))return;session.closing=true;button.disabled=true;status.textContent='正在保存工程…';frame.contentWindow.postMessage({channel:'framelab-pikado',type:'flush'},location.origin);session.flushTimer=setTimeout(()=>{session.closing=false;button.disabled=false;status.textContent='工程尚未回传，请重试保存'},20000)};
 }
 window.addEventListener('message',e=>{
  const s=pikaSession,m=e.data;if(!s||e.origin!==location.origin||e.source!==s.frame.contentWindow||m?.channel!=='framelab-pikado')return;
- if(m.type==='ready'){s.frame.contentWindow.postMessage({channel:'framelab-pikado',type:'open',session:s.token,...s.initial},location.origin);return}
+ if(m.type==='ready'){if(currentPikadoNode(s))s.frame.contentWindow.postMessage({channel:'framelab-pikado',type:'open',session:s.token,...s.initial},location.origin);return}
  if(m.session!==s.token)return;
+ const o=currentPikadoNode(s);if(!o)return;
  if(m.type==='opened'){clearTimeout(s.loadTimer);s.panel.classList.add('editor-ready');s.ready=true;s.cancel.hidden=true;s.button.disabled=false;s.frame.inert=false;s.frame.removeAttribute('tabindex');s.status.textContent='编辑会自动回传画布';return}
  if(m.type==='error'){clearTimeout(s.loadTimer);clearTimeout(s.flushTimer);s.closing=false;s.button.disabled=!s.ready;s.status.textContent=(s.ready?'未保存：':'无法打开工程：')+String(m.message).slice(0,160);return}
  if(m.type==='result'){
   if(typeof m.preview!=='string'||!/^data:image\/png;base64,[a-z0-9+/=]+$/i.test(m.preview)||typeof m.pkd!=='string'||!/^data:application\/x-pikado;base64,[a-z0-9+/=]+$/i.test(m.pkd))return;
-  const o=state.objects.find(o=>o.id===s.id);if(!o)return;
   // One undo checkpoint for this editing session, not one per brush move.
   if(!s.checkpointed){checkpoint();s.checkpointed=true}
   (state.pikadoProjects??={})[s.id]={pkd:m.pkd,preview:m.preview,inputSrc:s.src,sourceLayerId:m.sourceLayerId,width:m.width,height:m.height};
@@ -58,7 +78,18 @@ function closePikado(session){
  setTimeout(finish,260);
 }
 const pikaBaseOpen=openObject;
-openObject=function(id){const o=state.objects.find(o=>o.id===id);if(o?.kind==='ps'){openPikado(id);return}if(o?.variant==='ps'&&o.src){modal('PS · 照片预览',`<img class="projectpreview" src="${esc(o.src)}" alt="PS 输出预览"><button class="primary" data-pikado="${esc(id)}">进入 Pikado 编辑</button>`);return}pikaBaseOpen(id)};
+openObject=function(id){
+ const o=state.objects.find(o=>o.id===id);
+ if(o?.kind==='ps'){openPikado(id);return}
+ if(o?.variant==='ps'){
+  const graph=createWorkbenchGraph();
+  const src=graph.source(o),output=graph.output(o);
+  if(!src){toast(graph.input(o)?'请先在上一级工作台保存输出':'将照片连线到 PS 模块，即可显示照片');return}
+  modal('PS · 照片预览',`<img class="projectpreview" src="${esc(output||src)}" alt="${output?'PS 输出预览':'输入照片预览'}"><button class="primary" data-pikado="${esc(id)}">进入 Pikado 编辑</button>`);
+  return;
+ }
+ pikaBaseOpen(id);
+};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-pikado]');if(b)openPikado(b.dataset.pikado)});
 const pikaBaseZone=zoneHTML;
 zoneHTML=function(o){if(o.kind==='ps')return '<p>导入素材，在 Pikado 中进行图层编辑。</p><button data-pikado="zone-ps">打开 PS 母台</button><small>子台与母台使用同一个编辑器，各自保留工程。</small>';return pikaBaseZone(o)};

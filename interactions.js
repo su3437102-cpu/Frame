@@ -161,28 +161,67 @@ function renderConnections(){
  const from=connecting?.from&&shape(connecting.from);
  if(from&&connecting.cursor){
   const target=targetAt(connecting.cursor);
-  const previewEdge=connecting.inputTarget?{from:target,to:connecting.inputTarget}:{from:connecting.from,to:target};
-  const snapped=target&&target!==connecting.from?geometry(previewEdge,shape):null;
+  const pair=target&&connectionPair(target);
+  const valid=pair&&pair.from.id!==pair.to.id&&(!pair.image||(pair.from.type==='image'&&isCanvasWorkbench(pair.to)));
+  const snapped=valid?geometry({from:pair.from.id,to:pair.to.id},shape):null;
   const cursor=point(connecting.cursor);
   const d=visibleConnectionPath(snapped||{s:connectionBoundary(from,cursor),t:cursor,fromBoard:from.board},camera);
   html+=`<path class="edge-preview" d="${d}"${snapped?' marker-end="url(#edge-arrow)"':''}/>`;
   if(snapped){
-   const anchor=screen(connecting.inputTarget?snapped.s:snapped.t);
+   const anchor=screen(pair.from.id===target?snapped.s:snapped.t);
    html+=`<circle class="edge-snap" cx="${anchor.x}" cy="${anchor.y}" r="${2.8*scale}"/>`;
   }
  }
  layer.innerHTML=html;
 }
 
+function connectionPair(target) {
+ const {from:startId,inputTarget,outputTarget}=connecting;
+ const start=state.objects.find(node=>node.id===startId);
+ const end=state.objects.find(node=>node.id===target);
+ if(!start||!end)return null;
+ const reverse=inputTarget||(!outputTarget&&isCanvasWorkbench(start)&&end.type==='image'&&!isCanvasWorkbench(end));
+ return {from:reverse?end:start,to:reverse?start:end,
+  image:Boolean(inputTarget||outputTarget||isCanvasWorkbench(start)||isCanvasWorkbench(end))};
+}
+
+function connectWorkbenchInput(fromId,toId){
+ const from=state.objects.find(node=>node.id===fromId);
+ const to=state.objects.find(node=>node.id===toId);
+ if(!isCanvasWorkbench(to)){toast('请选择一个下游工作台');return false}
+ if(from?.type!=='image'){toast('请选择照片或工作台作为输入');return false}
+ const edges=state.connections||[];
+ if(edges.findLast(edge=>edge.to===toId)?.from===fromId)return true;
+ const outgoing=new Map();
+ for(const edge of edges){
+  if(!outgoing.has(edge.from))outgoing.set(edge.from,[]);
+  outgoing.get(edge.from).push(edge.to);
+ }
+ const seen=new Set(), stack=[toId];
+ while(stack.length){
+  const id=stack.pop();
+  if(id===fromId){toast('不能连接成循环');return false}
+  if(seen.has(id))continue;
+  seen.add(id);
+  stack.push(...(outgoing.get(id)||[]));
+ }
+ checkpoint();
+ state.connections=edges.filter(edge=>edge.to!==toId);
+ state.connections.push({id:crypto.randomUUID(),from:fromId,to:toId,bend:0,kind:to.variant+'-input'});
+ update();
+ return true;
+}
+
 function finishConnection(target){
  if(!connecting)return;
- const from=connecting.from;
- connecting=null;
- desk.classList.remove('connecting');
- if(from&&target&&target!==from){
+ const pair=target&&connectionPair(target);
+ clearConnectionGesture();
+ if(pair?.image){
+  connectWorkbenchInput(pair.from.id,pair.to.id);
+  renderConnections();
+ }else if(pair&&pair.from.id!==pair.to.id){
   checkpoint();
-  state.connections??=[];
-  state.connections.push({id:crypto.randomUUID(),from,to:target,bend:0});
+  (state.connections??=[]).push({id:crypto.randomUUID(),from:pair.from.id,to:pair.to.id,bend:0});
   update();
  }else renderConnections();
 }

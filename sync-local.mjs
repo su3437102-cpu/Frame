@@ -3,7 +3,7 @@ const target=new URL('../../outputs/FrameLab-R11/',import.meta.url);
 const backup=new URL('../../outputs/R11-before-sync-'+new Date().toISOString().replace(/[:.]/g,'-')+'/',import.meta.url);
 const paths=[
   'assets/', 'editor/', 'ai-web/colorboard/', 'device-store.js', 'app.js', 'ai-color.js',
-  'ai-service.mjs', 'ai-worker.py', 'interactions.js', 'ps-system.js', 'pikado-host.js',
+  'ai-service.mjs', 'ai-worker.py', 'interactions.js', 'workbench-graph.js', 'ps-system.js', 'pikado-host.js',
   'context-ui.js', 'task-board.js', 'image-layout.js', 'context-ui.css', 'style.css',
   'colorboard-workbench.css', 'server.mjs', 'Start-R11.cmd', 'AI-COLOR-INTEGRATION.md',
   'PIKADO-INTEGRATION.md', 'sw.js', 'index.html',

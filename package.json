@@ -11,7 +11,7 @@
     "deploy": "wrangler deploy",
     "build:editor": "node build-editor.mjs",
     "sync:local": "node sync-local.mjs",
-    "test:integration": "node --test ps-system.test.mjs pikado-host.test.mjs cloud/test.mjs"
+    "test:integration": "node --test workbench-graph.test.mjs ps-system.test.mjs pikado-host.test.mjs cloud/test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

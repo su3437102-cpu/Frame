@@ -23,6 +23,8 @@ function prepareRailTransition(nextMode){
  return ()=>{const targets=nextMode==='create'?[$('#tools'),$('.toolbottom')]:[contextRail];for(const el of targets)railAnimations.push(el.animate([{opacity:0,translate:(returning?'-6px':'6px')+' 0'},{opacity:1,translate:'0 0'}],{duration:180,easing:'cubic-bezier(.2,.7,.2,1)'}))};
 }
 const contextPaths={back:'M15 5 8 12l7 7 M8 12h13',color:'M4 4h16v16H4Z M4 8h16',tag:'M3 3h9l9 9-9 9-9-9Z M7 7h.01',reaction:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M8 14q4 5 8 0 M8 9h.01 M16 9h.01',comment:'M4 4h16v13h-8l-5 4v-4H4Z M7 8h10 M7 12h6',more:'M5 12h.01 M12 12h.01 M19 12h.01',edit:'m5 16 11-11 3 3-11 11-4 1Z',text:'M4 5h16 M12 5v15 M8 20h8',bold:'M7 4h6a4 4 0 0 1 0 8H7V4 M7 12h7a4 4 0 0 1 0 8H7v-8',italic:'M11 4h8 M5 20h8 M15 4 9 20',strike:'M17 6q-8-6-10 1c-1 3 11 5 10 9-1 5-10 5-12 1 M3 12h18',underline:'M6 4v8a6 6 0 0 0 12 0V4 M4 21h16',bullets:'M4 6h.01 M4 12h.01 M4 18h.01 M9 6h12 M9 12h12 M9 18h12',ordered:'M3 4h1v5 M3 13q4-1 0 4v2h3 M9 6h12 M9 12h12 M9 18h12',align:'M3 5h18 M6 10h12 M3 15h18 M6 20h12',code:'m8 6-6 6 6 6 m8-12 6 6-6 6 M14 3l-4 18',size:'M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5',download:'M12 3v12 M7 10l5 5 5-5 M4 17v4h16v-4',replace:'M4 9a8 8 0 0 1 14-4l2 2 M20 3v4h-4 M20 15a8 8 0 0 1-14 4l-2-2 M4 21v-4h4',unlink:'M9 15l-2 2a4 4 0 0 1-5-5l4-4 M15 9l2-2a4 4 0 0 1 5 5l-4 4 M3 3l18 18',eye:'M2 12q10-14 20 0-10 14-20 0 M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0'};
+contextPaths.input='M10 7V4h10v16H10v-3 M3 12h11m-4-4 4 4-4 4';
+contextPaths.output='M14 7V4H4v16h10v-3 M10 12h11m-4-4 4 4-4 4';
 function contextIcon(name){return contextPaths[name]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${contextPaths[name]}"/></svg>`:icon(name)}
 function contextButton(action,label,glyph=action,compact=false){return `<button type="button" class="context-tool${compact?' compact':''}" data-context="${action}" title="${esc(label)}" aria-label="${esc(label)}"><i>${contextIcon(glyph)}</i>${compact?'':`<span>${esc(label)}</span>`}</button>`}
 function contextObject(){return selected.size===1?state.objects.find(o=>selected.has(o.id)):null}
@@ -49,11 +51,12 @@ function syncContextRail(){
   html+=contextButton('text-style','文字样式','text');
   for(const [command,label,glyph] of [['bold','粗体','bold'],['italic','斜体','italic'],['strikeThrough','删除线','strike'],['underline','下划线','underline'],['insertUnorderedList','项目列表','bullets'],['insertOrderedList','编号列表','ordered'],['align','对齐','align'],['code','代码块','code'],['link','文字链接','link']])html+=contextButton(command,label,glyph,true);
  }else{
-  if(['ai','ps','collage'].includes(o.variant)){
+  if(isCanvasWorkbench(o)){
    if(o.variant==='ai')html+=contextButton('ai-edit','调色设置','ai')+(legacyCollage?contextButton('open-atelier','抠图拼图','collage'):contextButton('to-atelier','连接拼图','collage'));
    else if(o.variant==='ps')html+=contextButton('ps-edit','进入编辑','ps')+contextButton('to-atelier','连接拼图','collage');
    else html+=contextButton('open-atelier','进入工作台','collage');
-   html+=contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+
+   html+=contextButton('source','输入照片','image')+contextButton('connect','连接输入','input')+
+    contextButton('connect-output','连接下游','output')+
     contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
   }
   else if(o.type==='image')html+=contextButton('preview','大图预览','eye')+contextButton('replace','替换照片','replace')+contextButton('size','尺寸','size')+contextButton('to-ps','连接 PS','ps')+contextButton('to-ai','AI 调色','ai')+
@@ -138,7 +141,13 @@ function showContextPopover(title,content){
 }
 const contextColors=['#ffffff','#e9edef','#f6dfe3','#f5d8bb','#f8edb7','#cfe7b7','#c6e1dc','#c9dced','#d9cdef','#24282c'];
 function swatchGrid(action){return `<div class="context-colors">${contextColors.map(c=>`<button type="button" data-${action}="${c}" style="background:${c}" aria-label="颜色 ${c}"></button>`).join('')}</div>`}
-function downloadObject(o){if(!o?.src)return toast('连接照片后才有可保存的输出');const ext=o.src.startsWith('data:image/png')?'png':'jpg';download(o.src,(o.variant==='ps'?'PS-output':o.name)+'.'+ext)}
+function downloadObject(o){
+ const workbench=isCanvasWorkbench(o);
+ const src=workbench?createWorkbenchGraph().output(o):o?.src;
+ if(!src)return toast(workbench?'请先在工作台保存当前输入的成品':'没有可下载的图片');
+ const ext=src.startsWith('data:image/png')||o.variant==='ps'?'png':'jpg';
+ download(src,(o.variant==='ps'?'PS-output':o.name)+'.'+ext);
+}
 function handleContext(action){
  const o=contextObject();if(action==='close-pop'){closeContextPopover();return}if(action==='back'){if(inlineEdit){finishInline(true);return}contextBackId=o?.id;syncContextRail();return}if(!o)return;
  if(['bold','italic','strikeThrough','underline','insertUnorderedList','insertOrderedList'].includes(action)){formatText(action);return}
@@ -164,10 +173,17 @@ function handleContext(action){
  if(action==='download'){downloadObject(o);return}
  if(action==='size'){showContextPopover('照片尺寸',`<p class="context-muted">保持照片比例</p><label>画布宽度<input id="contextWidth" type="number" min="80" max="5000" value="${Math.round(o.w)}"></label><button data-context="apply-size">应用</button>`);return}
  if(action==='apply-size'){const w=Number($('#contextWidth').value);if(w>=80&&w<=5000)changeObject(o=>{o.h=w*o.h/o.w;o.w=w});closeContextPopover();return}
- if(action==='ps-edit'){if(!o.src)return toast('请先连接一张照片');openPikado(o.id);return}
- if(action==='source'){const edge=(state.connections||[]).filter(e=>e.to===o.id).at(-1);if(edge)locate(edge.from);else toast('还没有连接输入照片');return}
+ if(action==='ps-edit'){openPikado(o.id);return}
+ if(action==='source'){const input=createWorkbenchGraph().input(o);if(input)locate(input.id);else toast('还没有连接输入照片');return}
  if(action==='disconnect'){changeObject(o=>{state.connections=(state.connections||[]).filter(e=>e.to!==o.id)});return}
- if(action==='connect'){connecting={from:o.id,inputTarget:o.id};desk.classList.add('connecting');toast('点击一张照片作为输入');return}
+ if(action==='connect'||action==='connect-output'){
+  chooseTool(null);
+  const outgoing=action==='connect-output';
+  connecting=outgoing?{from:o.id,outputTarget:true}:{from:o.id,inputTarget:o.id};
+  desk.classList.add('connecting');
+  toast(outgoing?'选择下游工作台。成品写回画布后自动传入':'选择照片或上游工作台作为输入');
+  return;
+ }
  if(action==='to-ps'){const sourceId=o.id;createPSNode({x:o.x+o.w+80,y:o.y});connectPS(sourceId,[...selected][0]);return}
  if(action==='open-zone'){if(o.kind==='ps')openPikado(o.id);else modal(objectName(o),zoneHTML(o));return}
 }

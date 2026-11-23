@@ -37,99 +37,39 @@ createTool = function (type, point) {
 const canvasPalettePreview = palettePreview;
 palettePreview = function (type) {
   if (!Object.hasOwn(photoWorkbenchNames,type)) return canvasPalettePreview(type);
-  return {...photoWorkbenchSize, html:objectHTML({variant:type, src:''})};
+  return {...photoWorkbenchSize, html:objectHTML({type:'image',variant:type,src:''})};
 };
 
-function aiInput(node) {
-  if (!node.id) return;
-  const edge = (state.connections || []).findLast(edge => edge.to === node.id);
-  return state.objects.find(source => source.id === edge?.from);
-}
-
-function connectPhotoWorkbench(fromId, toId) {
-  let from = state.objects.find(node => node.id === fromId);
-  let to = state.objects.find(node => node.id === toId);
-  if (!isPhotoWorkbench(from) && !isPhotoWorkbench(to)) return false;
-  if (to?.variant === 'ps') return false;
-  if (isPhotoWorkbench(from) && !isPhotoWorkbench(to)) [from,to] = [to,from];
-  if (from?.type !== 'image' || !isPhotoWorkbench(to) || from.id === to.id) {
-    toast('请选择一张照片作为输入');
-    return true;
-  }
-  const edges = state.connections || [];
-  if (edges.findLast(edge => edge.to === to.id)?.from === from.id) return true;
-  const stack = [to.id], seen = new Set();
-  while (stack.length) {
-    const id = stack.pop();
-    if (id === from.id) {
-      toast('不能连接成循环');
-      return true;
-    }
-    if (seen.has(id)) continue;
-    seen.add(id);
-    for (const edge of edges) if (edge.from === id) stack.push(edge.to);
-  }
-  checkpoint();
-  state.connections = edges.filter(edge => edge.to !== to.id);
-  state.connections.push(photoInputEdge(from,to));
-  update();
-  return true;
-}
-
-const finishCanvasConnection = finishConnection;
-finishConnection = function (target) {
-  if (target && connecting?.from) {
-    const {from, inputTarget} = connecting;
-    const destination = inputTarget && state.objects.find(node => node.id === inputTarget);
-    const handled = destination?.variant === 'ps'
-      ? connectPS(target,inputTarget)
-      : inputTarget ? connectPhotoWorkbench(target,inputTarget) : connectPhotoWorkbench(from,target);
-    if (handled) {
-      cancelConnection();
-      return;
-    }
-  }
-  finishCanvasConnection(target);
-};
-
+let workbenchRenderGraph;
 const canvasObjectHTML = objectHTML;
 objectHTML = function (node) {
   if (!isPhotoWorkbench(node)) return canvasObjectHTML(node);
+  const graph = workbenchRenderGraph || createWorkbenchGraph();
   const collage = node.variant === 'collage';
-  const input = aiInput(node);
-  const output = collage && (node.aiInput || '') !== (input?.src || '') ? '' : node.src;
-  const image = output || (collage && input?.src);
-  const status = output ? '已完成' : input?.src ? (collage ? '待编辑' : '等待调色') : '等待连接';
+  const input = graph.input(node);
+  const source = graph.source(node);
+  const output = graph.output(node);
+  const image = output || source;
+  const status = output ? '已输出' : input && !source ? '等待上游输出'
+    : source && (node.src || node.colorBoardEdit || node.collageEdit) ? '输入已更新'
+    : source ? (collage ? '待编辑' : '等待调色') : '等待连接';
   const title = node.aiEditor === 'collage' && !collage ? '拼图' : photoWorkbenchNames[node.variant];
   const alt = output ? (collage || node.aiEditor === 'collage' ? '拼贴结果' : '调色结果') : '输入照片';
+  const empty = input ? '上游成品回到画布后会传入' : collage ? '将照片连线到此处' : '连接照片，或双击打开调色';
   const body = image
     ? `<img src="${esc(image)}" alt="${alt}" draggable="false">`
-    : `<div class="ps-empty">${collage ? '将照片连线到此处' : '连接照片，或双击打开调色'}</div>`;
+    : `<div class="ps-empty">${empty}</div>`;
   return `<div class="inner ps-node ai-node"><div class="ps-title">${title} <span>${status}</span></div>${body}<small>${collage ? '双击打开' : '双击调整'}</small></div>`;
 };
 
-function reconcileAI() {
-  let cleared = false;
-  for (const node of state.objects.filter(isPhotoWorkbench)) {
-    if (!node.src && !node.gradeEdit && !node.colorBoardEdit && !node.collageEdit) continue;
-    const source = aiInput(node)?.src || '';
-    const savedInput = node.aiInput || '';
-    const sourceChanged = node.colorBoardEdit || node.collageEdit ? savedInput !== source : !source || (savedInput && savedInput !== source);
-    if (!sourceChanged) continue;
-    node.src = '';
-    node.aiInput = '';
-    delete node.gradeEdit;
-    delete node.colorBoardEdit;
-    delete node.collageEdit;
-    delete node.aiEditor;
-    cleared = true;
-  }
-  if (cleared) { save(); render(); }
-}
 const aiRender = render;
 render = function () {
-  aiRender();
-  setTimeout(reconcileAI, 0);
+  workbenchRenderGraph = createWorkbenchGraph();
+  try {
+    aiRender();
+  } finally {
+    workbenchRenderGraph = undefined;
+  }
 };
 
 const colorBoardProjectMime = 'application/x-colorboard';
@@ -162,13 +102,15 @@ const workbenchPanels = {
 function openAI(id, mode) {
   const node = state.objects.find(object => object.id === id);
   if (colorBoardSession || !isPhotoWorkbench(node)) return;
-  const input = aiInput(node);
-  const source = input?.src || '';
-  const sameInput = node && (node.aiInput || '') === source;
+  const graph = createWorkbenchGraph();
+  const input = graph.input(node);
+  const source = graph.source(node);
+  if (input && !source) return toast('请先将上游工作台的成品保存到画布');
+  const sameInput = (node.aiInput || '') === source;
   const project = sameInput && node.aiEditor !== 'basic' ? node.colorBoardEdit || null : null;
-  const legacyPreview = sameInput && !project && node.aiEditor !== 'collage' ? node.src || '' : '';
   const collageProject = sameInput ? node.collageEdit || null : null;
-  const savedPhoto = sameInput ? node.src || '' : '';
+  const savedPhoto = graph.output(node);
+  const legacyPreview = !project && node.aiEditor !== 'collage' ? savedPhoto : '';
 
   const modal = document.createElement('dialog');
   modal.id = 'colorboard-workbench';
@@ -209,7 +151,7 @@ function openAI(id, mode) {
   };
   document.body.append(modal);
   modal.showModal();
-  const initialMode = node.variant === 'collage' || (collageProject && node.aiEditor === 'collage') ? 'collage' : 'advanced';
+  const initialMode = node.variant === 'collage' || node.aiEditor === 'collage' ? 'collage' : 'advanced';
   void showPhotoWorkbench(session, mode || initialMode);
 }
 
@@ -347,9 +289,9 @@ function aiBlobDataURL(blob) {
 }
 
 function ensureColorBoardInput(session) {
-  const input = aiInput(session.node);
+  const graph = createWorkbenchGraph();
   if (colorBoardSession !== session || !state.objects.includes(session.node) ||
-    input?.id !== session.inputId || (input?.src || '') !== session.source) {
+    graph.input(session.node)?.id !== session.inputId || graph.source(session.node) !== session.source) {
     throw new Error('连接的照片已改变，请重新打开工作台');
   }
 }
@@ -375,6 +317,11 @@ async function saveColorBoard(session, {preview, project, width, height}, mode =
     ensureColorBoardInput(session);
     const aspect = height / width;
     checkpoint();
+    if ((session.node.aiInput || '') !== session.source) {
+      delete session.node.gradeEdit;
+      delete session.node.colorBoardEdit;
+      delete session.node.collageEdit;
+    }
     Object.assign(session.node, {
       src, [mode === 'collage' ? 'collageEdit' : 'colorBoardEdit']:edit, aiEditor:mode, aiInput:session.source,
       h: Math.max(80, (session.node.w - 24) * aspect + 80),
@@ -400,7 +347,7 @@ handleContext = function (action) {
     if (action === 'ai-edit') return openAI(node.id, 'advanced');
     if (action === 'open-atelier') return openAI(node.id, 'collage');
     if (action === 'to-ai' || action === 'to-atelier') {
-      if (action === 'to-atelier' && !node.src) return toast('请先生成照片结果。');
+      if (action === 'to-atelier' && !createWorkbenchGraph().output(node)) return toast('请先生成照片结果。');
       const variant = action === 'to-ai' ? 'ai' : 'collage';
       const output = createPhotoWorkbench(variant,{x:node.x + node.w + 80, y:node.y},node);
       if (variant === 'collage') return openAI(output.id);
