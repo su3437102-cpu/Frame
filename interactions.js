@@ -161,12 +161,13 @@ function renderConnections(){
  const from=connecting?.from&&shape(connecting.from);
  if(from&&connecting.cursor){
   const target=targetAt(connecting.cursor);
-  const snapped=target&&target!==connecting.from?geometry({from:connecting.from,to:target},shape):null;
+  const previewEdge=connecting.inputTarget?{from:target,to:connecting.inputTarget}:{from:connecting.from,to:target};
+  const snapped=target&&target!==connecting.from?geometry(previewEdge,shape):null;
   const cursor=point(connecting.cursor);
   const d=visibleConnectionPath(snapped||{s:connectionBoundary(from,cursor),t:cursor,fromBoard:from.board},camera);
   html+=`<path class="edge-preview" d="${d}"${snapped?' marker-end="url(#edge-arrow)"':''}/>`;
   if(snapped){
-   const anchor=screen(snapped.t);
+   const anchor=screen(connecting.inputTarget?snapped.s:snapped.t);
    html+=`<circle class="edge-snap" cx="${anchor.x}" cy="${anchor.y}" r="${2.8*scale}"/>`;
   }
  }
@@ -388,7 +389,7 @@ document.addEventListener('pointermove',event=>{
  if(!ghost){
   const preview=palettePreview(drag.type);
   ghost=document.createElement('div');ghost.id='paletteGhost';
-  ghost.className='object '+(drag.type==='ps'?'image':drag.type==='templates'?'zone':drag.type);
+  ghost.className='object '+(['ps','ai','collage'].includes(drag.type)?'image':drag.type==='templates'?'zone':drag.type);
   ghost.innerHTML=preview.html;ghost.style.width=preview.w+'px';ghost.style.height=preview.h+'px';
   document.body.append(ghost);
   if(!RM)ghost.animate([{opacity:0,scale:'.88'},{opacity:1,scale:'1'}],{duration:140,easing:'ease-out'});

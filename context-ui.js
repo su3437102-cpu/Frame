@@ -39,7 +39,8 @@ function syncContextRail(){
  const o=contextObject();if(inlineEdit&&(!o||o.id!==inlineEdit.id))finishInline(false);
  if(contextBackId&&contextBackId!==o?.id)contextBackId=null;
  const mode=inlineEdit?'text':o&&contextBackId!==o.id?'object':'create';
- const key=mode+':'+(o?.id||'');if(key===contextKey)return;contextKey=key;closeContextPopover();
+ const legacyCollage=o?.variant==='ai'&&Boolean(o.collageEdit||o.aiEditor==='collage');
+ const key=mode+':'+(o?.id||'')+(legacyCollage?':legacy-collage':'');if(key===contextKey)return;contextKey=key;closeContextPopover();
  const enterRail=prepareRailTransition(mode);
  $('#tools').hidden=mode!=='create';$('.toolbottom').hidden=mode!=='create';contextRail.hidden=mode==='create';
  if(mode==='create'){contextRail.replaceChildren();enterRail();return}
@@ -48,15 +49,15 @@ function syncContextRail(){
   html+=contextButton('text-style','文字样式','text');
   for(const [command,label,glyph] of [['bold','粗体','bold'],['italic','斜体','italic'],['strikeThrough','删除线','strike'],['underline','下划线','underline'],['insertUnorderedList','项目列表','bullets'],['insertOrderedList','编号列表','ordered'],['align','对齐','align'],['code','代码块','code'],['link','文字链接','link']])html+=contextButton(command,label,glyph,true);
  }else{
-  if(o.variant==='ai'){
-   html+=contextButton('ai-edit','调色设置','ai')+
-    contextButton('open-atelier','抠图拼图','collage')+
-    contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+
+  if(['ai','ps','collage'].includes(o.variant)){
+   if(o.variant==='ai')html+=contextButton('ai-edit','调色设置','ai')+(legacyCollage?contextButton('open-atelier','抠图拼图','collage'):contextButton('to-atelier','连接拼图','collage'));
+   else if(o.variant==='ps')html+=contextButton('ps-edit','进入编辑','ps')+contextButton('to-atelier','连接拼图','collage');
+   else html+=contextButton('open-atelier','进入工作台','collage');
+   html+=contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+
     contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
   }
-  else if(o.variant==='ps')html+=contextButton('ps-edit','进入编辑','ps')+contextButton('source','输入照片','image')+contextButton('connect','重新连接','line')+contextButton('disconnect','断开输入','unlink')+contextButton('download','保存输出','download');
   else if(o.type==='image')html+=contextButton('preview','大图预览','eye')+contextButton('replace','替换照片','replace')+contextButton('size','尺寸','size')+contextButton('to-ps','连接 PS','ps')+contextButton('to-ai','AI 调色','ai')+
-    contextButton('open-atelier','抠图拼图','collage')+contextButton('download','下载','download');
+    contextButton('to-atelier','抠图拼图','collage')+contextButton('download','下载','download');
   else if(o.type==='zone')html+=contextButton('open-zone','打开功能','edit');
   else html+=contextButton('edit','编辑内容','edit');
   html+=contextButton('color',o.type==='image'?'色条':'颜色','color')+contextButton('labels','标签','tag')+contextButton('reactions','反应','reaction')+contextButton('comments','评论','comment')+contextButton('more','更多','more');
@@ -166,7 +167,7 @@ function handleContext(action){
  if(action==='ps-edit'){if(!o.src)return toast('请先连接一张照片');openPikado(o.id);return}
  if(action==='source'){const edge=(state.connections||[]).filter(e=>e.to===o.id).at(-1);if(edge)locate(edge.from);else toast('还没有连接输入照片');return}
  if(action==='disconnect'){changeObject(o=>{state.connections=(state.connections||[]).filter(e=>e.to!==o.id)});return}
- if(action==='connect'){connecting={from:o.id};desk.classList.add('connecting');toast('点击一张照片作为输入');return}
+ if(action==='connect'){connecting={from:o.id,inputTarget:o.id};desk.classList.add('connecting');toast('点击一张照片作为输入');return}
  if(action==='to-ps'){const sourceId=o.id;createPSNode({x:o.x+o.w+80,y:o.y});connectPS(sourceId,[...selected][0]);return}
  if(action==='open-zone'){if(o.kind==='ps')openPikado(o.id);else modal(objectName(o),zoneHTML(o));return}
 }
