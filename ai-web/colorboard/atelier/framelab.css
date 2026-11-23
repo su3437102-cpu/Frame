@@ -78,7 +78,10 @@
 }
 .atelier .board-actions { justify-self: end; }
 .atelier .board-footer { flex: none; min-height: 47px; padding: 5px 10px; gap: 8px; }
-.atelier .view-options { min-width: 0; gap: 6px; }
+.atelier .board-footer .work-name { flex: 1; }
+.atelier #split-toggle { flex: none; gap: 4px; font-size: .75rem; white-space: nowrap; }
+.atelier #split-toggle svg { width: 15px; height: 15px; }
+.atelier .view-options { flex: none; min-width: 0; gap: 6px; }
 .atelier .atelier-view-tools {
   display: flex;
   flex: none;
@@ -119,6 +122,36 @@
   background-size: 21px 21px;
 }
 .atelier .stage-inner { border-radius: 2px; box-shadow: 0 6px 22px #30251520; }
+.atelier .split-guides {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  justify-items: start;
+  padding: 8px 0 0;
+  pointer-events: none;
+}
+.atelier .split-guides::before {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  border-inline-start: 1px dashed var(--accent-ink);
+  filter: drop-shadow(1px 0 0 var(--white));
+  content: "";
+}
+.atelier .split-guides span {
+  margin-inline-start: 8px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--accent-ink);
+  font-size: .75rem;
+  font-weight: 650;
+  line-height: 1.35;
+  white-space: nowrap;
+}
 .atelier .stage:is([data-pan-mode="true"], [data-space-pan="true"]),
 .atelier .stage:is([data-pan-mode="true"], [data-space-pan="true"]) canvas { cursor: grab; }
 .atelier .stage:is([data-gesture="pan"], [data-gesture="pinch"]),
@@ -251,12 +284,13 @@
   .atelier .transform-lock-label { gap: 3px; font-size: .75rem; }
   .atelier .board-footer {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 8px;
     padding: 4px 8px;
   }
   .atelier .work-name { font-size: .8125rem; }
-  .atelier .view-options { justify-content: space-between; }
+  .atelier #split-toggle { min-height: 29px; padding-inline: 6px; }
+  .atelier .view-options { grid-column: 1 / -1; justify-content: space-between; }
   .atelier .view-options select { max-width: 106px; }
   .atelier .material-actions { gap: 9px; }
   .atelier .material-actions button { font-size: .75rem; }

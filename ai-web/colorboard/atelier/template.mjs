@@ -39,6 +39,10 @@ export function atelierMarkup(assetRoot) {
           <div class="stage" id="stage">
             <div class="stage-inner">
               <canvas id="canvas" width="1200" height="800" tabindex="0" aria-label="拼贴画布。拖动图层，按住空格拖动视图，按 0 回到适合窗口。"></canvas>
+              <div id="split-guides" class="split-guides" aria-hidden="true" hidden>
+                <span>选区 1</span>
+                <span>选区 2</span>
+              </div>
             </div>
             <div id="transform-overlay" class="transform-overlay" role="group" aria-label="所选图层的变换手柄" hidden>
               <div id="transform-outline" class="transform-outline" aria-hidden="true"></div>
@@ -53,8 +57,11 @@ export function atelierMarkup(assetRoot) {
           </div>
           <div class="board-footer">
             <div class="work-name"><span id="work-title">我的拼贴</span><small id="work-subtitle">1200 × 800 px</small></div>
+            <button id="split-toggle" type="button" class="button compact outline editor-tool" aria-pressed="false" aria-controls="split-guides" title="双选区（左右并排，可单独导出）">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg>双选区
+            </button>
             <div class="view-options">
-              <label class="sr-only" for="aspect">画布比例</label>
+              <label id="aspect-label" class="sr-only" for="aspect">画布比例</label>
               <select id="aspect" title="画布比例"><option value="landscape">3∶2 横幅</option><option value="square">1∶1 方形</option><option value="portrait">4∶5 竖幅</option><option value="journal">3∶4 手记</option><option value="wide">16∶9 宽屏</option></select>
               <div class="atelier-view-tools" role="group" aria-label="画布视图">
                 <button id="atelier-pan" type="button" class="icon-button" aria-pressed="false" title="平移视图（也可按住空格拖动）" aria-label="平移视图"><svg aria-hidden="true"><use href="#i-hand"/></svg></button>
@@ -282,8 +289,9 @@ export function atelierMarkup(assetRoot) {
   <dialog id="export-dialog">
     <form method="dialog" class="dialog-inner">
       <div class="dialog-heading"><h2>导出作品</h2><button type="submit" class="icon-button" value="cancel" aria-label="关闭"><svg><use href="#i-close"/></svg></button></div>
+      <label id="export-area-row" hidden>导出范围<select id="export-area"><option value="whole">整张画布</option><option value="left">选区 1 · 左</option><option value="right">选区 2 · 右</option></select></label>
       <label>文件格式<select id="file-format"><option value="png">PNG</option><option value="jpg">JPG</option></select></label>
-      <label>输出尺寸<select id="resolution"><option value="1">长边 1200 px</option><option value="2" selected>长边 2400 px</option><option value="3">长边 3600 px</option></select></label>
+      <label>输出倍率<select id="resolution"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option></select></label>
       <p id="export-size"></p>
       <button type="button" class="button primary" id="download"><svg><use href="#i-download"/></svg> 下载图片</button>
     </form>

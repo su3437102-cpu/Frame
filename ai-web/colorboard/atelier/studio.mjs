@@ -22,7 +22,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   const future = [];
   const MAX_UPLOADS = 16;
   let state = {
-    style: 'dada', aspect: 'landscape', bg: '#f2f1ed', flat: true,
+    style: 'dada', aspect: 'landscape', split: false, bg: '#f2f1ed', flat: true,
     layers: [], uploads: [], example: false, variation: 38
   };
   let selectedId = null;
@@ -47,7 +47,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   let transformDrag = null;
   let brushMode = false;
   let brushDraft = null;
-  let viewportAspect;
+  let viewportLayout;
   let viewportState;
 
   const panButton = $('atelier-pan');
@@ -90,7 +90,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       scheduled = false;
       if (signal.aborted) return;
       const selected=currentLayer();
-      const draft=brushDraft ? BrushArt.create(brushDraft.samples,canvas.width,canvas.height,brushDraft.settings) : null;
+      const draft=brushDraft ? BrushArt.create(brushDraft.samples,...Renderer.sizes[state.aspect],brushDraft.settings) : null;
       Renderer.paint(canvas, state, images, {selected, draft, showTextBoxes:Boolean(state.journal)&&!brushMode, drawSelection:false, showCurve:selected?.id===curveEditId&&!brushMode});
       positionTransformOverlay(selected);
     });
@@ -261,7 +261,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   }
 
   function addMaterial(asset) {
-    const shape = Collage.photo(asset, 603, 377, 396, 300, {
+    const shape = Collage.photo(asset, state.split ? 1200 : 603, 377, 396, 300, {
       rotation: -7, mask: 'tear', fit: asset.id === 'head' ? 'contain' : 'cover'
     });
     edit(() => {
@@ -439,7 +439,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
 
   function render() {
     const design = styleById.get(state.style);
-    const [w, h] = Renderer.sizes[state.aspect];
+    const [w, h] = Renderer.dimensions(state);
     if (!currentLayer()) selectedId = null;
     $('work-title').textContent = state.montage ? '规则拼贴' : state.example || state.journal ? design.title : '我的拼贴';
     $('work-subtitle').textContent = state.example ? (design.group ? '可编辑模板' : '工作室示例') : w + ' × ' + h + ' px';
@@ -450,13 +450,19 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     $('undo').disabled = !history.length;
     $('redo').disabled = !future.length;
     $('aspect').value = state.aspect;
+    const aspectLabel = state.split ? '单区比例' : '画布比例';
+    $('aspect-label').textContent = aspectLabel;
+    $('aspect').title = aspectLabel;
+    $('split-toggle').setAttribute('aria-pressed', String(state.split));
+    $('split-guides').hidden = !state.split;
     $('atelier-save').disabled = saving || !state.layers.length;
     $('export').disabled = saving || !state.layers.length;
     root.querySelectorAll('.style-card').forEach(button => {
       button.setAttribute('aria-pressed', String(button.dataset.id === state.style));
     });
-    if (viewportAspect !== state.aspect) {
-      viewportAspect = state.aspect;
+    const layout = w + '×' + h;
+    if (viewportLayout !== layout) {
+      viewportLayout = layout;
       canvasView.setImageSize(w, h);
     }
     renderLayerPanel();
@@ -605,7 +611,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
         state.uploads = combined;
         for (const [index, asset] of materials.entries()) {
           const offset = index * 49;
-          const layer = Collage.photo(asset, 553 + offset % 270, 351 + offset % 205, 422, 325,
+          const layer = Collage.photo(asset, (state.split ? 1200 : 553) + offset % 270, 351 + offset % 205, 422, 325,
             {mask: 'rect', fit: 'contain', rotation: (index % 3 - 1) * 7});
           state.layers.push(layer);
           selectedId = layer.id;
@@ -1020,7 +1026,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
         transformDrag || drag || event.button!==0) return;
     event.preventDefault();
     finishFilter();
-    const box=Renderer.placement(layer,canvas.width,canvas.height);
+    const box=Renderer.placement(layer,...Renderer.sizes[state.aspect]);
     const controls=Renderer.textPathControls(canvas.getContext('2d'),layer,box.contentW,box.contentH);
     transformDrag={layer,pointerId:event.pointerId,before:structuredClone(state),changed:false,
       curveIndex:index,controls,box,start:canvasPoint(event)};
@@ -1047,7 +1053,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     const layer=currentLayer();
     if (!direction || layer?.kind!=='type') return;
     event.preventDefault();
-    const box=Renderer.placement(layer,canvas.width,canvas.height);
+    const box=Renderer.placement(layer,...Renderer.sizes[state.aspect]);
     const {path}=Renderer.textPathControls(canvas.getContext('2d'),layer,box.contentW,box.contentH);
     const point=path[index];
     const step=event.shiftKey?.04:.012;
@@ -1062,10 +1068,19 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     }
     const canvasRect = canvas.getBoundingClientRect();
     const stageRect = stage.getBoundingClientRect();
-    const box = Renderer.placement(layer,canvas.width,canvas.height);
+    const box = Renderer.placement(layer,...Renderer.sizes[state.aspect]);
     if (!(canvasRect.width && canvasRect.height && stageRect.width && stageRect.height &&
       [box.x, box.y, box.w, box.h].every(Number.isFinite) && box.w>0 && box.h>0)) {
       overlay.hidden = true;
+      return;
+    }
+    const sin=Math.sin(box.angle);
+    const cos=Math.cos(box.angle);
+    const halfWidth=(Math.abs(box.w*cos)+Math.abs(box.h*sin))/2;
+    const halfHeight=(Math.abs(box.w*sin)+Math.abs(box.h*cos))/2;
+    if (box.x+halfWidth<=0 || box.x-halfWidth>=canvas.width ||
+        box.y+halfHeight<=0 || box.y-halfHeight>=canvas.height) {
+      overlay.hidden=true;
       return;
     }
     const sx=canvasRect.width/canvas.width;
@@ -1081,8 +1096,6 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     outline.style.height=box.h*sy+'px';
     outline.style.transform='rotate('+box.angle+'rad)';
     const points=LayerTransform.points(box);
-    const sin=Math.sin(box.angle);
-    const cos=Math.cos(box.angle);
     const marks=[
       ['resize',project(points.resize),[0,0]],
       ['rotate',project(points.rotate),[sin*22,-cos*22]]
@@ -1138,7 +1151,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     if (!ready || !layer || brushMode || drag || transformDrag || event.button!==0) return;
     event.preventDefault();
     finishFilter();
-    const {width,height}=canvas;
+    const [width,height]=Renderer.sizes[state.aspect];
     const box=Renderer.placement(layer,width,height);
     const point=canvasPoint(event);
     const session=LayerTransform.begin({layer,box,handle,point,width,height});
@@ -1183,7 +1196,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       edit(()=>{updateLayer(layer,'rotation',layer.rotation+delta*step);});
       return;
     }
-    const {width,height}=canvas;
+    const [width,height]=Renderer.sizes[state.aspect];
     const box=Renderer.placement(layer,width,height);
     const point=LayerTransform.points(box)[handle];
     const session=LayerTransform.begin({layer,box,handle,point,width,height});
@@ -1254,7 +1267,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     if (!cancel) appendBrushSamples(event);
     const {samples,settings}=brushDraft;
     brushDraft=null;
-    const layer=cancel?null:BrushArt.create(samples,canvas.width,canvas.height,settings);
+    const layer=cancel?null:BrushArt.create(samples,...Renderer.sizes[state.aspect],settings);
     if (layer) {
       layer.journalManual=true;
       edit(()=>{
@@ -1300,8 +1313,9 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     }
     if (!drag || drag.pointerId !== event.pointerId) return;
     const [x, y] = canvasPoint(event);
-    const dx = (x - drag.startX) * 1200 / canvas.width;
-    const dy = (y - drag.startY) * 800 / canvas.height;
+    const [width, height] = Renderer.sizes[state.aspect];
+    const dx = (x - drag.startX) * 1200 / width;
+    const dy = (y - drag.startY) * 800 / height;
     if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
     drag.moved = true;
     if (Number.isFinite(drag.x+dx)) drag.layer.x=drag.x+dx;
@@ -1332,7 +1346,8 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
 
   function renderExportSize() {
     const factor = Number($('resolution').value);
-    const [w, h] = Renderer.sizes[state.aspect];
+    const panel = state.split && $('export-area').value !== 'whole';
+    const [w, h] = panel ? Renderer.sizes[state.aspect] : Renderer.dimensions(state);
     $('export-size').textContent = w * factor + ' × ' + h * factor + ' px';
   }
 
@@ -1341,15 +1356,22 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     button.disabled = true;
     const name = $('work-title').textContent;
     const type = $('file-format').value;
+    const factor = Number($('resolution').value);
+    const scene = structuredClone(state);
+    const area = scene.split ? $('export-area').value : 'whole';
+    const suffix = area === 'left' ? '-选区1' : area === 'right' ? '-选区2' : '';
     try {
-      const output = document.createElement('canvas');
-      if (hasJournalType(state.layers)) await loadJournalFonts();
-      await loadAssets(state.layers.map(layer => layer.asset));
-      Renderer.paint(output, state, images, {ratio: Number($('resolution').value)});
-      const blob = await new Promise(resolve => output.toBlob(resolve, type === 'png' ? 'image/png' : 'image/jpeg', .94));
-      if (!blob) throw new Error('Empty export');
+      const picture = document.createElement('canvas');
+      if (hasJournalType(scene.layers)) await loadJournalFonts();
+      await loadAssets(scene.layers.map(layer => layer.asset));
+      signal.throwIfAborted();
+      Renderer.paint(picture, scene, images, {ratio:factor});
+      const output = area === 'whole' ? picture : Renderer.cropPanel(picture, area);
+      if (output !== picture) picture.width = picture.height = 0;
+      const blob = await canvasBlob(output, type === 'png' ? 'image/png' : 'image/jpeg', .94);
+      signal.throwIfAborted();
       const link = document.createElement('a');
-      link.download = 'FrameLab-' + name + '.' + type;
+      link.download = 'FrameLab-' + name + suffix + '.' + type;
       link.href = URL.createObjectURL(blob);
       document.body.append(link);
       link.click();
@@ -1358,7 +1380,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       $('export-dialog').close();
       notice('已生成 ' + type.toUpperCase() + ' 文件。');
     } catch {
-      $('export-size').textContent = '导出失败，请尝试较小的输出尺寸。';
+      if (!signal.aborted) $('export-size').textContent = '导出失败，请尝试较小的输出尺寸。';
     } finally {
       button.disabled = false;
     }
@@ -1460,6 +1482,11 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   $('undo').addEventListener('click', () => navigateHistory(history, future, '已撤销。'));
   $('redo').addEventListener('click', () => navigateHistory(future, history, '已重做。'));
   $('aspect').addEventListener('change', event => edit(() => { state.aspect = event.target.value; }));
+  $('split-toggle').addEventListener('click', () => {
+    if (!ready || saving || drag || brushDraft || transformDrag) return;
+    edit(() => { state.split = !state.split; });
+    notice(state.split ? '' : '当前显示左区。重新开启双选区可查看右区。');
+  });
   $('restore').addEventListener('click', resetExample);
   $('remix').addEventListener('click', () => applyDesign(state.style, true));
   $('variation').addEventListener('input', updateVariation);
@@ -1641,10 +1668,13 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
   });
   $('export').addEventListener('click', () => {
     if (!ready) return;
+    $('export-area-row').hidden = !state.split;
+    if (!state.split) $('export-area').value = 'whole';
     renderExportSize();
     $('export-dialog').showModal();
   });
   $('resolution').addEventListener('change', renderExportSize);
+  $('export-area').addEventListener('change', renderExportSize);
   $('download').addEventListener('click', downloadWork);
   $('view').addEventListener('click', async () => {
     if (!ready) return;
@@ -1734,7 +1764,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     await Promise.all(packed.materials.map(record => prepareMaterial({
       ...record, blob: deserializeMaterial(record)
     })));
-    state = {...draft, layers:packed.layers};
+    state = {...draft, split:draft.split === true, layers:packed.layers};
     if (state.montage) setMontageControls(state.montage);
     else if (styleById.get(state.style).group === 'montage') setMontageControls();
     showTab('layers');
@@ -1760,7 +1790,9 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       const materials = await Promise.all(used.map(id => images.get(id)).filter(asset => asset?.uploaded).map(serializeMaterial));
       const project = await packProject({layers, atelier:draft, materials});
       const picture = document.createElement('canvas');
-      Renderer.paint(picture, {...draft, layers}, images);
+      const scene = {...draft, layers};
+      const ratio = Math.min(1, 1400 / Math.max(...Renderer.dimensions(scene)));
+      Renderer.paint(picture, scene, images, {ratio});
       const preview = await canvasBlob(picture, 'image/jpeg', .88);
       signal.throwIfAborted();
       await onSave({project, preview, width:picture.width, height:picture.height});

@@ -24,6 +24,12 @@ export const Renderer = (() => {
   }
   grainContext.putImageData(noise, 0, 0);
 
+  function dimensions(scene) {
+    const [panelWidth, height] = sizes[scene.aspect];
+    return [scene.split === true ? panelWidth * 2 : panelWidth, height];
+  }
+
+  // Layer coordinates always use one panel as their reference, even across the seam.
   function placement(layer, width, height) {
     const scale = Math.min(width / 1200, height / 800) * (layer.scale / 100);
     const sx = layer.scaleX ?? 1;
@@ -217,9 +223,9 @@ export const Renderer = (() => {
       Math.min(box.w,Math.max(...xs)+16),Math.min(box.h,Math.max(...ys)+20)];
   }
 
-  function drawLayer(ctx, layer, width, height, images) {
+  function drawLayer(ctx, layer, panelWidth, width, height, images) {
     if (layer.hidden || layer.opacity === 0) return;
-    const box = placement(layer, width, height);
+    const box = placement(layer, panelWidth, height);
     if (!validBox(box)) return;
     const {x, y, contentW: w, contentH: h, sx, sy, angle} = box;
     const path = cutPath(layer.mask, w, h, layer.points);
@@ -255,11 +261,14 @@ export const Renderer = (() => {
   }
 
   function paint(canvas, scene, images, {ratio = 1, selected, showTextBoxes = false, draft, drawSelection = true, showCurve = false} = {}) {
-    const [width, height] = sizes[scene.aspect];
-    if (canvas.width !== width * ratio) canvas.width = width * ratio;
-    if (canvas.height !== height * ratio) canvas.height = height * ratio;
+    const [width, height] = dimensions(scene);
+    const panelWidth = sizes[scene.aspect][0];
+    const rasterWidth = Math.max(1, Math.round(panelWidth * ratio)) * (width / panelWidth);
+    const rasterHeight = Math.max(1, Math.round(height * ratio));
+    if (canvas.width !== rasterWidth) canvas.width = rasterWidth;
+    if (canvas.height !== rasterHeight) canvas.height = rasterHeight;
     const ctx = canvas.getContext('2d');
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.setTransform(rasterWidth / width, 0, 0, rasterHeight / height, 0, 0);
     ctx.fillStyle = scene.bg;
     ctx.fillRect(0, 0, width, height);
     if (!scene.flat) {
@@ -271,13 +280,13 @@ export const Renderer = (() => {
       ctx.fillRect(0, 0, width, height);
       grain(ctx, 0, 0, width, height, .8);
     }
-    for (const layer of scene.layers) drawLayer(ctx, layer, width, height, images);
+    for (const layer of scene.layers) drawLayer(ctx, layer, panelWidth, width, height, images);
     if (!scene.flat) grain(ctx, 0, 0, width, height, .36);
-    if (draft) drawLayer(ctx, draft, width, height, images);
+    if (draft) drawLayer(ctx, draft, panelWidth, width, height, images);
     if (showTextBoxes) {
       for (const layer of scene.layers) {
         if (layer.kind !== 'type' || layer.hidden || !layer.opacity || layer === selected) continue;
-        const box = placement(layer, width, height);
+        const box = placement(layer, panelWidth, height);
         if (!validBox(box)) continue;
         ctx.save();
         ctx.translate(box.x, box.y);
@@ -290,7 +299,7 @@ export const Renderer = (() => {
       }
     }
     if (showCurve && selected?.kind==='type' && !selected.hidden) {
-      const box=placement(selected,width,height);
+      const box=placement(selected,panelWidth,height);
       if (validBox(box)) {
         const {points}=textPathControls(ctx,selected,box.contentW,box.contentH);
         const [start,control,end]=points.map(([x,y])=>[x*box.sx,y*box.sy]);
@@ -315,7 +324,7 @@ export const Renderer = (() => {
       }
     }
     if (drawSelection && selected && !selected.hidden) {
-      const box = placement(selected, width, height);
+      const box = placement(selected, panelWidth, height);
       if (!validBox(box)) return;
       const {x, y, w, h, angle} = box;
       ctx.save();
@@ -333,10 +342,10 @@ export const Renderer = (() => {
   }
 
   function hitTest(ctx, scene, x, y, images) {
-    const [width, height] = sizes[scene.aspect];
+    const [panelWidth, height] = sizes[scene.aspect];
     return scene.layers.findLast(layer => {
       if (layer.hidden || !layer.opacity) return false;
-      const box = placement(layer, width, height);
+      const box = placement(layer, panelWidth, height);
       if (!validBox(box)) return false;
       const dx = x - box.x;
       const dy = y - box.y;
@@ -359,5 +368,17 @@ export const Renderer = (() => {
     });
   }
 
-  return {sizes, placement, paint, hitTest, textPathControls};
+  function cropPanel(canvas, area) {
+    const width = canvas.width / 2;
+    if ((area !== 'left' && area !== 'right') || !Number.isInteger(width) || width <= 0 || !canvas.height) {
+      throw new Error('无法裁切导出选区。');
+    }
+    const panel = document.createElement('canvas');
+    panel.width = width;
+    panel.height = canvas.height;
+    panel.getContext('2d').drawImage(canvas, area === 'right' ? -width : 0, 0);
+    return panel;
+  }
+
+  return {sizes, dimensions, placement, paint, hitTest, cropPanel, textPathControls};
 })();
