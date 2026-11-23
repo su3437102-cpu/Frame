@@ -310,7 +310,7 @@ export const Renderer = (() => {
       if (layer.kind === 'photo') drawPhoto(ctx, images.get(layer.asset)?.image, layer, w, h);
       if (layer.kind === 'type') drawType(ctx, layer, w, h);
       if (layer.kind === 'mark') {
-        if (layer.markGroup === 'fill' && ['halftone','contours','code','coordinates','grid'].includes(layer.pattern)) {
+        if (layer.markGroup === 'fill' && ['halftone','contours','code','coordinates'].includes(layer.pattern)) {
           ctx.scale(1/sx,1/sy);
           JournalMarks.draw(ctx,layer,box.w,box.h,visiblePatternBounds(box,width,height));
         } else JournalMarks.draw(ctx, layer, w, h);

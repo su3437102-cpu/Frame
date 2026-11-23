@@ -167,19 +167,15 @@ export const JournalArt = (() => {
 
   function edgePlacement(rect,pattern,index,rng) {
     const [x,y,w,h]=rect;
-    if (JournalMarks.isCrop(pattern)) {
-      const [width,height]=cropSize(w*1200,h*1600);
-      const markW=width/1200, markH=height/1600;
-      const right=pattern==='crop-right';
-      return [[x+(right?w:0)-markW/2,y+(right?h:0)-markH/2,markW,markH],0];
-    }
-    const width=Math.min(.172,w*.60), height=Math.min(.039,h*.61);
+    const compact=pattern==='crop';
+    const [width,height]=compact ? cropSize(w*1200,h*1600).map((value,i)=>value/[1200,1600][i])
+      : [Math.min(.172,w*.60), Math.min(.039,h*.61)];
     const swing=(rng()-.5)*14;
     switch (index%4) {
       case 0:return [[x+w*.15-width/2, y-height*.50, width,height], -9+swing];
-      case 1:return [[x+w-width*.67, y+h*.78-height/2,width,height], -22+swing];
+      case 1:return [[x+w-width*.67, y+h*.78-height/2,width,height], compact?5+swing:-22+swing];
       case 2:return [[x+w*.68-width/2, y+h-height*.50,width,height], -3+swing];
-      default:return [[x-width*.28,y+h*.32-height/2,width,height], 28+swing];
+      default:return [[x-width*.28,y+h*.32-height/2,width,height], compact?10+swing:28+swing];
     }
   }
 
