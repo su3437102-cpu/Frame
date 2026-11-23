@@ -635,6 +635,14 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     return {width: sample.width, height: sample.height, pixels};
   }
 
+  function nextMaterialId(prefix) {
+    let id;
+    do {
+      id = prefix + Collage.uid();
+    } while (images.has(id));
+    return id;
+  }
+
   async function prepareMaterial(record) {
     signal.throwIfAborted();
     if (images.has(record.id)) return images.get(record.id);
@@ -729,7 +737,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       return;
     }
     try {
-      const record = {id: 'replacement-' + Collage.uid(), kind: 'source', name: file.name || '替换图片', blob: file};
+      const record = {id:nextMaterialId('replacement-'), kind:'source', name:file.name || '替换图片', blob:file};
       const asset = await prepareMaterial(record);
       const layer = state.layers.find(item => item.id === target.id && item.asset === target.asset);
       if (!layer) {
@@ -878,7 +886,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     try {
       if (!ready) await loaded;
       for (const [index, file] of items.entries()) {
-        const record = {id:'journal-photo-' + Collage.uid(), kind:'source',
+        const record = {id:nextMaterialId('journal-photo-'), kind:'source',
           name:file.name || '照片 ' + (index+1), blob:file};
         const material = await prepareMaterial(record);
         added.push(material.id);
@@ -1862,7 +1870,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       ...record, blob: deserializeMaterial(record)
     })));
     const {split, ...saved} = draft;
-    state = {...saved, regionCount:Renderer.grid(draft).count, layers:packed.layers};
+    state = {...saved, regionCount:Renderer.grid(draft).count, layers:Collage.restoreLayerIds(packed.layers)};
     if (state.montage) setMontageControls(state.montage);
     else if (styleById.get(state.style).group === 'montage') setMontageControls();
     showTab(state.regionCount > 1 ? 'regions' : 'layers');

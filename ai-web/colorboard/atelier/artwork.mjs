@@ -43,6 +43,19 @@ export const Collage = (() => {
 
   let nextId = 0;
   const uid = () => ++nextId;
+
+  function restoreLayerIds(layers) {
+    const reserved = new Set();
+    for (const {id} of layers) {
+      // Leave room for the counter to keep issuing safe numeric IDs.
+      if (!Number.isSafeInteger(id) || id <= 0 || id >= 2 ** 48) continue;
+      reserved.add(id);
+      nextId = Math.max(nextId,id);
+    }
+    // Keep the first occurrence of each valid ID and repair any duplicates.
+    return layers.map(layer => reserved.delete(layer.id) ? layer : {...layer,id:uid()});
+  }
+
   const base = (kind, name, x, y, w, h, props) => ({
     id: uid(), kind, name, x, y, w, h, rotation: 0, scale: 100,
     opacity: 100, mask: 'rect', blend: 'source-over', tone: 'original', hidden: false, ...props
@@ -185,5 +198,5 @@ export const Collage = (() => {
     });
   }
 
-  return {designs, library, random, sample, uploadLayout, vary, paper, photo, label, uid};
+  return {designs, library, random, sample, uploadLayout, vary, paper, photo, label, uid, restoreLayerIds};
 })();

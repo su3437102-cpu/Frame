@@ -149,6 +149,41 @@ check('grading restores advanced sliders on reopen',await shadows.inputValue()==
 check('opening and manually grading a photo loads no AI models',modelRequests.length===0,modelRequests);
 await gradingPage.close();
 
+const collagePage=await browser.newPage({viewport:{width:1440,height:900},serviceWorkers:'block'});
+collagePage.on('pageerror',error=>errors.push(error.message));
+await collagePage.goto('http://127.0.0.1:4311');
+await collagePage.locator('#workspaceStatus').waitFor({state:'hidden'});
+await collagePage.locator('#world [data-id="project-0"]').click();
+await collagePage.locator('#contextRail [data-context="to-atelier"]').click();
+const collage=collagePage.locator('#colorboard-workbench .collage-root');
+const saveCollage=async()=>{
+  await collage.locator('#atelier-save:enabled').click();
+  await collage.waitFor({state:'hidden'});
+  await collagePage.getByText('已保存到此设备',{exact:true}).waitFor();
+};
+await saveCollage();
+const collageId=await collagePage.evaluate(()=>state.objects.find(item=>item.variant==='collage'&&item.collageEdit).id);
+await collagePage.reload();
+await collagePage.locator('#workspaceStatus').waitFor({state:'hidden'});
+await collagePage.locator('#world [data-id="'+collageId+'"]').dblclick();
+await collage.locator('#atelier-save:enabled').waitFor();
+await collage.locator('.journal-layer-tools summary').click();
+await collage.locator('#journal-add-fill').click();
+const layerIds=await collage.locator('#layer-list .layer-item').evaluateAll(items=>items.map(item=>item.dataset.layer));
+const selectedMark=await collage.locator('.layer-item[data-kind="mark"][aria-pressed="true"]').count()===1;
+const markControls=await collage.locator('#journal-pattern-row').isVisible();
+await collage.locator('#opacity').fill('41');
+await saveCollage();
+const savedOpacity=await collagePage.evaluate(async id=>{
+  const {unpackProject}=await import('/ai-web/colorboard/framelab-project.mjs');
+  const project=await unpackProject(state.objects.find(item=>item.id===id).collageEdit);
+  return project.layers.map(layer=>layer.opacity);
+},collageId);
+check('adding a mark after a reload edits its own layer independently of the photo',
+  layerIds.length===2&&new Set(layerIds).size===2&&selectedMark&&markControls&&savedOpacity.join(',')==='100,41',
+  {layerIds,savedOpacity});
+await collagePage.close();
+
 check('zero JS runtime errors',errors.length===0,errors);fs.writeFileSync(dir+'/test-results.json',JSON.stringify({date:new Date().toISOString(),browser:browser.version(),results},null,2));await browser.close();console.log(JSON.stringify({passed:results.filter(r=>r.passed).length,total:results.length,failed:results.filter(r=>!r.passed)},null,2));
 if(results.some(result=>!result.passed))process.exitCode=1;
 
