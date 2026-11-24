@@ -1,5 +1,6 @@
 import { Collage } from './artwork.mjs';
 import { MontageArt } from './montage.mjs';
+import { FilmFrames } from './film-frames.mjs';
 export const CollageTemplates = (() => {
   const groups = [
     {
@@ -17,7 +18,8 @@ export const CollageTemplates = (() => {
         {name: 'image-collage · 照片可独立裁切和移动', url: 'https://github.com/jo56/image-collage'},
         {name: '美国国会图书馆 · 透明剪影叠贴实验', url: 'https://github.com/LibraryOfCongress/collaging-space-time'}
       ]
-    }
+    },
+    FilmFrames.group
   ];
 
   const designs = [
@@ -28,7 +30,8 @@ export const CollageTemplates = (() => {
       action: '打开示例后可替换建筑照片，保留各片的裁切和叠放关系。',
       slots: ['阔冠树剪影', '山城照片裁片', '金褐与旧红色纸', '行人剪影', '细线与点阵']
     },
-    ...MontageArt.designs
+    ...MontageArt.designs,
+    ...FilmFrames.designs
   ];
 
   // Saved projects and the journal import flow still use these layout IDs.
@@ -147,6 +150,7 @@ export const CollageTemplates = (() => {
   function layout(id, materials = null, seed = 0, amount = 0) {
     if (id === 'city-canopy') return cityMontage(materials);
     const design = byId.get(id);
+    if (design.group === FilmFrames.group.id) return FilmFrames.layout(design,materials?.[0]);
     if (design.group === 'montage') {
       const layers = MontageArt.layout(id);
       return materials?.length ? MontageArt.compose(layers,{...MontageArt.defaults,theme:id,shape:id},materials,

@@ -288,6 +288,23 @@ export const Renderer = (() => {
       Math.min(box.w,Math.max(...xs)+16),Math.min(box.h,Math.max(...ys)+20)];
   }
 
+  function filmPerforations(ctx, layer, w, h) {
+    const count = layer.filmHoles;
+    if (!Number.isInteger(count) || count < 1 || count > 24) return;
+    const pitch = w*.93/count;
+    const holeWidth = pitch*.49;
+    const holeHeight = Math.min(h*.044,holeWidth*.72);
+    ctx.beginPath();
+    for (const row of [layer.filmHoleTop,layer.filmHoleBottom]) {
+      for (let i=0;i<count;i++) {
+        const x = -w*.465 + (i+.5)*pitch-holeWidth/2;
+        const y = (row-.5)*h-holeHeight/2;
+        ctx.roundRect(x,y,holeWidth,holeHeight,holeHeight*.18);
+      }
+    }
+    ctx.fill();
+  }
+
   function drawLayer(ctx, layer, panelWidth, panelHeight, width, height, images) {
     if (layer.hidden || layer.opacity === 0) return;
     const box = placement(layer, panelWidth, panelHeight);
@@ -318,7 +335,8 @@ export const Renderer = (() => {
       if (layer.kind === 'stroke') BrushArt.draw(ctx, layer, w, h);
       if (layer.kind === 'paper') {
         ctx.fillStyle = layer.color;
-        ctx.fillRect(-w / 2, -h / 2, w, h);
+        if (layer.filmHoles) filmPerforations(ctx,layer,w,h);
+        else ctx.fillRect(-w / 2, -h / 2, w, h);
         if (layer.grain) grain(ctx, -w / 2, -h / 2, w, h, .82);
       }
     }

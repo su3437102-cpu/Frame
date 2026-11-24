@@ -6,6 +6,7 @@ import { installBoxSelection } from './box-selection.mjs';
 import { installCanvasViewport } from './canvas-viewport.mjs';
 import { installCurveEditor, drawHistogram } from './color-controls.mjs';
 import { OPEN_LUTS } from './luts/catalog.mjs';
+import { FILMS, PAPERS, FILM_CONTROLS, filmDefaults, normalizeFilmPrint, renderFilmPrint } from './film-print.mjs';
 import { FEISHU_LOOKS } from './luts/feishu/catalog.mjs';
 import { applyGlow, DEFAULT_GLOW, normalizeGlow } from './glow-engine.mjs';
 import { extractReferenceLook, lookSwatches, lookToLut } from './look-extractor.mjs';
@@ -105,6 +106,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     lutRequest: 0,
     lutPending: false,
     layers: [],
+    filmPrint: filmDefaults(),
     glow: { ...DEFAULT_GLOW },
     glowEnabled: false,
     glowPresetId: null,
@@ -251,6 +253,44 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     scheduleRender();
   });
   el('ai-strength-wrap').append(aiRange.row);
+
+  const stockSelect = el('print-film');
+  const paperSelect = el('print-paper');
+  const filmToggle = el('film-print-toggle');
+  stockSelect.append(...FILMS.map(film => new Option(film.name,film.id)));
+  paperSelect.append(...PAPERS.map(paper => new Option(paper.name,paper.id)));
+  const filmRanges = FILM_CONTROLS.map(field => {
+    const range = createRange('film',field,state.filmPrint[field[0]],value => {
+      state.filmPrint[range.key] = value;
+      scheduleRender();
+    });
+    el('film-print-ranges').append(range.row);
+    return range;
+  });
+  function syncFilmPrint() {
+    const recipe = state.filmPrint;
+    stockSelect.value = recipe.film;
+    paperSelect.value = recipe.paper;
+    filmToggle.textContent = recipe.enabled ? '关闭冲印' : '启用冲印';
+    filmToggle.setAttribute('aria-pressed',String(recipe.enabled));
+    el('film-print-state').hidden = !recipe.enabled;
+    for (const range of filmRanges) range.update(recipe[range.key]);
+  }
+  function updateFilmPrint(recipe) {
+    state.filmPrint = recipe;
+    syncFilmPrint();
+    scheduleRender();
+  }
+  stockSelect.addEventListener('change', () => {
+    const {enabled,exposure,whiteBalance,contrast} = state.filmPrint;
+    updateFilmPrint({...filmDefaults(stockSelect.value),enabled,exposure,whiteBalance,contrast});
+  });
+  paperSelect.addEventListener('change', () => updateFilmPrint({...state.filmPrint,paper:paperSelect.value}));
+  filmToggle.addEventListener('click', () => updateFilmPrint({...state.filmPrint,enabled:!state.filmPrint.enabled}));
+  el('film-print-reset').addEventListener('click', () => {
+    updateFilmPrint({...filmDefaults(state.filmPrint.film),enabled:state.filmPrint.enabled});
+  });
+  syncFilmPrint();
 
   const glowButton = el('toggle-glow');
   const glowGroups = [
@@ -484,7 +524,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       mask: maskPixels(layer, imageData.width, imageData.height),
       settings: layer.settings, invert: layer.invert, opacity: layer.opacity
     }));
-    const graded = renderGrade(imageData, grade, {
+    const graded = renderGrade(renderFilmPrint(imageData,state.filmPrint), grade, {
       layers, baseLut: look ?? state.baseLut, baseLutStrength: look ? strength : state.aiStrength,
       lut: state.lut, lutStrength: state.lutStrength
     });
@@ -2237,6 +2277,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       maskOverlay: project.maskOverlay !== false,
       brushSize: frameNumber(project.brushSize, 9, 1, 35),
       brushFeather: frameNumber(project.brushFeather, 72, 0, 100),
+      filmPrint: normalizeFilmPrint(project.filmPrint),
       glow: normalizeGlow(project.glow),
       glowEnabled: project.glowEnabled === true,
       glowPresetId: typeof project.glowPresetId === 'string' ? frameText(project.glowPresetId) : null,
@@ -2250,6 +2291,8 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     if (state.baseLut) inFlightMessage.textContent = '已恢复此照片的自动调色';
     syncLutControls();
     syncGlowControls();
+    syncFilmPrint();
+    el('film-print').open = state.filmPrint.enabled;
     syncSettings();
     syncMaskPanel();
     syncFeishuSelection();
@@ -2334,7 +2377,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     const replacement = await frameReplacement();
     const {
       settings, presetId, aiStrength, referenceStrength, lutStrength, lutName, lutLookId,
-      layerId, colorLayerId, subjectPresetLayerId, glow, glowEnabled, glowPresetId, glowBeforePreset, maskOverlay, brushSize,
+      layerId, colorLayerId, subjectPresetLayerId, filmPrint, glow, glowEnabled, glowPresetId, glowBeforePreset, maskOverlay, brushSize,
       brushFeather, panel, view, compare
     } = state;
     const layers = state.layers.map(({ canvas, id, name, box, showBox, visible, invert, opacity, settings }) => ({
@@ -2345,7 +2388,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     const active = state.appliedLook;
     return packProject({
       replacement, settings, presetId, aiStrength, referenceStrength, lutStrength, lutName, lutLookId,
-      layerId, colorLayerId, subjectPresetLayerId, glow, glowEnabled, glowPresetId, glowBeforePreset, maskOverlay, brushSize,
+      layerId, colorLayerId, subjectPresetLayerId, filmPrint, glow, glowEnabled, glowPresetId, glowBeforePreset, maskOverlay, brushSize,
       brushFeather, panel, view, compare, layers, zoom, rotation,
       baseLut: packLut(state.baseLut), referenceLut: packLut(state.referenceLut), lut: packLut(state.lut),
       appliedLook: active && { id: active.id, name: active.name, strength: active.strength }

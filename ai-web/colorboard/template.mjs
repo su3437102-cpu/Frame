@@ -161,6 +161,18 @@ const markup = `
             <button type="button" id="extract-look-open" class="button button-soft" aria-haspopup="dialog" aria-controls="extract-look-dialog"><i data-icon="sparkles"></i>从照片提取</button>
           </div>
           <div id="feishu-looks">
+            <details id="film-print" class="film-print">
+              <summary>胶片冲印 <span id="film-print-state" hidden>已开启</span></summary>
+              <div class="film-print-pair">
+                <label>胶片<select id="print-film"></select></label>
+                <label>相纸<select id="print-paper"></select></label>
+              </div>
+              <div class="film-print-actions">
+                <button class="button button-soft" id="film-print-toggle" type="button" aria-pressed="false">启用冲印</button>
+                <button class="text-button" id="film-print-reset" type="button">重置配方</button>
+              </div>
+              <div id="film-print-ranges"></div>
+            </details>
             <p class="feishu-summary">3 套调色、1 套辉光预设和 1 套框选留色模板。</p>
             <div id="feishu-look-grid" class="feishu-look-grid"></div>
           </div>

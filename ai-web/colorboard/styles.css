@@ -259,7 +259,7 @@ dialog::backdrop { background: #201a2e66; }
 .dialog-header h2 { font-size: 18px; }
 .dialog-form label { font-size: 12px; display: grid; gap: 5px; margin-bottom: 10px; }
 .dialog-form .range-row label { display: flex; gap: 4px; margin-bottom: 0; font-size: 11px; }
-.dialog-form select, .dialog-form input[type="text"] { padding: 7px; width: 100%; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); }
+.dialog-form select, .dialog-form input[type="text"], .film-print-pair select { padding: 7px; width: 100%; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); }
 .dialog-actions { justify-content: flex-end; margin-top: 15px; }
 #extract-look-dialog { width: min(100% - 26px, 635px); }
 #feishu-case-dialog { width: min(100% - 26px, 762px); max-height: calc(100dvh - 28px); overflow-y: auto; }
@@ -369,3 +369,11 @@ dialog::backdrop { background: #201a2e66; }
   .spinning { animation: none; }
   .control-disclosure::after { transition: none; }
 }
+
+.film-print { margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; }
+.film-print summary { cursor: pointer; font-weight: 700; }
+.film-print summary span { margin-inline-start: 5px; color: var(--muted); font-size: 11px; font-weight: 400; }
+.film-print-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 10px 0; }
+.film-print-pair label { display: grid; gap: 4px; min-width: 0; }
+.film-print-pair select { min-width: 0; }
+.film-print-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }

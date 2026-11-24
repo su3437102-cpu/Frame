@@ -243,14 +243,17 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
           : layer);
         return;
       }
-      const materials = templateExample ? [] : state.uploads.map(assetId => images.get(assetId));
-      let layers = buildDesign(design, materials, remix ? seed : 3049, design.group ? 0 : state.variation);
+      const materials = state.uploads.map(assetId => images.get(assetId));
+      const templateInputs = design.group === 'film'
+        ? [images.get(currentLayer()?.asset) ?? materials[0]].filter(Boolean)
+        : templateExample ? [] : materials;
+      let layers = buildDesign(design, templateInputs, remix ? seed : 3049, design.group ? 0 : state.variation);
       if (remix && !materials.length) layers = Collage.vary(layers, id, seed, state.variation);
       state = {
-        ...state, style: id, bg: design.background, layers, example: !materials.length,
+        ...state, style: id, bg: design.background, layers, example: !templateInputs.length,
         aspect: design.aspect || state.aspect, flat: Boolean(design.group), journal:null, montage:null
       };
-      selectedId = null;
+      selectedId = design.group === 'film' ? layers.find(layer => layer.kind === 'photo')?.id : null;
       if (design.group==='montage') setMontageControls();
     }, remix ? '已生成一版新构图。' : '已应用' + design.name + '。');
   }
@@ -513,7 +516,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     const design = styleById.get(state.style);
     const [w, h] = Renderer.dimensions(state);
     if (!currentLayer()) selectedId = null;
-    $('work-title').textContent = state.montage ? '规则拼贴' : state.example || state.journal ? design.title : '我的拼贴';
+    $('work-title').textContent = state.montage ? '规则拼贴' : state.example || state.journal || design.group === 'film' ? design.title : '我的拼贴';
     $('work-subtitle').textContent = state.example ? (design.group ? '可编辑模板' : '工作室示例') : w + ' × ' + h + ' px';
     templateGallery?.setActive(state.style);
     $('style-note').textContent = design.action;
@@ -1730,7 +1733,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     const layer = currentLayer();
     if (layer) edit(() => {
       updateLayer(layer, 'text', event.target.value.trim() || '文字');
-      layer.name = layer.text;
+      if (!layer.filmLabel) layer.name = layer.text;
     });
   });
 
