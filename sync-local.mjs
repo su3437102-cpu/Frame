@@ -6,7 +6,7 @@ const paths=[
   'ai-service.mjs', 'ai-worker.py', 'interactions.js', 'workbench-graph.js', 'ps-system.js', 'pikado-host.js',
   'context-ui.js', 'task-board.js', 'image-layout.js', 'context-ui.css', 'style.css',
   'colorboard-workbench.css', 'server.mjs', 'Start-R11.cmd', 'AI-COLOR-INTEGRATION.md',
-  'PIKADO-INTEGRATION.md', 'sw.js', 'index.html',
+  'PIKADO-INTEGRATION.md', 'sw.js', 'index.html', 'spektralab.html', 'spektralab.css',
 ];
 
 mkdirSync(target,{recursive:true});

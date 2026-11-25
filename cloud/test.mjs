@@ -35,6 +35,14 @@ test('authentication, forged cookie, csrf, logout and secret rotation',async()=>
  const r=await login(env);assert.equal(r.status,200);const cookie=r.headers.get('Set-Cookie');assert.match(cookie,/HttpOnly; Secure; SameSite=Strict/);
  const authReq=(path,method='GET',origin='https://frame.example',c=cookie)=>new Request('https://frame.example'+path,{method,headers:{Cookie:c,Origin:origin,'Content-Type':'application/json'}});
  assert.equal((await worker.fetch(authReq('/'),env,{})).status,200);
+ assert.equal((await worker.fetch(new Request('https://frame.example/spektralab.html'),env,{})).status,303);
+ const launcher=await worker.fetch(authReq('/spektralab.html'),env,{});
+ assert.equal(launcher.status,200);
+ const launcherHtml=await launcher.text();
+ assert.match(launcherHtml,/href="http:\/\/127\.0\.0\.1:5193\/"/);
+ assert.match(launcherHtml,/rel="noopener noreferrer"/);
+ const launcherStyle=await worker.fetch(authReq('/spektralab.css'),env,{});
+ assert.equal(launcherStyle.headers.get('Content-Type'),'text/css; charset=utf-8');
  assert.equal((await worker.fetch(authReq('/api/desk','PUT','https://evil.example'),env,{})).status,403);
  assert.equal((await worker.fetch(authReq('/api/desk','GET',undefined,cookie.replace(/=./,'=0')),env,{})).status,401);
  for(const p of ['/qa/test-backup.json','/cloud/worker.mjs','/sw.js','/.git/config'])assert.equal((await worker.fetch(authReq(p),env,{})).status,404);

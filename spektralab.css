@@ -1,0 +1,68 @@
+/* SpektraLab launcher follows the FrameLab workbench tokens. */
+.spektralab-entry,.spektralab-link,.spektralab-open {
+  color: inherit;
+  text-underline-offset: 4px;
+}
+.spektralab-entry,.spektralab-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.spektralab-entry { font-size: 13px; }
+.spektralab-entry:hover,.spektralab-open:hover { background: var(--hover); }
+.spektralab-entry:active,.spektralab-open:active { background: var(--line); }
+.spektralab-entry:focus-visible,.spektralab-link:focus-visible,.spektralab-open:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.spektralab-page {
+  height: 100dvh;
+  overflow: auto;
+  padding: clamp(16px,5vw,70px);
+  background: var(--bg);
+  color: var(--ink);
+}
+.spektralab-panel {
+  width: min(100%,660px);
+  margin: auto;
+  padding: clamp(20px,5vw,44px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.spektralab-panel h1 {
+  display: block;
+  margin: 24px 0 8px;
+  font-size: clamp(28px,5vw,40px);
+  letter-spacing: -.035em;
+  line-height: 1.15;
+}
+.spektralab-panel h2 { margin: 0; font-size: 16px; }
+.spektralab-panel section { margin: 26px 0 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.spektralab-panel ol { padding-left: 1.4em; }
+.spektralab-panel li+li { margin-top: 8px; }
+.spektralab-intro,.spektralab-panel section p { color: var(--muted); }
+.spektralab-open { min-height: 44px; margin-top: 4px; font-weight: 600; }
+@media (max-width: 600px) {
+  .spektralab-entry { min-height: 44px; padding: 0 8px; font-size: 12px; }
+  .topbar:has(.spektralab-entry) h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+}
+@media (prefers-color-scheme: dark) {
+  .spektralab-page {
+    color-scheme: dark;
+    --bg: #191919;
+    --surface: #242424;
+    --ink: #eee;
+    --line: #484848;
+    --muted: #b7b7b7;
+    --hover: #353535;
+  }
+}

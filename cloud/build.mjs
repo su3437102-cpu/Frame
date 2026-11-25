@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdirSync,cpSync,readdirSync,statSync,rmSync} from 'node:fs';
-const files=['index.html','app.js','ai-color.js','style.css','colorboard-workbench.css','context-ui.js','task-board.js','image-layout.js','context-ui.css','interactions.js','workbench-graph.js','cloud-sync.js','desk-media.js','device-store.js','ps-system.js','pikado-host.js','assets/fonts/latin.css','assets/fonts/geist-latin.woff2','assets/fonts/hedvig-letters-serif-latin.woff2','assets/fonts/Geist-OFL.txt','assets/fonts/Hedvig-Letters-Serif-OFL.txt',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
+const files=['index.html','spektralab.html','spektralab.css','app.js','ai-color.js','style.css','colorboard-workbench.css','context-ui.js','task-board.js','image-layout.js','context-ui.css','interactions.js','workbench-graph.js','cloud-sync.js','desk-media.js','device-store.js','ps-system.js','pikado-host.js','assets/fonts/latin.css','assets/fonts/geist-latin.woff2','assets/fonts/hedvig-letters-serif-latin.woff2','assets/fonts/Geist-OFL.txt','assets/fonts/Hedvig-Letters-Serif-OFL.txt',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
 const assets={};
 for(const file of files){
   let bytes=readFileSync(new URL('../'+file,import.meta.url));
