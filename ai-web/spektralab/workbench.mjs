@@ -1,4 +1,6 @@
 import {loadCatalog} from './engine.mjs';
+import {listPhotos,savePhoto} from './workspace-store.mjs';
+import {decodeProject,encodeProject,maxPhotoBytes,photoType,rgbaTiff} from './frame-tools.mjs';
 
 const $ = id => document.getElementById(id);
 const photos = [];
@@ -8,14 +10,22 @@ const stockOrder = new Intl.Collator('zh-CN', {numeric:true});
 let catalog, film, paper, photo, worker, current, pending, sequence = 0, timer;
 let comparing = false, scale = 'fit', busy = false, channel = null;
 let referenceUrl, comparingReference = false;
+let mode = 'develop', descending = true, copiedSettings, libraryUnavailable = false;
 const values = {};
+const updater = [];
+const appearanceDefaults = {
+  aspect:'original',turn:0,flip:false,straighten:0,zoom:1,border:'none',
+  imprint:'',imprintEnabled:false,corner:'right',stripLayer:false,
+  rawTemperature:0,rawTint:1
+};
+let appearance = {...appearanceDefaults};
 const channels = ['rgb','red','green','blue'];
 const hues = ['red','orange','yellow','green','blue','purple'];
 const curves = Object.fromEntries(channels.map(key => [key,0]));
 const hsl = Object.fromEntries(hues.map(key => [key,{hue:0,saturation:0,luminance:0}]));
 const controls = [
   ['develop','胶片曝光',[
-    ['exposure','胶片曝光',-3,3,.05,0], ['format','画幅宽度 mm',17,65,1,35],
+    ['exposure','胶片曝光',-3,3,.05,0],
     ['gamma','显影反差',.5,1.5,.01,1], ['couplers','层间扩散',0,2,.05,1]
   ]],
   ['develop','颗粒与光晕',[
@@ -37,6 +47,10 @@ const controls = [
   ['edit','细节',[
     ['clarity','清晰度',-100,100,1,0], ['sharpen','锐化',0,100,1,0],
     ['dehaze','去雾',-100,100,1,0], ['vignette','暗角',0,100,1,0]
+  ]],
+  ['edit','RAW 解码',[
+    ['rawTemperature','色温 K（0 为拍摄值）',0,12000,100,0],
+    ['rawTint','RAW 色偏',.25,4,.01,1]
   ]]
 ];
 
@@ -54,6 +68,7 @@ for (const [mode, title, entries] of controls) {
     const labelNode = node('label','',{className:'control'});
     const input = node('input','',{type:'range',min,max,step,value:initial,id:'value-'+key});
     const output = node('output',String(initial));
+    updater.push(() => {input.value=values[key];output.value=input.value;});
     input.setAttribute('aria-label',label);
     input.addEventListener('input', () => {
       values[key] = input.valueAsNumber;
@@ -92,6 +107,7 @@ function channelControls(title, options, sliders) {
     return refresh;
   });
   menu.onchange = () => fields.forEach(refresh => refresh());
+  updater.push(menu.onchange);
   menu.onchange();
   $('edit').append(group);
 }
@@ -114,6 +130,7 @@ function renderStocks() {
   const matches = catalog.profiles.filter(item => !item.paper && (!category || stockCategory(item) === category));
   const buttons = matches.sort((a,b) => stockOrder.compare(a.name,b.name)).map(item => {
     const button = node('button',item.name,{type:'button',title:item.name});
+    button.dataset.stock = stockCategory(item);
     pressed(button, item.id === film.id);
     button.addEventListener('click', () => {
       if (film.positive && !item.positive) $('direct').checked = false;
@@ -132,21 +149,96 @@ function renderPapers() {
   const choices = catalog.profiles.filter(item => item.paper && item.bw === film.bw);
   paper = choices.find(item => item.id === paper?.id)
     || choices.find(item => item.id === nativeDefault) || choices[0];
-  $('paper').replaceChildren(...choices.map(item => node('option',item.name,{value:item.id})));
-  if (paper) $('paper').value = paper.id;
-  $('paper').disabled = $('direct').checked;
+  const options = [{name:'不印放',id:''},...choices];
+  $('paper-cards').replaceChildren(...options.map(item => {
+    const button=node('button',item.name,{type:'button',title:item.name,disabled:film.positive && !!item.id});
+    button.dataset.stock = item.id ? '相纸' : '不印放';
+    pressed(button,item.id ? !$('direct').checked && paper?.id === item.id : $('direct').checked);
+    button.onclick = () => {
+      $('direct').checked = !item.id;
+      if (item.id) paper = item;
+      renderPapers();
+      schedule();
+    };
+    return button;
+  }));
   $('stock-info').textContent = film.name + ($('direct').checked ? ' · 直接扫描' : ' · '+(paper?.name || ''));
 }
 $('category').append(...['','彩色负片','电影胶片','反转片','黑白'].map(name => node('option',name || '全部',{value:name})));
 $('category').onchange = renderStocks;
-$('paper').onchange = () => { paper = catalog.profiles.find(item => item.id === $('paper').value); renderPapers(); schedule(); };
-$('direct').onchange = () => { renderPapers(); schedule(); };
-for (const mode of ['develop','edit']) $(mode+'-tab').onclick = () => {
-  for (const item of ['develop','edit']) {
+function showMode(next) {
+  mode = next;
+  for (const item of ['gallery','develop','edit']) {
     $(item).hidden = item !== mode;
     pressed($(item+'-tab'), item === mode);
   }
+  pressed($('toggle-grid'),mode === 'gallery');
+  syncPreview();
+}
+for (const next of ['gallery','develop','edit']) $(next+'-tab').onclick = () => showMode(next);
+
+const formats = [['110','13 × 17',17],['APS','16.7 × 30',30],['135','24 × 36',35],['120','56 × 56',56]];
+values.format = 35;
+for (const [name,size,value] of formats) {
+  const button = node('button','',{type:'button'});
+  button.dataset.format = value;
+  button.append(node('strong',name),node('small',size));
+  button.onclick = () => {values.format=value;updateAppearance();schedule();};
+  $('formats').append(button);
+}
+
+const appearanceInputs = {
+  aspect:['aspect','value'],zoom:['crop-zoom','valueAsNumber'],straighten:['straighten','valueAsNumber'],
+  border:['border','value'],imprint:['imprint','value'],imprintEnabled:['imprint-on','checked'],
+  corner:['corner','value'],stripLayer:['strip-layer','checked']
 };
+function updateAppearance() {
+  for (const [key,[id,prop]] of Object.entries(appearanceInputs)) $(id)[prop] = appearance[key];
+  pressed($('flip'),appearance.flip);
+  for (const button of $('formats').children) pressed(button,Number(button.dataset.format) === values.format);
+}
+for (const [key,[id,prop]] of Object.entries(appearanceInputs)) $(id).oninput = () => {
+  appearance[key] = $(id)[prop];schedule();
+};
+$('turn').onclick = () => {appearance.turn=(appearance.turn+1)%4;schedule();};
+$('flip').onclick = () => {appearance.flip=!appearance.flip;updateAppearance();schedule();};
+updateAppearance();
+
+const defaults = {...values};
+function snapshotRecipe() {
+  return {film:film.id,paper:paper?.id,scan:$('direct').checked,
+    values:{...values},curves:{...curves},hsl:structuredClone(hsl),appearance:{...appearance}};
+}
+function restoreRecipe(recipe = {}) {
+  const findStock = id => catalog.profiles.find(item => item.id === id);
+  film = catalog.profiles.find(item => !item.paper && item.id === recipe.film) || findStock('kodak_portra_400');
+  paper = catalog.profiles.find(item => item.paper && item.id === recipe.paper) || findStock(nativeDefault);
+  $('direct').checked = recipe.scan === true;
+  Object.assign(values,defaults);
+  for (const [,,entries] of controls) for (const [key,,min,max] of entries) {
+    const requested = recipe.values?.[key];
+    if (Number.isFinite(requested)) values[key]=Math.min(max,Math.max(min,requested));
+  }
+  if (formats.some(([, , value]) => value === recipe.values?.format)) values.format=recipe.values.format;
+  for (const key of channels) curves[key]=bounded(recipe.curves?.[key],-45,45,0);
+  for (const hue of hues) for (const key of Object.keys(hsl[hue])) hsl[hue][key]=bounded(recipe.hsl?.[hue]?.[key],-100,100,0);
+  const input = recipe.appearance || {};
+  appearance = {...appearanceDefaults,
+    aspect:['original','1:1','4:5','3:2','16:9'].includes(input.aspect) ? input.aspect : 'original',
+    border:['none','135','120','paper'].includes(input.border) ? input.border : 'none',
+    turn:Math.round(bounded(input.turn,0,3,0)),straighten:bounded(input.straighten,-20,20,0),
+    zoom:bounded(input.zoom,.3,1,1),flip:input.flip===true,imprintEnabled:input.imprintEnabled===true,
+    imprint:typeof input.imprint==='string' ? input.imprint.slice(0,32) : '',
+    corner:input.corner==='left' ? 'left' : 'right',stripLayer:input.stripLayer===true
+  };
+  updater.forEach(refresh => refresh());
+  updateAppearance();
+  renderStocks();
+  renderPapers();
+}
+function bounded(value,min,max,fallback) {
+  return Number.isFinite(value) ? Math.min(max,Math.max(min,value)) : fallback;
+}
 
 function settings() {
   const params = structuredClone(catalog.defaults);
@@ -160,7 +252,7 @@ function settings() {
   const stockNoise = film.grain?.rms_granularity;
   if (stockNoise?.length) neg.grain.rms_granularity = stockNoise.map(amount => amount * values.grain);
   neg.halation.active = values.halation > 0 || values.scatter > 0;
-  neg.halation.halation_amount = values.halation;
+  neg.halation.halation_amount = values.halation*(appearance.stripLayer ? 2 : 1);
   neg.halation.scatter_amount = values.scatter;
   neg.halation.halation_spatial_scale = values.haloSize;
   params.enlarger.print_exposure = 2 ** values.printExposure;
@@ -170,16 +262,21 @@ function settings() {
   params.print_render.glare.active = values.glare > 0;
   params.print_render.glare.percent = values.glare;
   params.io.scan_film = $('direct').checked;
-  const grade = Object.fromEntries(controls.filter(group => group[0] === 'edit')
+  const grade = Object.fromEntries(controls.filter(group => group[0] === 'edit' && group[1] !== 'RAW 解码')
     .flatMap(group => group[2].map(([key]) => [key,values[key]])));
   if (Object.values(curves).some(Boolean)) grade.curve = Object.fromEntries(channels.map(key =>
     [key,[[0,0],[.5,.5+curves[key]/100],[1,1]]]));
   if (Object.values(hsl).some(values => Object.values(values).some(Boolean))) grade.hsl = structuredClone(hsl);
-  return {params,grade,film:film.id,paper:paper?.id || nativeDefault};
+  return {params,grade,film:film.id,paper:paper?.id || nativeDefault,appearance:{
+    ...appearance,imprint:appearance.imprintEnabled ? appearance.imprint : '',
+    rawTemperature:values.rawTemperature ? Math.max(2000,values.rawTemperature) : 0,rawTint:values.rawTint
+  }};
 }
 
 function schedule() {
   if (!photo || !catalog) return;
+  photo.recipe=snapshotRecipe();
+  persist(photo);
   clearTimeout(timer);
   pending = null;
   sequence++;
@@ -187,7 +284,9 @@ function schedule() {
   timer = setTimeout(() => submit('preview'), 180);
 }
 function submit(kind) {
-  const job = {id:++sequence,source:photo,...settings(),kind,edge:kind === 'preview' ? 960 : 2048};
+  const edge = kind === 'preview' ? 960 : kind === 'publish' ? 1680 : Number($('export-size').value);
+  const job = {id:++sequence,source:photo,...settings(),kind,edge,format:$('export-format').value,
+    quality:Number($('export-quality').value)/100};
   pending = job;
   refreshActions();
   runNext();
@@ -228,10 +327,48 @@ function paint(frame) {
   preview.width = frame.width;
   preview.height = frame.height;
   preview.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(frame.rgba),frame.width,frame.height),0,0);
+  photo.dimensions = frame.sourceSize;
+  if (frame.original) {
+    if (photo.thumbnail) URL.revokeObjectURL(photo.thumbnail);
+    photo.thumbnail=URL.createObjectURL(frame.original);
+    original.src=photo.thumbnail;
+    for (const entry of document.querySelectorAll('[data-photo-id]')) {
+      if (entry.dataset.photoId !== photo.id) continue;
+      let img=entry.querySelector('img');
+      if (!img) {img=node('img','',{alt:''});entry.prepend(img);}
+      entry.querySelector('.raw-thumb')?.remove();
+      img.src=photo.thumbnail;
+    }
+    void createImageBitmap(frame.original).then(bitmap => {
+      const raster = document.createElement('canvas');
+      raster.width = bitmap.width;raster.height = bitmap.height;
+      const ctx = raster.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(bitmap,0,0);
+      bitmap.close();
+      drawExposure(ctx.getImageData(0,0,raster.width,raster.height).data);
+    }).catch(()=>{});
+  }
   drawHistogram(frame.rgba);
   $('backend').textContent = frame.backend;
   status(frame.width+' × '+frame.height+' · '+Math.round(frame.elapsedMs)+' ms');
   syncPreview();
+}
+function drawExposure(rgba) {
+  const canvas=$('exposure-meter'),ctx=canvas.getContext('2d');
+  const bins=new Uint32Array(96);
+  const linear=value=>value <= 10 ? value/3294.6 : ((value/255+.055)/1.055)**2.4;
+  for (let i=0;i<rgba.length;i+=16) {
+    const light=.2126*linear(rgba[i])+.7152*linear(rgba[i+1])+.0722*linear(rgba[i+2]);
+    const ev=Math.log2(Math.max(light,.0007)/.18);
+    bins[Math.min(95,Math.max(0,Math.floor((ev+8)*6)))]++;
+  }
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const peak=Math.max(1,...bins), step=canvas.width/bins.length;
+  ctx.fillStyle='#bf9560';
+  for (let i=0;i<bins.length;i++) {
+    const height=Math.sqrt(bins[i]/peak)*canvas.height;
+    ctx.fillRect(i*step,canvas.height-height,step,height);
+  }
 }
 function drawHistogram(rgba) {
   const cvs = $('histogram'), ctx = cvs.getContext('2d'), {width,height} = cvs;
@@ -253,9 +390,11 @@ function drawHistogram(rgba) {
 }
 function syncPreview() {
   $('empty').hidden = !!photo;
-  $('pair').hidden = !comparingReference || !preview.dataset.ready;
-  original.hidden = !photo || !comparing || comparingReference;
-  preview.hidden = !photo || comparing || comparingReference || !preview.dataset.ready;
+  const grid=mode === 'gallery' && photos.length>0;
+  $('gallery-grid').hidden=!grid;
+  $('pair').hidden = grid || !comparingReference || !preview.dataset.ready;
+  original.hidden = grid || !photo || !comparing || comparingReference || !original.getAttribute('src');
+  preview.hidden = grid || !photo || comparing || comparingReference || !preview.dataset.ready;
   if (!$('pair').hidden) {
     const right=$('reference-preview');
     right.width=preview.width;
@@ -274,33 +413,84 @@ function refreshActions() {
   $('reference-button').disabled = !preview.dataset.ready;
   $('download').disabled = !photo || !catalog || !!current || !!pending || busy;
   $('publish').disabled = $('download').disabled;
+  $('menu-export').disabled = $('download').disabled;
+  for (const id of ['save-project','copy-settings','reset-settings','crop-button']) $(id).disabled=!photo || !catalog;
+  $('paste-settings').disabled=!photo || !catalog || !copiedSettings;
+  $('previous').disabled=$('next').disabled=photos.length<2;
 }
-function select(item) {
+function select(item, enter = false) {
   photo = item;
-  original.src = item.url;
+  if (item.thumbnail || item.url) original.src=item.thumbnail || item.url;
+  else original.removeAttribute('src');
   preview.dataset.ready = '';
   comparing = true;
   comparingReference = false;
+  if (enter) showMode('develop');
   syncPreview();
-  for (const button of $('photos').children) pressed(button,button.dataset.id === item.id);
-  if (catalog) schedule();
+  for (const button of document.querySelectorAll('[data-photo-id]')) pressed(button,button.dataset.photoId === item.id);
+  if (catalog) {
+    restoreRecipe(item.recipe);
+    schedule();
+  }
+  refreshActions();
 }
-function addFiles(list, useFirst = true) {
+function persist(item) {
+  if (libraryUnavailable) return;
+  const {id,name,blob,recipe,rating,added} = item;
+  void savePhoto({id,name,blob,recipe,rating,added}).catch(() => {
+    libraryUnavailable=true;
+    status('浏览器图库空间不足，未保存本次更改。可从「文件」导出冲洗工程。');
+  });
+}
+function makeId() {
+  return crypto.randomUUID?.() || Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
+}
+function addPhoto(record) {
+  const known=photos.find(item=>item.id === record.id);
+  if (known) return known;
+  const item={rating:0,added:Date.now(),...record};
+  if (/^image\/(?:jpeg|png|webp)$/.test(item.blob.type)) item.url=URL.createObjectURL(item.blob);
+  photos.push(item);
+  return item;
+}
+function sortedPhotos() {
+  const method=$('sort').value, sign=descending ? -1 : 1;
+  return [...photos].sort((a,b)=>sign*(method==='name' ? stockOrder.compare(a.name,b.name) :
+    method==='rating' ? a.rating-b.rating || a.added-b.added : a.added-b.added));
+}
+function renderPhotos() {
+  const items=sortedPhotos();
+  for (const id of ['photos','gallery-grid']) $(id).replaceChildren(...items.map(item => {
+    const card=node('button','',{type:'button',title:item.name,ariaLabel:item.name});
+    card.dataset.photoId=item.id;
+    pressed(card,photo?.id===item.id);
+    if (item.thumbnail || item.url) card.append(node('img','',{src:item.thumbnail || item.url,alt:'',loading:'lazy'}));
+    else card.append(node('span','RAW / TIFF',{className:'raw-thumb'}));
+    card.append(node('span',item.name));
+    if (item.rating) card.append(node('small','★'.repeat(item.rating),{className:'rating'}));
+    card.onclick=()=>select(item);
+    card.ondblclick=()=>select(item,true);
+    return card;
+  }));
+  $('photos-empty').hidden=items.length>0;
+  $('count').textContent = items.length+' 张照片';
+}
+function addFiles(list) {
   let first;
   for (const blob of list) {
-    if (!/^image\/(?:jpeg|png|webp)$/.test(blob.type) || blob.size > 60*1024*1024) continue;
-    const item = {blob,name:blob.name || 'FrameLab 照片',id:String(photos.length+1),url:URL.createObjectURL(blob)};
-    const button = node('button','',{type:'button',title:item.name});
-    button.dataset.id=item.id;
-    button.append(node('img','',{src:item.url,alt:'',loading:'lazy'}),node('span',item.name));
-    button.onclick = () => select(item);
-    $('photos').append(button);
-    photos.push(item);
+    if (!photoType(blob) || !blob.size || blob.size > maxPhotoBytes) continue;
+    const item=addPhoto({blob,name:blob.name || 'FrameLab 照片',id:makeId()});
+    persist(item);
     first ??= item;
   }
-  $('count').textContent = photos.length+' 张照片';
-  if (first && useFirst) select(first);
-  if (!first) status('请选择不超过 60 MB 的 JPG、PNG 或 WebP。');
+  renderPhotos();
+  if (first) select(first,mode !== 'gallery');
+  else status('未找到可解码的照片。单张限制为 128 MB。');
+}
+function downloadFile(blob,name) {
+  const url=URL.createObjectURL(blob);
+  node('a','',{href:url,download:name}).click();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 async function finishFrame(frame, job) {
   busy = true;
@@ -310,27 +500,103 @@ async function finishFrame(frame, job) {
     canvas.width = frame.width;
     canvas.height = frame.height;
     canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(frame.rgba),frame.width,frame.height),0,0);
-    const blob = await new Promise(resolve => canvas.toBlob(resolve,job.kind === 'download' ? 'image/png' : 'image/jpeg',.94));
+    const format=job.kind === 'publish' ? 'jpeg' : job.format;
+    const blob = format === 'tiff' ? rgbaTiff(frame.width,frame.height,frame.rgba)
+      : await new Promise(resolve => canvas.toBlob(resolve,'image/'+format,job.quality));
     if (!blob) throw new Error('无法生成图像文件');
     if (job.kind === 'publish') {
       parent.postMessage({type:'spektralab:publish',channel,blob,width:frame.width,height:frame.height,name:job.source.name}, location.origin);
       status('正在将结果发布到 FrameLab…');
     } else {
-      const url = URL.createObjectURL(blob);
-      const link = node('a','',{href:url,download:'SpektraLab-'+job.source.name.replace(/\.[^.]+$/,'')+'.png'});
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url),60000);
-      status('已导出 PNG');
+      downloadFile(blob,'SpektraLab-'+job.source.name.replace(/\.[^.]+$/,'')+'.'+(format==='jpeg'?'jpg':format));
+      status('已导出 '+format.toUpperCase()+' · '+frame.width+' × '+frame.height);
     }
   } catch (error) {status(error.message);}
   finally {busy = false; refreshActions();}
 }
 
 $('open').onclick = $('empty-open').onclick = () => files.click();
-files.onchange = () => {
-  addFiles(files.files);
-  files.value = '';
+$('open-folder').onclick = () => $('folder').click();
+for (const input of [files,$('folder')]) input.onchange = () => {addFiles(input.files);input.value='';};
+$('open-project').onclick = () => $('project-file').click();
+$('project-file').onchange=async event => {
+  const file=event.target.files[0];
+  event.target.value='';
+  if (!file) return;
+  try {
+    const record=await decodeProject(file);
+    const item=addPhoto({...record,id:makeId()});
+    persist(item);
+    renderPhotos();
+    select(item,true);
+  } catch (error) {status(error.message);}
 };
+$('save-project').onclick=() => {
+  if (photo && catalog) downloadFile(encodeProject(photo,snapshotRecipe()),photo.name+'.spektraframe');
+};
+$('copy-settings').onclick=() => {
+  if (photo && catalog) {copiedSettings=snapshotRecipe();refreshActions();status('已复制冲洗设置');}
+};
+$('paste-settings').onclick=() => {if (photo && copiedSettings) {restoreRecipe(copiedSettings);schedule();}};
+$('reset-settings').onclick=() => {if (photo && catalog) {restoreRecipe();schedule();}};
+$('sort').onchange=renderPhotos;
+$('sort-direction').onclick=() => {descending=!descending;$('sort-direction').textContent=descending?'↓':'↑';renderPhotos();};
+$('histogram-mode').onchange=() => {$('histogram').hidden=$('histogram-mode').value==='exposure';};
+function stepPhoto(delta) {
+  const list=sortedPhotos();
+  if (list.length>1) select(list[(list.indexOf(photo)+delta+list.length)%list.length]);
+}
+$('previous').onclick=()=>stepPhoto(-1);
+$('next').onclick=()=>stepPhoto(1);
+for (const [id,flag] of [['toggle-left','hide-rail'],['toggle-browser','hide-browser']]) $(id).onclick=() => {
+  pressed($(id),!document.querySelector('.workspace').classList.toggle(flag));
+};
+const workspace=document.querySelector('.workspace');
+for (const [id,side,cssVar] of [['rail-divider','left','--rail-width'],['browser-divider','right','--browser-width']]) {
+  const handle=$(id);
+  const adjust=desired=>{
+    const other=workspace.querySelector(side==='left'?'.photos':'.rail').getBoundingClientRect().width;
+    const width=bounded(desired,190,Math.max(190,workspace.clientWidth-other-320),240);
+    workspace.style.setProperty(cssVar,width+'px');
+  };
+  handle.onpointerdown=event=>handle.setPointerCapture(event.pointerId);
+  handle.onpointermove=event=>{
+    if (!handle.hasPointerCapture(event.pointerId)) return;
+    const {left,right}=workspace.getBoundingClientRect();
+    adjust(side==='left'?event.clientX-left:right-event.clientX);
+  };
+  handle.onkeydown=event=>{
+    if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    const delta=(event.key==='ArrowRight'?1:-1)*(side==='left'?1:-1);
+    adjust(handle.parentElement.getBoundingClientRect().width+delta*12);
+  };
+  handle.ondblclick=()=>workspace.style.removeProperty(cssVar);
+}
+$('toggle-grid').onclick=()=>showMode(mode==='gallery'?'develop':'gallery');
+$('crop-button').onclick=()=>{
+  if (mode==='gallery') showMode('edit');
+  $('crop-panel').hidden=!$('crop-panel').hidden;
+  pressed($('crop-button'),!$('crop-panel').hidden);
+};
+for (const button of document.querySelectorAll('[data-command]')) {
+  button.onclick=()=>$(button.dataset.command).click();
+}
+document.addEventListener('click',event => {
+  for (const menu of document.querySelectorAll('.menus details[open],#more[open]')) {
+    if (!menu.contains(event.target) || event.target.closest('.menu button,.menu a')) menu.open=false;
+  }
+});
+window.addEventListener('keydown',event => {
+  if (event.defaultPrevented || event.target.closest?.('input,select,textarea,[contenteditable]') || $('export-panel').open) return;
+  const key=event.key.toLowerCase();
+  const modifier=event.ctrlKey || event.metaKey;
+  const shortcuts=modifier ? {'o':event.shiftKey?'open':'open-folder','s':'save-project','e':'download',
+    'b':'toggle-left','v':event.shiftKey?'paste-settings':null}
+    : {'f8':'toggle-browser','g':'toggle-grid','y':'compare','c':'crop-button','arrowleft':'previous','arrowright':'next'};
+  if (shortcuts[key]) {event.preventDefault();$(shortcuts[key]).click();}
+  if (!modifier && photo && /^[0-5]$/.test(key)) {photo.rating=Number(key);persist(photo);renderPhotos();}
+});
 stage.addEventListener('dragover', e => e.preventDefault());
 stage.addEventListener('drop', e => { e.preventDefault(); addFiles(e.dataTransfer.files); });
 $('compare').onclick = () => { comparing = comparingReference || !comparing; comparingReference = false; syncPreview(); };
@@ -354,7 +620,15 @@ for (const button of document.querySelectorAll('[data-scale]')) button.onclick =
   for (const choice of document.querySelectorAll('[data-scale]')) pressed(choice,choice === button);
   syncPreview();
 };
-$('download').onclick = () => {clearTimeout(timer); submit('download');};
+$('download').onclick = $('menu-export').onclick = () => {
+  if (!photo) return;
+  $('export-source').textContent=photo.dimensions?.length===2 ? '原始尺寸 '+photo.dimensions.join(' × ') : photo.name;
+  $('export-panel').returnValue='';
+  $('export-panel').showModal();
+};
+$('export-panel').onclose = () => {
+  if ($('export-panel').returnValue==='export' && photo) {clearTimeout(timer);submit('download');}
+};
 $('publish').onclick = () => {clearTimeout(timer); submit('publish');};
 $('back').onclick = () => {
   if (channel) parent.postMessage({type:'spektralab:close',channel},location.origin);
@@ -366,17 +640,28 @@ addEventListener('message', ({origin,source,data}) => {
   if (data.type === 'spektralab:init' && typeof data.channel === 'string' && !channel) {
     channel = data.channel;
     $('publish').hidden = false;
-    if (data.blob instanceof Blob) addFiles([new File([data.blob],data.name || 'FrameLab 照片',{type:data.blob.type})]);
+    if (data.blob instanceof Blob) {
+      const id=data.sourceId ? 'canvas:'+data.sourceId+':'+data.blob.size : makeId();
+      const item=addPhoto({id,name:data.name || 'FrameLab 照片',blob:data.blob});
+      persist(item);
+      renderPhotos();
+      select(item,true);
+    }
   }
   if (data.channel === channel && data.type === 'spektralab:error') status(data.message);
 });
-if (parent !== window) parent.postMessage({type:'spektralab:ready'},location.origin);
-
 try {
   catalog = await loadCatalog();
-  film = catalog.profiles.find(item => item.id === 'kodak_portra_400');
-  renderStocks();
-  renderPapers();
+  restoreRecipe(photo?.recipe);
   if (photo) schedule();
 } catch (error) { status(error.message); }
+try {
+  for (const record of await listPhotos()) addPhoto(record);
+  renderPhotos();
+  if (!photo && photos.length) showMode('gallery');
+} catch {
+  libraryUnavailable=true;
+  status('当前浏览器无法打开本地图库。仍可导入照片和保存工程。');
+}
 refreshActions();
+if (parent !== window) parent.postMessage({type:'spektralab:ready'},location.origin);

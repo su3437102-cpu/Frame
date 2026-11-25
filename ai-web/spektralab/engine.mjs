@@ -23,9 +23,14 @@ export async function createFilmEngine({gpu = true, module, readData = fetchData
   engine ??= wasm.Engine.newCpu();
   return {
     backend: () => engine.backend(),
-    load(bytes, edge) {
+    load(bytes, edge, whiteBalance) {
       engine.forget();
-      return [...engine.load(bytes, edge, edge * edge)];
+      return [...engine.load(bytes, edge, Math.min(24_000_000,edge*edge), whiteBalance)];
+    },
+    original(params,edge) {
+      const frame = engine.original(JSON.stringify(params),edge,false);
+      try {return {width:frame.width,height:frame.height,rgba:frame.rgba};}
+      finally {frame.free();}
     },
     async render(film, paper, params, edge) {
       const visited = new Set();

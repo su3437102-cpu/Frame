@@ -54,7 +54,7 @@
         }
       } catch (problem) {error = problem.message;}
       if (active !== session) return;
-      send(session,'spektralab:init',{blob,name:session.item?.name});
+      send(session,'spektralab:init',{blob,name:session.item?.name,sourceId:session.item?.id});
       if (error) send(session,'spektralab:error',{message:error});
       return;
     }
