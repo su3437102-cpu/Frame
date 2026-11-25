@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>SpektraLab · FrameLab</title>
+  <link rel="stylesheet" href="./workbench.css">
+</head>
+<body>
+  <header class="menubar">
+    <button id="back" type="button">← FrameLab</button>
+    <button id="open" type="button">打开照片</button>
+    <strong>SpektraLab</strong>
+    <a href="./source.html" target="_blank" rel="noopener">来源与许可</a>
+  </header>
+  <main class="workspace">
+    <aside class="rail" aria-label="冲洗与调色">
+      <nav class="modes" aria-label="编辑模式">
+        <button id="develop-tab" aria-pressed="true">冲洗</button>
+        <button id="edit-tab" aria-pressed="false">编辑</button>
+      </nav>
+      <section class="histogram">
+        <canvas id="histogram" width="300" height="90" aria-label="RGB 直方图"></canvas>
+        <div id="stock-info"></div>
+      </section>
+      <div id="develop" class="tools">
+        <details open>
+          <summary>胶片与相纸</summary>
+          <label class="select-row">分类 <select id="category" aria-label="胶卷分类"></select></label>
+          <div class="film-grid" id="film" aria-label="胶卷"></div>
+          <label class="select-row">相纸 <select id="paper" aria-label="相纸"></select></label>
+          <label class="check"><input type="checkbox" id="direct"> 不印放，扫描胶片</label>
+        </details>
+      </div>
+      <div id="edit" class="tools" hidden></div>
+    </aside>
+    <section class="viewer" aria-label="照片预览">
+      <div class="toolbar">
+        <div class="zoom" aria-label="预览缩放"><button data-scale="fit" aria-pressed="true">适合</button><button data-scale="1" aria-pressed="false">100%</button><button data-scale="2" aria-pressed="false">200%</button></div>
+        <div class="outputs">
+          <button id="compare" type="button" aria-pressed="false" disabled>对比原图</button>
+          <button id="reference-button" type="button" disabled>对比 Windows 成片</button>
+          <button id="download" type="button" disabled>导出</button>
+          <button id="publish" type="button" class="primary" hidden disabled>发布回画布</button>
+        </div>
+      </div>
+      <div id="stage" class="stage">
+        <div id="empty">
+          <button id="empty-open" type="button" class="primary">打开图片…</button>
+          <p>也可以把图片拖到这里</p>
+        </div>
+        <canvas id="preview" hidden aria-label="当前照片渲染"></canvas>
+        <img id="original" alt="原始照片" hidden>
+        <section id="pair" class="pair" aria-label="Windows 和浏览器渲染对照" hidden>
+          <figure><figcaption>Windows SpektraLab</figcaption><img id="reference" alt="Windows 版导出的照片"></figure>
+          <figure><figcaption>FrameLab 浏览器版</figcaption><canvas id="reference-preview" aria-label="浏览器版成片"></canvas></figure>
+        </section>
+      </div>
+      <div class="statusbar"><span id="status" role="status">请选择一张照片。</span><span id="backend"></span></div>
+    </section>
+    <aside class="photos" aria-label="照片浏览器">
+      <div class="photo-count" id="count">0 张照片</div>
+      <div id="photos"></div>
+    </aside>
+  </main>
+  <input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+  <input id="reference-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+  <script type="module" src="./workbench.mjs"></script>
+</body>
+</html>

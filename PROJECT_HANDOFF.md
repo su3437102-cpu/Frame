@@ -1,5 +1,15 @@
 # FrameLab R11 交接
 
+## 浏览器 SpektraLab 冲洗工作台
+
+- 母站顶栏优先打开同源全屏编辑器。工作台按 SpektraLab Windows 的左侧冲洗与编辑、中间照片和右侧浏览器布局还原。以前的本机启动页仍可单独打开，用于 Windows 原版和功能未移植部分。
+- 支持导入 JPG、PNG、WebP 和载入画布选中的照片。75 个胶卷、14 个相纸来自 Negs 的锁定目录。直扫、胶片曝光、层间扩散、颗粒、光晕、片基散射、印放和后期参数接入真实渲染。RGB 中间调曲线、HSL 色域处理复用 FrameLab 调色引擎。
+- 浏览器 Worker 运行 Negs 的 WebAssembly，优先 WebGPU，无法运行时使用 CPU。工作台提供图像直方图、原图切换、样片并排、PNG 导出和回写独立成片。浏览器最多以最长边 2048 像素输出。RAW、Windows 图库与片边日期背未随本轮接入。回写成片不含可重开的冲洗工程。
+- 第三方运行包固定到 getnegs.com/try 的构建清单 `1e508b85539a`，SHA-256 在 `ai-web/spektralab/negs/assets-manifest.json`。运行模块和资源原样分发。上游 Web 桥源码 SHA 与 Negs `8cff4c21b5c93d65da034e7be26854874f0c43ca` 一致，源码与构建入口见工作台的来源页。
+- 云端继续使用 Worker 的个人认证和 `/ai-web/` 资源路由。渲染在用户设备上运行。Windows 对照文件在浏览器本地载入，网页不连接本机 5193。显式发布回画布仍遵循 FrameLab 的同步设置。
+- 384 × 229 的同一 JPEG 实测三对 sRGB 输出。Portra 400＋Supra Endura 关闭效果时平均 ΔE76 3.03，Gold 200＋Portra Endura 关闭效果时 2.68，Portra 400 启用颗粒、光晕和眩光时 2.96。原版请求来自 5193 的 Vulkan 后端，移植结果使用同一个浏览器 WASM 的 CPU 路径。尺寸更大时本轮 Windows 测试遇到系统提交内存限制。
+- 实际浏览器验证了打开选中照片、WebGPU 处理、切换胶卷、调整反差、原图对比及发布结果。原版的 ICC、输出色域和胶卷默认值并不完全相同，以上结果只说明这一张样片。
+
 ## 2026-11-25 · SpektraLab Windows 离线网页版
 
 母站顶栏的 SpektraLab 打开 `/spektralab.html`。公网入口沿用 Worker 个人认证。本机及局域网静态副本也可展示同一入口。

@@ -2,7 +2,7 @@ import {mkdirSync,cpSync,existsSync} from 'node:fs';
 const target=new URL('../../outputs/FrameLab-R11/',import.meta.url);
 const backup=new URL('../../outputs/R11-before-sync-'+new Date().toISOString().replace(/[:.]/g,'-')+'/',import.meta.url);
 const paths=[
-  'assets/', 'editor/', 'ai-web/colorboard/', 'device-store.js', 'app.js', 'ai-color.js',
+  'assets/', 'editor/', 'ai-web/colorboard/', 'ai-web/spektralab/', 'spektralab-host.js', 'device-store.js', 'app.js', 'ai-color.js',
   'ai-service.mjs', 'ai-worker.py', 'interactions.js', 'workbench-graph.js', 'ps-system.js', 'pikado-host.js',
   'context-ui.js', 'task-board.js', 'image-layout.js', 'context-ui.css', 'style.css',
   'colorboard-workbench.css', 'server.mjs', 'Start-R11.cmd', 'AI-COLOR-INTEGRATION.md',

@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdirSync,cpSync,readdirSync,statSync,rmSync} from 'node:fs';
-const files=['index.html','spektralab.html','spektralab.css','app.js','ai-color.js','style.css','colorboard-workbench.css','context-ui.js','task-board.js','image-layout.js','context-ui.css','interactions.js','workbench-graph.js','cloud-sync.js','desk-media.js','device-store.js','ps-system.js','pikado-host.js','assets/fonts/latin.css','assets/fonts/geist-latin.woff2','assets/fonts/hedvig-letters-serif-latin.woff2','assets/fonts/Geist-OFL.txt','assets/fonts/Hedvig-Letters-Serif-OFL.txt',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
+const files=['index.html','spektralab.html','spektralab.css','spektralab-host.js','app.js','ai-color.js','style.css','colorboard-workbench.css','context-ui.js','task-board.js','image-layout.js','context-ui.css','interactions.js','workbench-graph.js','cloud-sync.js','desk-media.js','device-store.js','ps-system.js','pikado-host.js','assets/fonts/latin.css','assets/fonts/geist-latin.woff2','assets/fonts/hedvig-letters-serif-latin.woff2','assets/fonts/Geist-OFL.txt','assets/fonts/Hedvig-Letters-Serif-OFL.txt',...Array.from({length:8},(_,i)=>`assets/photo-${i}.jpg`)];
 const assets={};
 for(const file of files){
   let bytes=readFileSync(new URL('../'+file,import.meta.url));
@@ -10,7 +10,7 @@ for(const file of files){
 }
 const serialized=JSON.stringify(assets);
 const fingerprint=createHash('sha256').update(serialized);
-const colorBoard=new URL('../ai-web/colorboard/',import.meta.url);
+const colorBoard=new URL('../ai-web/',import.meta.url);
 for(const name of readdirSync(colorBoard,{recursive:true}).map(path=>path.replaceAll('\\','/')).sort()){
   const file=new URL(name,colorBoard);
   if(statSync(file).isFile())fingerprint.update(name).update('\0').update(readFileSync(file));
@@ -25,4 +25,5 @@ cpSync(new URL('../editor/',import.meta.url),new URL('../.cloud-assets/editor/',
 
 const builtAi=new URL('../.cloud-assets/ai-web/',import.meta.url);
 rmSync(builtAi,{recursive:true,force:true});
-cpSync(colorBoard,new URL('colorboard/',builtAi),{recursive:true});
+cpSync(new URL('colorboard/',colorBoard),new URL('colorboard/',builtAi),{recursive:true});
+cpSync(new URL('spektralab/',colorBoard),new URL('spektralab/',builtAi),{recursive:true});

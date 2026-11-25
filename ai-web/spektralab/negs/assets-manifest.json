@@ -1,0 +1,640 @@
+{
+  "version": "1e508b85539a",
+  "files": {
+    "LICENSE": [
+      "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      35149,
+      0
+    ],
+    "catalog.json": [
+      "0bd712eaa8a66f2924165b6bc9b3ae91517ce0d72bb7d89c9ea1fe1a553055b7",
+      66277,
+      1
+    ],
+    "data/CHANGELOG.txt": [
+      "f0efbdce7035e1c0b0e7976890bbacd7b177ff5cb6079027903c9a3b7c01367e",
+      16816,
+      0
+    ],
+    "data/FOTUFILM_LICENSE.txt": [
+      "cd6ebe8e48447315f672be4f49ab5e67430c26550816dbaba77a68388acc8b0e",
+      25623,
+      0
+    ],
+    "data/SPEKTRAFILM_LICENSE.txt": [
+      "76d629501783ae52e8d63aee1e054c1e1a9713b9fe7d36fb306e25b1d14b24e9",
+      23677,
+      0
+    ],
+    "data/filters/colored/README.md": [
+      "1ebd48d168a8e9ce7ff7aa6e44173762c2959e885fe5280f36abc5dbee034431",
+      780,
+      1
+    ],
+    "data/filters/colored/hoya/r1.csv": [
+      "211fec78a84573b769372bbfffa9ceed70813386e4aedb25d230189943c3e4d5",
+      3417,
+      1
+    ],
+    "data/filters/colored/hoya/x0.csv": [
+      "fc9a2fbe5b79b5e7689483345263fd3a4d17e1490cd41de1657dca78705ce6f2",
+      4447,
+      1
+    ],
+    "data/filters/colored/hoya/x1.csv": [
+      "ab98aa320f521861550316b34e05b99ebe3452ebaec0b4bab7e76dd3f121f3a8",
+      4216,
+      1
+    ],
+    "data/filters/colored/hoya/y2.csv": [
+      "e96cb228d81f4a258e8ae61fe0515c5bd7845c724429ce089d0c68a1143976f2",
+      4695,
+      1
+    ],
+    "data/filters/colored/hoya/ya3.csv": [
+      "b8a93c1372b88acbf357b7edd8e4f819fd08d1d5167d998bb17c6c316017e177",
+      5460,
+      1
+    ],
+    "data/filters/dichroics/durst_digital_light/filter_c.csv": [
+      "d462d257d1345248f6d134cb00254a713b54cc9125d822f191942c577f15f070",
+      6447,
+      1
+    ],
+    "data/filters/dichroics/durst_digital_light/filter_m.csv": [
+      "891f2fcad2df32a1d7b3ddc222cae1c61f005126ef6656d01463f3022b9c2b66",
+      6768,
+      1
+    ],
+    "data/filters/dichroics/durst_digital_light/filter_y.csv": [
+      "f8631b4868630db366d1b7d52473d371419d250101d8ffab94878cc8862c593f",
+      4004,
+      1
+    ],
+    "data/filters/dichroics/edmund_optics/filter_c.csv": [
+      "f72dc5b7ae571d8f5539756ac7951036639ed77f135fdf21e8a18d48f41b2ad2",
+      6663,
+      1
+    ],
+    "data/filters/dichroics/edmund_optics/filter_m.csv": [
+      "40c42c1feed00cf0cb76781f83ab5de0e8c0d90cca9ba7670bb8dbda05cc5612",
+      6787,
+      1
+    ],
+    "data/filters/dichroics/edmund_optics/filter_y.csv": [
+      "21607355113717a854f8e61e78dd9784a7a1e91bfbd79dd1704293b9f58d9da9",
+      5318,
+      1
+    ],
+    "data/filters/dichroics/edmund_optics/info.txt": [
+      "b77f383a39ebd1f034ef6cc89e1e87ecbeaf499c9a8b3bb71f2b78b3ccea846d",
+      116,
+      1
+    ],
+    "data/filters/dichroics/thorlabs/filter_c.csv": [
+      "114a7afdc772b7ab2561c9ca54872dcac04c71bd8c20295774f45325c44b200b",
+      5604,
+      1
+    ],
+    "data/filters/dichroics/thorlabs/filter_m.csv": [
+      "6bbb5491980138d0a3b3e691da552497363e483ca10a87b5b03a2684734d2f24",
+      5692,
+      1
+    ],
+    "data/filters/dichroics/thorlabs/filter_y.csv": [
+      "ba50c8d55b94a8ea98b406a34f45783dd5719d6dcb220c0c3528fdb825a60ad0",
+      5688,
+      1
+    ],
+    "data/filters/heat_absorbing/schott/KG1.csv": [
+      "211761b6203796b091c09a597bea110bb4c3687551c9ff03fe2221478bbe9555",
+      5784,
+      1
+    ],
+    "data/filters/heat_absorbing/schott/KG3.csv": [
+      "7654aa57fa8e42ae280e8d679ae9ebf8cef48ed5cbe6c2ab43eba1c6608f3d1f",
+      5609,
+      1
+    ],
+    "data/filters/heat_absorbing/schott/KG5.csv": [
+      "254ab420a9f296adca669f6130b1b7512d402c945c25542b420d3ecf32fc8665",
+      5351,
+      1
+    ],
+    "data/filters/heat_absorbing/schott/info.txt": [
+      "cd9ae1fa3694cf0d6c422cfafd06e80250520023479294d628f4d678a1ba58db",
+      88,
+      1
+    ],
+    "data/filters/lens_transmission/canon/canon_24_f28_is.csv": [
+      "6edc1be37bc22ef4e36b98981c09c45ff0e9b3a3ce80e00c62906d8ec941df3a",
+      3969,
+      1
+    ],
+    "data/filters/lens_transmission/canon/canon_24_f28_is_info.txt": [
+      "3f776692ad77f102afa228ad87498050e09681cc296ab83f717215e21f6ed04e",
+      90,
+      1
+    ],
+    "data/filters/neutral_print_filters.json": [
+      "5ba8062169dd62971a7d17906681e852655f08ba57f78994e198add63ae1a5af",
+      93136,
+      1
+    ],
+    "data/luts/spectral_upsampling/arctic2026beta04_reflectance_xy_tc.npy": [
+      "cf5b3dafad6470cdd3981038149374c967820654b94142332808681d364083a6",
+      5972096,
+      0
+    ],
+    "data/luts/spectral_upsampling/arctic2026beta04_reflectance_xy_tc.toml": [
+      "4bbc5183fb86a767d53c3851bffb02500a494f77bc9a8c1f447fbd2c05371d0e",
+      1222,
+      1
+    ],
+    "data/luts/spectral_upsampling/hanatos2025_irradiance_xy_tc.npy": [
+      "52f90c724811f5fab80769f8548bf24d08a521eb09e65ab6e016893258d2a783",
+      5972096,
+      1
+    ],
+    "data/luts/spectral_upsampling/hanatos2025_irradiance_xy_tc.toml": [
+      "a228a265eba9ef7ed593105140d005718dfffc55f9fd61addb8e982f4cc7dd30",
+      1722,
+      1
+    ],
+    "data/luts/spectral_upsampling/mallett2019_reflectance_xy_tc.npy": [
+      "c1ea8a0c3e164a56736748300caf2c262c606e0d93fc047dd5615228dc5fc71e",
+      5972096,
+      0
+    ],
+    "data/luts/spectral_upsampling/mallett2019_reflectance_xy_tc.toml": [
+      "814fd0d85595baefdd1224181da46d6c2befea7b5167ec8433fa67fd482672d2",
+      1842,
+      1
+    ],
+    "data/profiles/agfa_agfachrome_100.json": [
+      "9b29e7dd61afac4a944737ec84d26d70698ecf614808acc6e32d0ba8289b3212",
+      73040,
+      1
+    ],
+    "data/profiles/agfa_agfachrome_200.json": [
+      "2926532e96a8c4b382ae9f3e591e4ff5b4a234b8ed492881a2b6b60147c92624",
+      72510,
+      1
+    ],
+    "data/profiles/agfa_agfachrome_50.json": [
+      "b38579c6f39a43d9291f661ca6dff250567e6e0dea2a68ad82ff22d98a584e43",
+      72831,
+      1
+    ],
+    "data/profiles/agfa_portrait_xps_160.json": [
+      "bf55a5a149d152607257f8dc4ae9cd072bf3634ef3638cf0efddc36f124c7c31",
+      163603,
+      1
+    ],
+    "data/profiles/cinestill_400d.json": [
+      "c5aeb63d8aad83a915fe0174971b6deeedd78017c6e933b8110171bc37f36bae",
+      73789,
+      1
+    ],
+    "data/profiles/cinestill_800t.json": [
+      "c2721a07e0e0db858f7d9aa66db6ec70c4c48921c9762147df02df7e2fec7e88",
+      73437,
+      1
+    ],
+    "data/profiles/fotufilm_infrared_color.json": [
+      "e2061436d574340135a134f4654c6a18c629ca54fdf6476d9fa58fde092d7425",
+      69791,
+      1
+    ],
+    "data/profiles/fujifilm_64t_type_ii.json": [
+      "00fc822ac1164393ddab8e81122a941dd20f53a429e7e0a53b6879d3a9c25790",
+      160221,
+      1
+    ],
+    "data/profiles/fujifilm_acros_100_ii.json": [
+      "15fbc8294c13677fc861526e9f17e4bfdc85a33418913406b81646f3fb0b9576",
+      86422,
+      1
+    ],
+    "data/profiles/fujifilm_astia_100f.json": [
+      "4ae2bffa8a61d6b410731f58e3ff743bff05186f24ab0b1eb0d9a635939dd79e",
+      73259,
+      1
+    ],
+    "data/profiles/fujifilm_c200.json": [
+      "aa32ce52ea414fdd408c20f09cc3924a50801b58de5f0c7ec76a5ffcb06f28b3",
+      163084,
+      1
+    ],
+    "data/profiles/fujifilm_crystal_archive_typeii.json": [
+      "983ab9015bc7b4726b64a5bb937596cc215d7e411bb78bc63b431548cb25b42b",
+      158851,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_250.json": [
+      "3d3511bc5319385b11bc459c9f054631c98c7c291df9105f926c8984ba6e32e1",
+      162492,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_250d.json": [
+      "be7b91ece0649f7711810e4b32bf6e6c1af02001b269814ff24e74d81143841a",
+      162253,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_400.json": [
+      "e7e110696afad807821b5481da43fb23ba0772a200a89ccc1b8f5ad980923754",
+      162589,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_500.json": [
+      "4bb38634ebf6eca049ce8ee856b3b67a82a054b0020d5919344b7204040c4dbe",
+      73359,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_cp_3513di.json": [
+      "b25a77d62cb7339cca5a24065a6c7155b9d6614cece42b50278fed7bc9c2b26a",
+      160286,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_cp_3514di.json": [
+      "6e927120ad48dce3ac5ec40f6c07b5195c1427a29397ed135eec20d6d03cf5b3",
+      162446,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_cp_3521xd.json": [
+      "5540c70a7493a21030102961bf3a784035d3ff880b661d5aa028aced1e0b6491",
+      161474,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_cp_3523xd.json": [
+      "b7019ef1275156c7a06d6b3672a1b59f7e24cbe1dd5c71127385b590a3e0087f",
+      162623,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_vivid_160.json": [
+      "8ef2d7a8d020ebff7eec3dee7524d668d55f4a2c06459b107a0a43e21a79d633",
+      163448,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_vivid_250d.json": [
+      "0f13b7e2a5ec53ee6e45989d8c7774aa7b759c15923461b880c6c6430dff9cfe",
+      162854,
+      1
+    ],
+    "data/profiles/fujifilm_eterna_vivid_500.json": [
+      "91287d9a8c1a1825cbb4a05138223860f8cb5d1f3be42cf1b9321041a366c4a7",
+      73116,
+      1
+    ],
+    "data/profiles/fujifilm_f64d.json": [
+      "d67958ce9a088e81c1878459593a06b130c33c8aa7dcbc1fdf2da6f530c41e9d",
+      73152,
+      1
+    ],
+    "data/profiles/fujifilm_pro_160c.json": [
+      "d2b19d58341705fb70d3af548db2ddeb395570402315192ef70dc2480d12881d",
+      163712,
+      1
+    ],
+    "data/profiles/fujifilm_pro_160ns.json": [
+      "4be99bd662310d499c8ef11e352b76288605c6d40d246eafe0fd8e28f9154dfb",
+      72270,
+      1
+    ],
+    "data/profiles/fujifilm_pro_160s.json": [
+      "ab78a9904567f8cc6871c064970f5c32c05cfdde2be61727a1d13c3b672239d9",
+      164581,
+      1
+    ],
+    "data/profiles/fujifilm_pro_400h.json": [
+      "d57fe6becc8e418385d92344de1588b3b70d7e145f320ab4f89a83265a5b8c19",
+      162408,
+      1
+    ],
+    "data/profiles/fujifilm_pro_800z.json": [
+      "9b629e62a40637d736fd22382bf6f694553fd6173215ba02a79293047d741871",
+      165160,
+      1
+    ],
+    "data/profiles/fujifilm_provia_100f.json": [
+      "fed3f45ae581996b2a5b826b8b5d19ccd1a6f7854fff475aa64d2755940b9c20",
+      159325,
+      1
+    ],
+    "data/profiles/fujifilm_provia_400f.json": [
+      "3d9c75ad078ee6761f65e3bdee838cc35a6367ba86ab9ff14b47dc1bfecc5b0f",
+      161377,
+      1
+    ],
+    "data/profiles/fujifilm_provia_400x.json": [
+      "75663feaf675dbec88d9462f9d0b310f7491e06c7f0c88fb8d384568bab8c611",
+      158429,
+      1
+    ],
+    "data/profiles/fujifilm_reala_100.json": [
+      "53c74693dd6573dd6e352ebaf013af0f4779761bde66f3e7f26493c87c1479fd",
+      72381,
+      1
+    ],
+    "data/profiles/fujifilm_reala_500d.json": [
+      "35a3e4b881e7b2c2d20c413f4052e69f23c8d3295d00852d1fcc8c7e645d93f3",
+      73777,
+      1
+    ],
+    "data/profiles/fujifilm_reala_ace.json": [
+      "1e4ff1959c1bdac35bf024315d8d6d25c3886a6dc700bf47a0cc5068d2ac87e8",
+      163757,
+      1
+    ],
+    "data/profiles/fujifilm_sensia_100.json": [
+      "d6644b17ed5118f7b3e3d53ea984c891d1ecd54c7706eee2422abe1b90f5faaf",
+      160649,
+      1
+    ],
+    "data/profiles/fujifilm_sensia_200.json": [
+      "31d4d0fe382218ca0803f15252c54747499dd024c08aa43c556c0625ac648197",
+      159310,
+      1
+    ],
+    "data/profiles/fujifilm_sensia_400.json": [
+      "66e54748023822d24189cb426c828c79b7161740aac0df507ab9772385ea8c9a",
+      159322,
+      1
+    ],
+    "data/profiles/fujifilm_superia_1600.json": [
+      "7adcc8129ec22e7d94703226ef6f02516cf8e06992145cfb0ac5904d80777b83",
+      163539,
+      1
+    ],
+    "data/profiles/fujifilm_superia_200.json": [
+      "b06772deb96223010ddc4f6be98effc9b4c96d4f7bba74794af62758fb63756e",
+      73661,
+      1
+    ],
+    "data/profiles/fujifilm_true_definition_400.json": [
+      "5009a22046f361748454ee826e9c5a52f0c41152b19d948b91651b03b5cb0101",
+      163437,
+      1
+    ],
+    "data/profiles/fujifilm_velvia_100.json": [
+      "fd572ea29e139145c19e21c47abd7a264c5b858b993dc463799b299b69b3731f",
+      158844,
+      1
+    ],
+    "data/profiles/fujifilm_velvia_100f.json": [
+      "302891dd70610a09be8614f5b7aea0afad0e602e5fcfb05fab6d8e38a94de5d9",
+      159898,
+      1
+    ],
+    "data/profiles/fujifilm_velvia_50.json": [
+      "166e55e8343d8e74965d176a64b93e92d6d3895647f001e2ff017f7fc902969d",
+      72047,
+      1
+    ],
+    "data/profiles/fujifilm_xtra_400.json": [
+      "7cf468b0d056262436f12ecdbdf03def3a14bbc76600551bda8f004d9b8700a1",
+      162882,
+      1
+    ],
+    "data/profiles/harman_phoenix_200.json": [
+      "ba724f327e32638cfc26b80b12c8396bf42c911ddef86aa1db78b8bbdd8a6650",
+      73779,
+      1
+    ],
+    "data/profiles/ilford_delta_3200.json": [
+      "b83c32d1dffd9770cc94a8eeaa47a8cf23a9a2d4550a295416c74dd4461c4773",
+      103367,
+      1
+    ],
+    "data/profiles/ilford_fp4_plus.json": [
+      "942e8ed067e381af98c202f86c4b5b6813e43c170cb8acd5016e7274d0df3903",
+      84799,
+      1
+    ],
+    "data/profiles/ilford_hp5_plus.json": [
+      "372a13c189606f20a3ba85e1c57b086ed84c097a054f77a3192cd63a1326755c",
+      86228,
+      1
+    ],
+    "data/profiles/ilford_mgrc_deluxe_grade2.json": [
+      "12c5cb28e875b687bcc9a21078b8c95b8faa4b5ba7051e13f71e2a60f0f308da",
+      69155,
+      1
+    ],
+    "data/profiles/kodak_2302.json": [
+      "145d7ec07f070c2985d8c5f5845206903e00a6c2a5fed39d402368acbc8252b4",
+      218242,
+      1
+    ],
+    "data/profiles/kodak_2383.json": [
+      "f61d0dbf2eb2479102add4b16c838b003742be631a32cbbe2b28c0086d339607",
+      159239,
+      1
+    ],
+    "data/profiles/kodak_2393.json": [
+      "c2f13feaaeca751a55dad689756e9110f42b306c3f741e37e1581d280ee00ebc",
+      159187,
+      1
+    ],
+    "data/profiles/kodak_aerochrome_1443.json": [
+      "324ac18f8aa6e728fc42391fa0d2e4cea43f9f61a43055d7f253d89253cbd045",
+      71038,
+      1
+    ],
+    "data/profiles/kodak_aerocolor_2460.json": [
+      "d2d0aac5d3d550746cff769481e4756627f4f4c1726a2efbeffb46736979921f",
+      72655,
+      1
+    ],
+    "data/profiles/kodak_doublex.json": [
+      "4c36da545d10463b6249074bf644501082a11853aa08e8fbc1a8282b3d6709e5",
+      219914,
+      1
+    ],
+    "data/profiles/kodak_ektachrome_100.json": [
+      "dc7c5589d109f7944c0615a366368951768fb5560327379cc9d78b587866c765",
+      159483,
+      1
+    ],
+    "data/profiles/kodak_ektacolor_edge.json": [
+      "d6f9f8cdfef19e50139e90e5b800f38851de92c65e9cee1d681c6a7f1dc3918f",
+      159010,
+      1
+    ],
+    "data/profiles/kodak_ektar_100.json": [
+      "ec772dd4424c0b4e468697a8a64b37e73af765b1e6cbf050497155e80e72750f",
+      161574,
+      1
+    ],
+    "data/profiles/kodak_endura_premier.json": [
+      "bf5af37f1ee657f93e54367a212ae9f7dfa65dfea8b0bcfcc2b087b0cfb3a028",
+      158520,
+      1
+    ],
+    "data/profiles/kodak_exr_100t.json": [
+      "fd0900420fffacff49cbc52dedb8b58930c14ac896d6ae142cd16a65a4cf074e",
+      163196,
+      1
+    ],
+    "data/profiles/kodak_gold_200.json": [
+      "e1fb1fb3b728c67be42524cfca77e03ebded2d53d81ca89f5f8d58bf5ab3291e",
+      162655,
+      1
+    ],
+    "data/profiles/kodak_kodachrome_200.json": [
+      "ffd72e753b7041279ee3d9631be4fbce6c1d1732a3df08acbc626a7f508adf6b",
+      71251,
+      1
+    ],
+    "data/profiles/kodak_kodachrome_25.json": [
+      "c6600945458075d317bcad8b0dd234913e99988c03f1fb491791d88019c5ddbf",
+      70257,
+      1
+    ],
+    "data/profiles/kodak_kodachrome_64.json": [
+      "eada9c17da095730b348970513d3333bc972494e92d9e16e671d252dab61ad48",
+      159372,
+      1
+    ],
+    "data/profiles/kodak_kodacolor_100.json": [
+      "ebe6b2c5fc658b2b06d33035238d67653a27a69044db20bfe11e86f84e0a9fad",
+      73002,
+      1
+    ],
+    "data/profiles/kodak_portra_160.json": [
+      "a39036dabbda1227c9ffd1d0fb3cddc18aa7da29ae96b369301fe56516029f9f",
+      161939,
+      1
+    ],
+    "data/profiles/kodak_portra_400.json": [
+      "eb8b733fd8f79223b93ee389f1f32774378ea1905364ed658e4ce1d46ec1c069",
+      161683,
+      1
+    ],
+    "data/profiles/kodak_portra_400nc.json": [
+      "1388b0c785fe13300ee7ac86299b32372b3183eaf11cd310f48067b7c154d572",
+      163052,
+      1
+    ],
+    "data/profiles/kodak_portra_400vc.json": [
+      "c9a715d4c0d72068f8c0013a0367d35e5de010f2f205bfcdf89f2d7020e8c1b9",
+      162857,
+      1
+    ],
+    "data/profiles/kodak_portra_800.json": [
+      "a9554e3f75f95dab547379401c37c6da37044f15c2f94ada49ac85f928f33a7b",
+      162220,
+      1
+    ],
+    "data/profiles/kodak_portra_800_push1.json": [
+      "43bfbe92d2a8f8ffea39c057768b2d694176b022b4e6ab143dc1b275f5dbdfab",
+      162060,
+      1
+    ],
+    "data/profiles/kodak_portra_800_push2.json": [
+      "633f7374b67fba21cc308dc70a25d64c7eb3efc8b9451433887ccc34a266e913",
+      162317,
+      1
+    ],
+    "data/profiles/kodak_portra_endura.json": [
+      "e3450fd941155c88e63060dcf202542ccb6da151e9ab6c56c295d7b2d4837969",
+      158722,
+      1
+    ],
+    "data/profiles/kodak_supra_endura.json": [
+      "9f2c8ca36f53440a6e61b599b59682605e4234963e54cf130adb0321b728ae80",
+      158653,
+      1
+    ],
+    "data/profiles/kodak_tmax_100.json": [
+      "b8bb051bf838e64dc0a3b1e07a15c50f8127c81b03e7701dc9b648ddcbc45bec",
+      66507,
+      1
+    ],
+    "data/profiles/kodak_trix.json": [
+      "223b6c940b7536558ff952ade5069c58d4ef1fd7a98949d3160e4e92d3b7869c",
+      92602,
+      1
+    ],
+    "data/profiles/kodak_trix400_d76_8min.json": [
+      "9f75031fbd6afe8a40b4ed91d4aa7d7855a536fba8487d92713698b18c57f381",
+      82407,
+      1
+    ],
+    "data/profiles/kodak_ultra_endura.json": [
+      "8b117834f50d0838684cc812d665ce0d1c9d32016b1b562d28a6e0defbdaf16f",
+      158505,
+      1
+    ],
+    "data/profiles/kodak_ultramax_400.json": [
+      "eaa93c6bd212e1ff056b3f678879bab93f5219374210de83eaf5a6264d7c34ed",
+      162286,
+      1
+    ],
+    "data/profiles/kodak_verita_200d.json": [
+      "13b8e61365eeca07c3425676efa81533a11dd3fb0a71adbd1af4f3e01b2e5165",
+      162225,
+      1
+    ],
+    "data/profiles/kodak_vision3_200t.json": [
+      "9d9718bb3900cafe4b84ba2963427a97dfe2cd9b6ffa5bdc5c708652f6e8a3e2",
+      163018,
+      1
+    ],
+    "data/profiles/kodak_vision3_250d.json": [
+      "07d26ffc039be333a05f76ef76f9b97208c8493925d14d95ca8e54c3defb9346",
+      163526,
+      1
+    ],
+    "data/profiles/kodak_vision3_500t.json": [
+      "dabadd09d329b3b10148028f8061537bf16c4932282cef5d5bc33452e8f64e47",
+      163534,
+      1
+    ],
+    "data/profiles/kodak_vision3_50d.json": [
+      "a9534523800ae27e572b8f70c1cec9f790f8824c06a3317029e61123785b550f",
+      162437,
+      1
+    ],
+    "data/profiles/konica_professional_160.json": [
+      "5ca4fe25af6c47aff7fef46ad23dfdff28b593f880298fc44e16138a12ffb760",
+      163252,
+      1
+    ],
+    "data/profiles/lomography_color_100.json": [
+      "60eaeb92a4f197654c744eb1d884af0ec3818fb7950bc95494c8a17207a280b3",
+      75289,
+      1
+    ],
+    "data/profiles/lomography_lomochrome_metropolis.json": [
+      "47bd4bf4d5adb39dc09a8f615da3fb933cb9a2770a183ef6718d9d73f215f88f",
+      75680,
+      1
+    ],
+    "data/profiles/lomography_lomochrome_turquoise.json": [
+      "6d4eff19c9f04866a78989086a6bb76437d14b37e19e16a5706208e8f8251e2f",
+      75656,
+      1
+    ],
+    "pkg/snippets/spektrafilm-wasm-1300a282f1bb2645/inline0.js": [
+      "820c003dc3912c57931cfd102df8db66cd672cbe5b6c1148b0020cec773bf058",
+      150,
+      1
+    ],
+    "pkg/snippets/spektrafilm-wasm-4448e224273fb900/inline0.js": [
+      "820c003dc3912c57931cfd102df8db66cd672cbe5b6c1148b0020cec773bf058",
+      150,
+      1
+    ],
+    "pkg/spektrafilm_wasm.js": [
+      "27b1740c0b7124f11e078ca72fbcb4c9dbff4c548eab93d0fd85acff129f0097",
+      111749,
+      1
+    ],
+    "pkg/spektrafilm_wasm_bg.wasm": [
+      "ff3610e35b5a568dbb6ff35c0e3c687058235c07dea09309f964a056788d1dfc",
+      8885069,
+      1
+    ]
+  }
+}
