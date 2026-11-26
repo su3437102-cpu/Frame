@@ -8,8 +8,8 @@ const preview = $('preview'), original = $('original'), files = $('files'), stag
 const nativeDefault = 'kodak_supra_endura';
 const stockOrder = new Intl.Collator('zh-CN', {numeric:true});
 let catalog, film, paper, photo, worker, current, pending, sequence = 0, timer;
-let comparing = false, scale = 'fit', busy = false, channel = null;
-let referenceUrl, comparingReference = false;
+let comparison = null, scale = 'fit', viewTurn = 0, busy = false, channel = null;
+let referenceUrl, developmentStarted = false, previewFresh = false, previewTimerPending = false;
 let mode = 'develop', descending = true, copiedSettings, libraryUnavailable = false;
 const values = {};
 const updater = [];
@@ -277,15 +277,22 @@ function schedule() {
   if (!photo || !catalog) return;
   photo.recipe=snapshotRecipe();
   persist(photo);
+  if (!developmentStarted) return;
   clearTimeout(timer);
   pending = null;
   sequence++;
+  previewFresh = false;
+  previewTimerPending = true;
   refreshActions();
-  timer = setTimeout(() => submit('preview'), 180);
+  timer = setTimeout(() => {
+    previewTimerPending = false;
+    submit('preview');
+  },180);
 }
 function submit(kind) {
-  const edge = kind === 'preview' ? 960 : kind === 'publish' ? 1680 : Number($('export-size').value);
-  const job = {id:++sequence,source:photo,...settings(),kind,edge,format:$('export-format').value,
+  const edge = kind === 'original' ? 1440 : kind === 'preview' ? 960 : kind === 'publish' ? 1680 : Number($('export-size').value);
+  const recipe = kind === 'original' ? {params:catalog.defaults} : settings();
+  const job = {id:++sequence,source:photo,...recipe,kind,edge,format:$('export-format').value,
     quality:Number($('export-quality').value)/100};
   pending = job;
   refreshActions();
@@ -299,7 +306,8 @@ function getWorker() {
     const job = current;
     current = null;
     if (job.id === sequence) {
-      if (data.error) status('渲染失败：' + data.error);
+      if (data.error) status((job.kind === 'original' ? '原图解码失败：' : '渲染失败：') + data.error);
+      else if (job.kind === 'original') paintOriginal(job.source,data.frame);
       else if (job.kind === 'preview') paint(data.frame);
       else void finishFrame(data.frame, job);
     }
@@ -317,41 +325,35 @@ function runNext() {
   if (current || !pending) { refreshActions(); return; }
   current = pending;
   pending = null;
-  status(current.kind === 'preview' ? '正在冲洗预览…' : '正在渲染输出…');
+  status(current.kind === 'original' ? '正在解码原图…' : current.kind === 'preview' ? '正在冲洗预览…' : '正在渲染输出…');
   getWorker().postMessage(current);
   refreshActions();
 }
 function paint(frame) {
-  if (!preview.dataset.ready) comparing = false;
   preview.dataset.ready = 'yes';
+  previewFresh = true;
   preview.width = frame.width;
   preview.height = frame.height;
   preview.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(frame.rgba),frame.width,frame.height),0,0);
   photo.dimensions = frame.sourceSize;
-  if (frame.original) {
-    if (photo.thumbnail) URL.revokeObjectURL(photo.thumbnail);
-    photo.thumbnail=URL.createObjectURL(frame.original);
-    original.src=photo.thumbnail;
-    for (const entry of document.querySelectorAll('[data-photo-id]')) {
-      if (entry.dataset.photoId !== photo.id) continue;
-      let img=entry.querySelector('img');
-      if (!img) {img=node('img','',{alt:''});entry.prepend(img);}
-      entry.querySelector('.raw-thumb')?.remove();
-      img.src=photo.thumbnail;
-    }
-    void createImageBitmap(frame.original).then(bitmap => {
-      const raster = document.createElement('canvas');
-      raster.width = bitmap.width;raster.height = bitmap.height;
-      const ctx = raster.getContext('2d',{willReadFrequently:true});
-      ctx.drawImage(bitmap,0,0);
-      bitmap.close();
-      drawExposure(ctx.getImageData(0,0,raster.width,raster.height).data);
-    }).catch(()=>{});
-  }
   drawHistogram(frame.rgba);
   $('backend').textContent = frame.backend;
   status(frame.width+' × '+frame.height+' · '+Math.round(frame.elapsedMs)+' ms');
   syncPreview();
+}
+function paintOriginal(item,frame) {
+  item.dimensions=frame.sourceSize;
+  if (item.thumbnail) URL.revokeObjectURL(item.thumbnail);
+  item.thumbnail=URL.createObjectURL(frame.original);
+  original.src=item.thumbnail;
+  renderPhotos();
+  describeOriginal();
+  syncPreview();
+}
+function describeOriginal() {
+  if (!photo || developmentStarted) return;
+  const size=photo.dimensions;
+  status(size ? '原图 · '+size.join(' × ')+' · 未冲洗' : '原图 · 未冲洗');
 }
 function drawExposure(rgba) {
   const canvas=$('exposure-meter'),ctx=canvas.getContext('2d');
@@ -388,30 +390,91 @@ function drawHistogram(rgba) {
   });
   ctx.globalCompositeOperation = 'source-over';
 }
+const panes = ['single-pane','left-pane','right-pane'].map($);
+const surface = pane => pane.firstElementChild;
+const reference = $('reference');
+function dimensions(visual) {
+  return visual instanceof HTMLImageElement ? [visual.naturalWidth,visual.naturalHeight] : [visual.width,visual.height];
+}
+function layoutViewport() {
+  const active = panes.flatMap(pane => {
+    if (!pane.clientWidth || !pane.clientHeight) return [];
+    const visual = [...surface(pane).children].find(child => !child.hidden);
+    return visual ? [{pane,visual,size:dimensions(visual)}] : [];
+  }).filter(item => item.size.every(Boolean));
+  if (!active.length) return;
+  const swapped = viewTurn%2 !== 0;
+  const edgeAtFit = Math.min(...active.map(({pane,size:[w,h]}) => {
+    const [fitW,fitH] = swapped ? [h,w] : [w,h];
+    return Math.min(Math.max(1,pane.clientWidth-12)/fitW,Math.max(1,pane.clientHeight-12)/fitH)*Math.max(w,h);
+  }));
+  const sourceEdge = Math.max(...(photo?.dimensions ?? dimensions(original)));
+  for (const {pane,visual,size:[w,h]} of active) {
+    const oldX = (pane.scrollLeft+pane.clientWidth/2)/Math.max(1,pane.scrollWidth);
+    const oldY = (pane.scrollTop+pane.clientHeight/2)/Math.max(1,pane.scrollHeight);
+    const baseEdge = sourceEdge || Math.max(w,h);
+    const factor = (scale === 'fit' ? edgeAtFit : baseEdge*scale)/Math.max(w,h);
+    const width = Math.max(1,Math.round(w*factor)), height = Math.max(1,Math.round(h*factor));
+    Object.assign(surface(pane).style,{width:(swapped?height:width)+'px',height:(swapped?width:height)+'px'});
+    Object.assign(visual.style,{width:width+'px',height:height+'px'});
+    visual.style.setProperty('--view-rotation',viewTurn*90+'deg');
+    pane.scrollLeft = oldX*pane.scrollWidth-pane.clientWidth/2;
+    pane.scrollTop = oldY*pane.scrollHeight-pane.clientHeight/2;
+  }
+}
+const viewportObserver = new ResizeObserver(layoutViewport);
+for (const pane of panes) viewportObserver.observe(pane);
+function setScale(value) {
+  scale = value;
+  $('zoom-value').value = value === 'fit' ? '适合' : Math.round(value*100)+'%';
+  for (const choice of document.querySelectorAll('[data-scale]')) pressed(choice,choice.dataset.scale === String(value));
+  layoutViewport();
+  refreshActions();
+}
+function stepZoom(direction) {
+  const stops = [.025,.05,.075,.125,.25,.33,.5,.67,1,1.5,2,3,4];
+  const visual = !preview.hidden ? preview : original;
+  const size = dimensions(visual);
+  const sourceEdge = Math.max(...(photo?.dimensions ?? size));
+  const displayEdge = Math.max(Number.parseFloat(visual.style.width),Number.parseFloat(visual.style.height));
+  const fitted = sourceEdge && Number.isFinite(displayEdge) ? displayEdge/sourceEdge : 1;
+  const currentScale = scale === 'fit' ? fitted : scale;
+  const next = direction>0 ? stops.find(stop=>stop>currentScale+.015) : stops.findLast(stop=>stop<currentScale-.015);
+  if (next) setScale(next);
+}
 function syncPreview() {
   $('empty').hidden = !!photo;
   const grid=mode === 'gallery' && photos.length>0;
   $('gallery-grid').hidden=!grid;
-  $('pair').hidden = grid || !comparingReference || !preview.dataset.ready;
-  original.hidden = grid || !photo || !comparing || comparingReference || !original.getAttribute('src');
-  preview.hidden = grid || !photo || comparing || comparingReference || !preview.dataset.ready;
-  if (!$('pair').hidden) {
-    const right=$('reference-preview');
-    right.width=preview.width;
-    right.height=preview.height;
-    right.getContext('2d').drawImage(preview,0,0);
-  }
-  const visual = comparing ? original : preview;
-  stage.toggleAttribute('data-scaled',scale !== 'fit');
-  for (const item of [original,preview]) item.style.width = '';
-  const w = visual === original ? original.naturalWidth : preview.width;
-  if (scale !== 'fit' && w) visual.style.width = w*Number(scale)+'px';
-  pressed($('compare'),comparing);
+  const paired = !grid && comparison && !!preview.dataset.ready;
+  $('pair').hidden = !paired;
+  $('single-pane').hidden = grid || !photo || !!paired;
+  const place = (visual,pane) => {
+    if (visual.parentElement !== surface(pane)) surface(pane).append(visual);
+  };
+  place(original,paired && comparison === 'original' ? panes[1] : panes[0]);
+  place(preview,paired ? panes[2] : panes[0]);
+  original.hidden = grid || !original.getAttribute('src') || (paired ? comparison!=='original' : !!preview.dataset.ready);
+  preview.hidden = grid || !photo || !preview.dataset.ready;
+  reference.hidden = !paired || comparison!=='windows';
+  $('left-caption').textContent = comparison==='windows' ? 'Windows SpektraLab' : '原图';
+  $('right-caption').textContent = comparison==='windows' ? 'FrameLab 浏览器版' : '冲洗成片';
+  pressed($('compare'),paired && comparison==='original');
+  layoutViewport();
 }
 function refreshActions() {
-  $('compare').disabled = !photo;
+  const hasOriginal = original.complete && original.naturalWidth>0;
+  $('compare').disabled = !preview.dataset.ready || !hasOriginal;
   $('reference-button').disabled = !preview.dataset.ready;
-  $('download').disabled = !photo || !catalog || !!current || !!pending || busy;
+  const waiting = !!current || !!pending || busy || previewTimerPending;
+  $('develop-photo').disabled = !photo || !catalog || waiting;
+  $('develop-photo').textContent = developmentStarted ? '重新冲洗' : '开始冲洗';
+  for (const id of ['zoom-out','zoom-in','zoom-fit','rotate-left','rotate-right']) {
+    $(id).disabled = !hasOriginal && !preview.dataset.ready;
+  }
+  $('zoom-in').disabled ||= scale === 4;
+  $('zoom-out').disabled ||= scale === .025;
+  $('download').disabled = !previewFresh || waiting;
   $('publish').disabled = $('download').disabled;
   $('menu-export').disabled = $('download').disabled;
   for (const id of ['save-project','copy-settings','reset-settings','crop-button']) $(id).disabled=!photo || !catalog;
@@ -419,20 +482,32 @@ function refreshActions() {
   $('previous').disabled=$('next').disabled=photos.length<2;
 }
 function select(item, enter = false) {
+  clearTimeout(timer);
+  previewTimerPending = false;
+  pending = null;
+  sequence++;
   photo = item;
+  preview.dataset.ready = '';
+  developmentStarted = previewFresh = false;
+  comparison = null;
+  viewTurn = 0;
+  for (const pane of panes) pane.scrollTo(0,0);
   if (item.thumbnail || item.url) original.src=item.thumbnail || item.url;
   else original.removeAttribute('src');
-  preview.dataset.ready = '';
-  comparing = true;
-  comparingReference = false;
+  setScale('fit');
+  $('backend').textContent = '';
+  drawHistogram([]);
+  drawExposure([]);
+  status('原图 · 未冲洗');
   if (enter) showMode('develop');
   syncPreview();
   for (const button of document.querySelectorAll('[data-photo-id]')) pressed(button,button.dataset.photoId === item.id);
   if (catalog) {
     restoreRecipe(item.recipe);
-    schedule();
+    if (!item.thumbnail && !item.url) submit('original');
   }
   refreshActions();
+  if (original.complete && original.naturalWidth) original.onload();
 }
 function persist(item) {
   if (libraryUnavailable) return;
@@ -504,6 +579,7 @@ async function finishFrame(frame, job) {
     const blob = format === 'tiff' ? rgbaTiff(frame.width,frame.height,frame.rgba)
       : await new Promise(resolve => canvas.toBlob(resolve,'image/'+format,job.quality));
     if (!blob) throw new Error('无法生成图像文件');
+    if (job.id !== sequence) return;
     if (job.kind === 'publish') {
       parent.postMessage({type:'spektralab:publish',channel,blob,width:frame.width,height:frame.height,name:job.source.name}, location.origin);
       status('正在将结果发布到 FrameLab…');
@@ -599,9 +675,20 @@ window.addEventListener('keydown',event => {
 });
 stage.addEventListener('dragover', e => e.preventDefault());
 stage.addEventListener('drop', e => { e.preventDefault(); addFiles(e.dataTransfer.files); });
-$('compare').onclick = () => { comparing = comparingReference || !comparing; comparingReference = false; syncPreview(); };
+$('develop-photo').onclick = () => {
+  if (!photo || !catalog) return;
+  if (mode === 'gallery') showMode('develop');
+  developmentStarted = true;
+  previewFresh = false;
+  submit('preview');
+};
+$('compare').onclick = () => {
+  if (mode === 'gallery') showMode('develop');
+  comparison = comparison === 'original' ? null : 'original';
+  syncPreview();
+};
 $('reference-button').onclick = () => {
-  if (comparingReference) {comparingReference = false; syncPreview();}
+  if (comparison === 'windows') {comparison = null; syncPreview();}
   else $('reference-file').click();
 };
 $('reference-file').onchange = event => {
@@ -609,17 +696,41 @@ $('reference-file').onchange = event => {
   if (!file) return;
   if (referenceUrl) URL.revokeObjectURL(referenceUrl);
   referenceUrl = URL.createObjectURL(file);
-  const image=$('reference');
-  image.onload=()=>{comparingReference=true;comparing=false;syncPreview();};
-  image.onerror=()=>status('无法打开 Windows 成片，请选择 PNG 或 JPEG。');
-  image.src=referenceUrl;
+  const item=photo;
+  reference.onload=()=>{
+    if (photo !== item) return;
+    if (mode === 'gallery') showMode('develop');
+    comparison='windows';
+    syncPreview();
+  };
+  reference.onerror=()=>status('无法打开 Windows 成片，请选择 PNG 或 JPEG。');
+  reference.src=referenceUrl;
   event.target.value='';
 };
-for (const button of document.querySelectorAll('[data-scale]')) button.onclick = () => {
-  scale = button.dataset.scale;
-  for (const choice of document.querySelectorAll('[data-scale]')) pressed(choice,choice === button);
-  syncPreview();
+for (const button of document.querySelectorAll('[data-scale]')) button.onclick = () =>
+  setScale(button.dataset.scale === 'fit' ? 'fit' : Number(button.dataset.scale));
+$('zoom-fit').onclick = () => setScale('fit');
+$('zoom-in').onclick = () => stepZoom(1);
+$('zoom-out').onclick = () => stepZoom(-1);
+for (const [id,turn] of [['rotate-left',-1],['rotate-right',1]]) $(id).onclick = () => {
+  viewTurn=(viewTurn+turn+4)%4;
+  layoutViewport();
 };
+stage.addEventListener('wheel',event=>{
+  if (mode==='gallery' || !photo || !event.ctrlKey || !event.deltaY) return;
+  event.preventDefault();
+  stepZoom(event.deltaY<0 ? 1 : -1);
+},{passive:false});
+for (const [pane,other] of [[panes[1],panes[2]],[panes[2],panes[1]]]) pane.addEventListener('scroll',()=>{
+  if ($('pair').hidden) return;
+  for (const [position,total,extent] of [['scrollLeft','scrollWidth','clientWidth'],['scrollTop','scrollHeight','clientHeight']]) {
+    const available=pane[total]-pane[extent];
+    if (available<=0) continue;
+    const target=Math.round(pane[position]/available*(other[total]-other[extent]));
+    // A fractional-pixel round trip must not keep the two listeners firing.
+    if (Math.abs(other[position]-target)>1) other[position]=target;
+  }
+});
 $('download').onclick = $('menu-export').onclick = () => {
   if (!photo) return;
   $('export-source').textContent=photo.dimensions?.length===2 ? '原始尺寸 '+photo.dimensions.join(' × ') : photo.name;
@@ -634,7 +745,30 @@ $('back').onclick = () => {
   if (channel) parent.postMessage({type:'spektralab:close',channel},location.origin);
   else location.assign('../../');
 };
-original.onload = syncPreview;
+original.onload = () => {
+  if (!photo) return;
+  photo.dimensions ??= dimensions(original);
+  describeOriginal();
+  if (!developmentStarted) {
+    const [width,height]=dimensions(original);
+    const factor=Math.min(1,320/Math.max(width,height));
+    const raster=document.createElement('canvas');
+    raster.width=Math.max(1,Math.round(width*factor));
+    raster.height=Math.max(1,Math.round(height*factor));
+    const ctx=raster.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(original,0,0,raster.width,raster.height);
+    const rgba=ctx.getImageData(0,0,raster.width,raster.height).data;
+    drawHistogram(rgba);
+    drawExposure(rgba);
+  }
+  syncPreview();
+  refreshActions();
+};
+original.onerror = () => {
+  if (!photo || !catalog || developmentStarted || photo.thumbnail) return;
+  original.removeAttribute('src');
+  submit('original');
+};
 addEventListener('message', ({origin,source,data}) => {
   if (origin !== location.origin || source !== parent || source === window || !data) return;
   if (data.type === 'spektralab:init' && typeof data.channel === 'string' && !channel) {
@@ -653,7 +787,7 @@ addEventListener('message', ({origin,source,data}) => {
 try {
   catalog = await loadCatalog();
   restoreRecipe(photo?.recipe);
-  if (photo) schedule();
+  if (photo && !photo.thumbnail && !photo.url) submit('original');
 } catch (error) { status(error.message); }
 try {
   for (const record of await listPhotos()) addPhoto(record);

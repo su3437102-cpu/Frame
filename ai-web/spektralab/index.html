@@ -27,7 +27,7 @@
         <button data-command="toggle-left" type="button">显示／隐藏左栏 <kbd>Ctrl+B</kbd></button>
         <button data-command="toggle-browser" type="button">显示／隐藏浏览器 <kbd>F8</kbd></button>
         <button data-command="toggle-grid" type="button">图库网格 <kbd>G</kbd></button>
-        <button data-command="compare" type="button">对比原图 <kbd>Y</kbd></button>
+        <button data-command="compare" type="button">原图与成片并排 <kbd>Y</kbd></button>
       </div></details>
       <details><summary>照片</summary><div class="menu">
         <button id="previous" type="button">上一张</button>
@@ -101,13 +101,23 @@
           <button id="sort-direction" type="button" aria-label="切换排序方向" title="排序方向">↓</button>
         </div>
         <div class="outputs">
-          <button id="compare" type="button" aria-pressed="false" disabled title="对比原图 (Y)">对比</button>
+          <button id="develop-photo" type="button" class="primary" disabled>开始冲洗</button>
+          <button id="compare" type="button" aria-pressed="false" disabled title="原图与成片并排对比 (Y)">并排对比</button>
           <details id="more"><summary aria-label="更多">•••</summary><div class="menu">
             <button id="reference-button" type="button" disabled>对比 Windows 成片</button>
             <button id="publish" type="button" hidden disabled>发布回画布</button>
           </div></details>
-          <button id="download" type="button" class="primary" disabled>导出</button>
+          <button id="download" type="button" disabled>导出</button>
         </div>
+      </div>
+      <div class="viewer-tools" aria-label="图像查看工具">
+        <button id="zoom-out" type="button" title="缩小预览" aria-label="缩小预览" disabled>−</button>
+        <output id="zoom-value" aria-label="预览缩放比例">适合</output>
+        <button id="zoom-in" type="button" title="放大预览" aria-label="放大预览" disabled>＋</button>
+        <button id="zoom-fit" type="button" disabled>适合</button>
+        <span class="viewer-rule" aria-hidden="true"></span>
+        <button id="rotate-left" type="button" title="向左旋转视图 90°" aria-label="向左旋转视图" disabled>↶</button>
+        <button id="rotate-right" type="button" title="向右旋转视图 90°" aria-label="向右旋转视图" disabled>↷</button>
       </div>
       <div id="crop-panel" class="crop-panel" hidden>
         <label>比例 <select id="aspect"><option value="original">原始</option><option>1:1</option><option>4:5</option><option>3:2</option><option>16:9</option></select></label>
@@ -122,11 +132,13 @@
           <p>也可以将图片或文件夹拖到这里。</p>
         </div>
         <div id="gallery-grid" hidden aria-label="图库照片"></div>
-        <canvas id="preview" hidden aria-label="当前照片渲染"></canvas>
-        <img id="original" alt="原始照片" hidden>
-        <section id="pair" class="pair" aria-label="Windows 和浏览器渲染对照" hidden>
-          <figure><figcaption>Windows SpektraLab</figcaption><img id="reference" alt="Windows 版导出的照片"></figure>
-          <figure><figcaption>FrameLab 浏览器版</figcaption><canvas id="reference-preview" aria-label="浏览器版成片"></canvas></figure>
+        <div id="single-pane" class="photo-pane" hidden><div class="photo-surface">
+          <canvas id="preview" hidden aria-label="冲洗成片"></canvas>
+          <img id="original" alt="原始照片" hidden>
+        </div></div>
+        <section id="pair" class="pair" aria-label="照片并排对照" hidden>
+          <figure><figcaption id="left-caption">原图</figcaption><div id="left-pane" class="photo-pane"><div class="photo-surface"><img id="reference" alt="Windows 版导出的照片" hidden></div></div></figure>
+          <figure><figcaption id="right-caption">冲洗成片</figcaption><div id="right-pane" class="photo-pane"><div class="photo-surface"></div></div></figure>
         </section>
       </div>
       <div class="statusbar"><span id="status" role="status">请选择一张照片。</span><span id="backend"></span></div>

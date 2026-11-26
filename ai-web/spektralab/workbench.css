@@ -86,20 +86,24 @@ summary {cursor:pointer;font-weight:650;padding:5px 0}
 .format-select small {color:inherit;opacity:.78;font-size:9px}
 .viewer {display:flex;flex-direction:column}
 .viewer .stage {flex:1}
+.viewer-tools {display:flex;align-items:center;gap:4px;padding:5px 10px;border-bottom:1px solid var(--line)}
+.viewer-tools button {min-width:28px;padding:2px 7px}
+#zoom-value {min-width:48px;text-align:center;font-variant-numeric:tabular-nums;color:var(--muted)}
+.viewer-rule {height:18px;border-left:1px solid var(--line);margin:0 4px}
 .crop-panel {display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:6px 10px}
 .crop-panel label {display:flex;align-items:center;gap:5px}
 .crop-panel input {width:82px}
 .toolbar,.statusbar {display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .zoom,.outputs {display:flex;gap:4px}
-.stage {display:grid;place-items:center;min-height:0;overflow:auto;background:#080808}
-.stage img,.stage canvas {display:block;margin:auto;max-width:100%;max-height:100%;object-fit:contain}
-.stage[data-scaled] {display:block}
-.stage[data-scaled] img,.stage[data-scaled] canvas {max-width:none;max-height:none}
-.stage:has(.pair:not([hidden])) {display:block}
-.pair {display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}
-.pair figure {min-width:0;margin:0}
-.pair figcaption {padding:6px 0;color:var(--muted)}
-.stage .pair img,.stage .pair canvas {width:100%;height:auto;max-width:100%}
+.stage {position:relative;display:grid;place-items:center;min-height:0;overflow:hidden;background:#080808}
+.stage:has(#gallery-grid:not([hidden])) {overflow:auto}
+.photo-pane {overflow:auto;overscroll-behavior:contain;display:flex;min-height:0;min-width:0}
+#single-pane,.pair {position:absolute;inset:0}
+.photo-surface {position:relative;flex:none;margin:auto}
+.photo-surface img,.photo-surface canvas {position:absolute;left:50%;top:50%;display:block;transform:translate(-50%,-50%) rotate(var(--view-rotation,0deg))}
+.pair {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line)}
+.pair figure {min-width:0;min-height:0;margin:0;display:grid;grid-template-rows:auto minmax(0,1fr);background:#080808}
+.pair figcaption {padding:6px 10px;color:var(--muted);border-bottom:1px solid var(--line)}
 #empty {text-align:center;color:var(--muted)}
 .statusbar {border-top:1px solid var(--line);border-bottom:0;color:var(--muted);font-size:12px}
 .photo-count {padding:14px 13px;border-bottom:1px solid var(--line);color:var(--muted)}

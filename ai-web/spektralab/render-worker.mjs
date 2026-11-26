@@ -5,11 +5,16 @@ import {geometryCanvas} from './frame-tools.mjs';
 let engine, loaded, cpuOnly = false;
 async function render({source, film, paper, params, grade, appearance, edge, kind}) {
   engine ??= await createFilmEngine({gpu:!cpuOnly});
-  const whiteBalance = appearance.rawTemperature ?
+  const whiteBalance = appearance?.rawTemperature ?
     JSON.stringify({mode:'custom',temperature:appearance.rawTemperature,tint:appearance.rawTint}) : undefined;
   if (source && (source.id !== loaded?.id || edge !== loaded?.edge || whiteBalance !== loaded?.whiteBalance)) {
     const dimensions = engine.load(new Uint8Array(await source.blob.arrayBuffer()), edge, whiteBalance);
     loaded = {id:source.id, edge, whiteBalance, dimensions};
+  }
+  if (kind === 'original') {
+    // Decode with the camera's white balance and bypass the entire film chain.
+    const canvas = geometryCanvas(engine.original(params,edge));
+    return {original:await canvas.convertToBlob({type:'image/png'}),sourceSize:loaded.dimensions.slice(2)};
   }
   const result = await engine.render(film, paper, params, edge);
   if (grade && Object.values(grade).some(Boolean)) {
@@ -21,11 +26,6 @@ async function render({source, film, paper, params, grade, appearance, edge, kin
   result.width = out.width;
   result.height = out.height;
   result.sourceSize = loaded.dimensions.slice(2);
-  if (kind === 'preview' && !loaded.sentOriginal) {
-    const unedited = geometryCanvas(engine.original(params,480));
-    result.original = await unedited.convertToBlob({type:'image/jpeg',quality:.9});
-    loaded.sentOriginal = true;
-  }
   return result;
 }
 
@@ -41,7 +41,7 @@ self.onmessage = async ({data}) => {
       cpuOnly = true;
       frame = await render(data);
     }
-    self.postMessage({id:data.id, frame}, [frame.rgba.buffer]);
+    self.postMessage({id:data.id, frame}, frame.rgba ? [frame.rgba.buffer] : []);
   } catch (error) {
     self.postMessage({id:data.id, error:error.message || String(error)});
   }
