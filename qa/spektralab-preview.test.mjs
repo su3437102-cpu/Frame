@@ -1,5 +1,6 @@
 import test from 'node:test';
 import {existsSync} from 'node:fs';
+import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 
@@ -56,6 +57,34 @@ test('SpektraLab opens originals, develops on demand and compares both views', {
     await expect(pair).toBeHidden();
     await expect(page.locator('#original')).toBeVisible();
     await expect(page.locator('#preview')).toBeHidden();
+
+    // The same tools are reachable in both modes and carry the photo's
+    // settings across the mode switch. Geometry edits do not start development.
+    const tools = page.getByRole('group',{name:'照片工具',exact:true});
+    await expect(tools.getByRole('button',{name:'尺寸与方向'})).toBeVisible();
+    await page.locator('#edit-tab').click();
+    await expect(tools.getByRole('button',{name:'向右旋转视图'})).toBeVisible();
+    await tools.getByRole('button',{name:'尺寸与方向'}).click();
+    await page.locator('#output-size').selectOption('640');
+    await page.locator('#turn').click();
+    await expect(page.locator('#turn-value')).toHaveText('90°');
+    await expect(page.locator('#original')).toHaveCSS('--view-rotation','90deg');
+    await expect(page.locator('#preview')).toBeHidden();
+    await page.locator('#develop-tab').click();
+    await expect(page.locator('#output-size')).toBeVisible();
+    await expect(page.locator('#output-size')).toHaveValue('640');
+    await start.click();
+    await expect(page.getByRole('button',{name:'导出',exact:true})).toBeEnabled({timeout:22000});
+    await expect(page.locator('#preview')).toHaveCSS('--view-rotation','0deg');
+    await page.getByRole('button',{name:'导出',exact:true}).click();
+    await expect(page.locator('#export-size')).toHaveValue('640');
+    const download = page.waitForEvent('download');
+    await page.getByRole('button',{name:'导出照片',exact:true}).click();
+    const png = await readFile(await (await download).path());
+    const [width,height] = [png.readUInt32BE(16),png.readUInt32BE(20)];
+    expect(Math.max(width,height)).toBeLessThanOrEqual(640);
+    const sourceIsPortrait = await page.locator('#original').evaluate(img=>img.naturalHeight>img.naturalWidth);
+    expect(height>width).not.toBe(sourceIsPortrait);
     expect(errors).toEqual([]);
   } finally {
     await browser.close();

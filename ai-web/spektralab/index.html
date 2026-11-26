@@ -32,7 +32,7 @@
       <details><summary>照片</summary><div class="menu">
         <button id="previous" type="button">上一张</button>
         <button id="next" type="button">下一张</button>
-        <button data-command="crop-button" type="button">裁剪 <kbd>C</kbd></button>
+        <button data-command="crop-button" type="button">尺寸与方向 <kbd>C</kbd></button>
       </div></details>
       <details><summary>转到</summary><div class="menu">
         <button data-command="gallery-tab" type="button">图库</button>
@@ -96,7 +96,6 @@
           <button id="toggle-left" type="button" aria-label="左栏" title="左栏 (Ctrl+B)" aria-pressed="true">◧</button>
           <button id="toggle-browser" type="button" aria-label="浏览器" title="浏览器 (F8)" aria-pressed="true">◨</button>
           <button id="toggle-grid" type="button" aria-label="网格" title="网格 (G)" aria-pressed="false">▦</button>
-          <button id="crop-button" type="button" aria-label="裁剪" title="裁剪 (C)" aria-pressed="false" disabled>⌗</button>
           <select id="sort" aria-label="排序"><option value="time">导入日期</option><option value="name">文件名</option><option value="rating">评分</option></select>
           <button id="sort-direction" type="button" aria-label="切换排序方向" title="排序方向">↓</button>
         </div>
@@ -110,20 +109,30 @@
           <button id="download" type="button" disabled>导出</button>
         </div>
       </div>
-      <div class="viewer-tools" aria-label="图像查看工具">
-        <button id="zoom-out" type="button" title="缩小预览" aria-label="缩小预览" disabled>−</button>
-        <output id="zoom-value" aria-label="预览缩放比例">适合</output>
-        <button id="zoom-in" type="button" title="放大预览" aria-label="放大预览" disabled>＋</button>
-        <button id="zoom-fit" type="button" disabled>适合</button>
-        <span class="viewer-rule" aria-hidden="true"></span>
-        <button id="rotate-left" type="button" title="向左旋转视图 90°" aria-label="向左旋转视图" disabled>↶</button>
-        <button id="rotate-right" type="button" title="向右旋转视图 90°" aria-label="向右旋转视图" disabled>↷</button>
+      <div id="viewer-tools" class="viewer-tools" role="group" aria-label="照片工具">
+        <div class="viewer-group" role="group" aria-label="预览大小">
+          <button id="zoom-out" type="button" title="缩小预览" aria-label="缩小预览" disabled>−</button>
+          <output id="zoom-value" aria-label="预览缩放比例">适合</output>
+          <button id="zoom-in" type="button" title="放大预览" aria-label="放大预览" disabled>＋</button>
+          <button id="zoom-fit" type="button" disabled>适合窗口</button>
+        </div>
+        <div class="viewer-group" role="group" aria-label="预览旋转">
+          <button id="rotate-left" type="button" title="向左旋转视图 90°" aria-label="向左旋转视图" disabled>↶ 左转</button>
+          <button id="rotate-right" type="button" title="向右旋转视图 90°" aria-label="向右旋转视图" disabled>↷ 右转</button>
+        </div>
+        <button id="crop-button" type="button" title="尺寸与方向 (C)" aria-expanded="false" aria-controls="crop-panel" disabled>尺寸与方向</button>
       </div>
-      <div id="crop-panel" class="crop-panel" hidden>
+      <div id="crop-panel" class="crop-panel" role="group" aria-label="成片尺寸与方向" hidden>
+        <label>导出最长边 <select id="output-size"><option value="8192">原尺寸（最多 24 MP）</option><option value="4096">4096 px</option><option value="2048">2048 px</option><option value="1280">1280 px</option><option value="640">640 px</option></select></label>
         <label>比例 <select id="aspect"><option value="original">原始</option><option>1:1</option><option>4:5</option><option>3:2</option><option>16:9</option></select></label>
-        <label>缩放 <input id="crop-zoom" aria-label="裁剪缩放" type="range" min=".3" max="1" step=".01" value="1"></label>
+        <label>构图缩放 <input id="crop-zoom" aria-label="构图缩放" type="range" min=".3" max="1" step=".01" value="1"></label>
         <label>拉直 <input id="straighten" aria-label="拉直" type="range" min="-20" max="20" step=".1" value="0"></label>
-        <button id="turn" type="button">向右旋转</button><button id="flip" type="button" aria-pressed="false">水平翻转</button>
+        <div class="viewer-group" role="group" aria-label="成片旋转">
+          <button id="turn-left" type="button" title="成片向左旋转 90°">成片左转</button>
+          <output id="turn-value" aria-label="成片旋转角度">0°</output>
+          <button id="turn" type="button" title="成片向右旋转 90°">成片右转</button>
+          <button id="flip" type="button" aria-pressed="false">水平翻转</button>
+        </div>
       </div>
       <div id="stage" class="stage">
         <div id="empty">
@@ -154,7 +163,7 @@
     <form method="dialog">
       <header><h2>导出照片</h2><button value="cancel" aria-label="关闭">×</button></header>
       <label class="select-row">规格 <select id="export-format"><option value="png">PNG · sRGB</option><option value="jpeg">JPEG · sRGB</option><option value="tiff">TIFF 8-bit · sRGB</option></select></label>
-      <label class="select-row">最长边 <select id="export-size"><option value="8192">原尺寸（最多 24 MP）</option><option value="4096">4096 px</option><option value="2048" selected>2048 px</option><option value="1280">1280 px</option></select></label>
+      <label class="select-row">最长边 <select id="export-size"></select></label>
       <label class="select-row">JPEG 品质 <input id="export-quality" type="range" min="30" max="100" value="94" aria-label="JPEG 品质"></label>
       <p id="export-source"></p>
       <footer><button value="cancel">取消</button><button value="export" class="primary">导出照片</button></footer>

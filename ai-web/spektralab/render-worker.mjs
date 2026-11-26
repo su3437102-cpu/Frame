@@ -20,7 +20,18 @@ async function render({source, film, paper, params, grade, appearance, edge, kin
   if (grade && Object.values(grade).some(Boolean)) {
     result.rgba = renderGrade({width:result.width,height:result.height,data:result.rgba}, grade).data;
   }
-  const canvas = geometryCanvas(result,appearance);
+  let canvas = geometryCanvas(result,appearance);
+  if (kind === 'download' || kind === 'publish') {
+    const ratio = Math.min(1,edge/Math.max(canvas.width,canvas.height),
+      Math.sqrt(24_000_000/(canvas.width*canvas.height)));
+    if (ratio < 1) {
+      const resized = new OffscreenCanvas(Math.max(1,Math.floor(canvas.width*ratio)),Math.max(1,Math.floor(canvas.height*ratio)));
+      const ctx = resized.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(canvas,0,0,resized.width,resized.height);
+      canvas = resized;
+    }
+  }
   const out = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
   result.rgba = out.data;
   result.width = out.width;

@@ -16,7 +16,7 @@ const updater = [];
 const appearanceDefaults = {
   aspect:'original',turn:0,flip:false,straighten:0,zoom:1,border:'none',
   imprint:'',imprintEnabled:false,corner:'right',stripLayer:false,
-  rawTemperature:0,rawTint:1
+  rawTemperature:0,rawTint:1,outputSize:2048
 };
 let appearance = {...appearanceDefaults};
 const channels = ['rgb','red','green','blue'];
@@ -173,6 +173,8 @@ function showMode(next) {
     pressed($(item+'-tab'), item === mode);
   }
   pressed($('toggle-grid'),mode === 'gallery');
+  $('viewer-tools').hidden = mode === 'gallery';
+  if (mode === 'gallery') setCropPanel(false);
   syncPreview();
 }
 for (const next of ['gallery','develop','edit']) $(next+'-tab').onclick = () => showMode(next);
@@ -192,15 +194,31 @@ const appearanceInputs = {
   border:['border','value'],imprint:['imprint','value'],imprintEnabled:['imprint-on','checked'],
   corner:['corner','value'],stripLayer:['strip-layer','checked']
 };
+const outputSizes = [...$('output-size').options].map(option => Number(option.value));
+$('export-size').append(...[...$('output-size').options].map(option => option.cloneNode(true)));
 function updateAppearance() {
   for (const [key,[id,prop]] of Object.entries(appearanceInputs)) $(id)[prop] = appearance[key];
   pressed($('flip'),appearance.flip);
+  $('turn-value').value = appearance.turn*90+'°';
+  $('output-size').value = $('export-size').value = appearance.outputSize;
   for (const button of $('formats').children) pressed(button,Number(button.dataset.format) === values.format);
 }
 for (const [key,[id,prop]] of Object.entries(appearanceInputs)) $(id).oninput = () => {
   appearance[key] = $(id)[prop];schedule();
 };
-$('turn').onclick = () => {appearance.turn=(appearance.turn+1)%4;schedule();};
+for (const [id,delta] of [['turn-left',-1],['turn',1]]) $(id).onclick = () => {
+  appearance.turn=(appearance.turn+delta+4)%4;
+  updateAppearance();
+  schedule();
+};
+for (const id of ['output-size','export-size']) $(id).onchange = event => {
+  appearance.outputSize = Number(event.target.value);
+  updateAppearance();
+  if (photo && catalog) {
+    photo.recipe = snapshotRecipe();
+    persist(photo);
+  }
+};
 $('flip').onclick = () => {appearance.flip=!appearance.flip;updateAppearance();schedule();};
 updateAppearance();
 
@@ -229,7 +247,8 @@ function restoreRecipe(recipe = {}) {
     turn:Math.round(bounded(input.turn,0,3,0)),straighten:bounded(input.straighten,-20,20,0),
     zoom:bounded(input.zoom,.3,1,1),flip:input.flip===true,imprintEnabled:input.imprintEnabled===true,
     imprint:typeof input.imprint==='string' ? input.imprint.slice(0,32) : '',
-    corner:input.corner==='left' ? 'left' : 'right',stripLayer:input.stripLayer===true
+    corner:input.corner==='left' ? 'left' : 'right',stripLayer:input.stripLayer===true,
+    outputSize:outputSizes.includes(input.outputSize) ? input.outputSize : appearanceDefaults.outputSize
   };
   updater.forEach(refresh => refresh());
   updateAppearance();
@@ -277,6 +296,7 @@ function schedule() {
   if (!photo || !catalog) return;
   photo.recipe=snapshotRecipe();
   persist(photo);
+  layoutViewport();
   if (!developmentStarted) return;
   clearTimeout(timer);
   pending = null;
@@ -403,7 +423,10 @@ function layoutViewport() {
     return visual ? [{pane,visual,size:dimensions(visual)}] : [];
   }).filter(item => item.size.every(Boolean));
   if (!active.length) return;
-  const swapped = viewTurn%2 !== 0;
+  // Before development the original can show the selected orientation in
+  // place. After development the output already includes the recipe rotation.
+  const displayedTurn = (viewTurn + (preview.dataset.ready ? 0 : appearance.turn)) % 4;
+  const swapped = displayedTurn%2 !== 0;
   const edgeAtFit = Math.min(...active.map(({pane,size:[w,h]}) => {
     const [fitW,fitH] = swapped ? [h,w] : [w,h];
     return Math.min(Math.max(1,pane.clientWidth-12)/fitW,Math.max(1,pane.clientHeight-12)/fitH)*Math.max(w,h);
@@ -417,7 +440,7 @@ function layoutViewport() {
     const width = Math.max(1,Math.round(w*factor)), height = Math.max(1,Math.round(h*factor));
     Object.assign(surface(pane).style,{width:(swapped?height:width)+'px',height:(swapped?width:height)+'px'});
     Object.assign(visual.style,{width:width+'px',height:height+'px'});
-    visual.style.setProperty('--view-rotation',viewTurn*90+'deg');
+    visual.style.setProperty('--view-rotation',displayedTurn*90+'deg');
     pane.scrollLeft = oldX*pane.scrollWidth-pane.clientWidth/2;
     pane.scrollTop = oldY*pane.scrollHeight-pane.clientHeight/2;
   }
@@ -504,8 +527,10 @@ function select(item, enter = false) {
   for (const button of document.querySelectorAll('[data-photo-id]')) pressed(button,button.dataset.photoId === item.id);
   if (catalog) {
     restoreRecipe(item.recipe);
+    layoutViewport();
     if (!item.thumbnail && !item.url) submit('original');
   }
+  setCropPanel(false);
   refreshActions();
   if (original.complete && original.naturalWidth) original.onload();
 }
@@ -650,10 +675,13 @@ for (const [id,side,cssVar] of [['rail-divider','left','--rail-width'],['browser
   handle.ondblclick=()=>workspace.style.removeProperty(cssVar);
 }
 $('toggle-grid').onclick=()=>showMode(mode==='gallery'?'develop':'gallery');
+function setCropPanel(open) {
+  $('crop-panel').hidden=!open;
+  $('crop-button').setAttribute('aria-expanded',String(open));
+}
 $('crop-button').onclick=()=>{
   if (mode==='gallery') showMode('edit');
-  $('crop-panel').hidden=!$('crop-panel').hidden;
-  pressed($('crop-button'),!$('crop-panel').hidden);
+  setCropPanel($('crop-panel').hidden);
 };
 for (const button of document.querySelectorAll('[data-command]')) {
   button.onclick=()=>$(button.dataset.command).click();
