@@ -181,13 +181,14 @@ for (const next of ['gallery','develop','edit']) $(next+'-tab').onclick = () => 
 
 const formats = [['110','13 × 17',17],['APS','16.7 × 30',30],['135','24 × 36',35],['120','56 × 56',56]];
 // Material pairings based on https://spektralab.app/#films, mapped to the browser catalog.
+// The two finishing controls were tuned against actual renders using photo-quality-grade v1.3.
 const presetDefinitions = [
-  ['日光人像','kodak_portra_160','kodak_portra_endura',56],
-  ['街头纪实','kodak_portra_400','kodak_supra_endura',35],
-  ['城市暮色','fujifilm_pro_400h','fujifilm_crystal_archive_typeii',35],
-  ['夜景电影','kodak_vision3_500t','kodak_2383',35],
-  ['黑白建筑','fujifilm_acros_100_ii','ilford_mgrc_deluxe_grade2',35],
-  ['反转片风景','fujifilm_velvia_100',null,35]
+  ['日光人像','kodak_portra_160','kodak_portra_endura',56,{shadows:2,blacks:2}],
+  ['街头纪实','kodak_portra_400','kodak_supra_endura',35,{shadows:0,blacks:3}],
+  ['城市暮色','fujifilm_pro_400h','fujifilm_crystal_archive_typeii',35,{shadows:2,blacks:0}],
+  ['夜景电影','kodak_vision3_500t','kodak_2383',35,{shadows:2,blacks:3}],
+  ['黑白建筑','fujifilm_acros_100_ii','ilford_mgrc_deluxe_grade2',35,{shadows:0,blacks:3}],
+  ['反转片风景','fujifilm_velvia_100',null,35,{shadows:0,blacks:4}]
 ];
 const developPresets = new Map();
 const presetMenu = $('develop-preset');
@@ -196,11 +197,11 @@ const presetMaterials = $('preset-materials');
 
 function loadPresets() {
   const profiles = new Map(catalog.profiles.map(item => [item.id,item]));
-  for (const [label,filmId,paperId,format] of presetDefinitions) {
+  for (const [label,filmId,paperId,format,tone] of presetDefinitions) {
     const negative = profiles.get(filmId);
     const print = profiles.get(paperId);
     if (!negative || (paperId && !print)) continue;
-    developPresets.set(filmId,{negative,print,format});
+    developPresets.set(filmId,{negative,print,format,tone});
     presetMenu.add(new Option(label,filmId));
   }
 }
@@ -220,12 +221,13 @@ applyPreset.onclick = () => {
   const choice = developPresets.get(presetMenu.value);
   film = choice.negative;
   paper = choice.print;
-  values.format = choice.format;
+  Object.assign(values,choice.tone,{format:choice.format});
   $('direct').checked = !choice.print;
   const category = $('category');
   if (category.value && category.value !== stockCategory(film)) category.value = stockCategory(film);
   renderStocks();
   renderPapers();
+  updater.forEach(refresh => refresh());
   updateAppearance();
   schedule();
 };

@@ -109,20 +109,22 @@ test('SpektraLab presets apply the specified materials and render on the selecte
     await page.locator('#turn').click();
 
     const expected = [
-      ['日光人像','Portra 160','Portra Endura',56],
-      ['街头纪实','Portra 400','Supra Endura',35],
-      ['城市暮色','Pro 400H','Crystal Archive Type II',35],
-      ['夜景电影','Vision3 500T','Vision 2383',35],
-      ['黑白建筑','Acros II','Multigrade RC Deluxe',35],
-      ['反转片风景','Velvia 100','直接扫描',35]
+      ['日光人像','Portra 160','Portra Endura',56,2,2],
+      ['街头纪实','Portra 400','Supra Endura',35,0,3],
+      ['城市暮色','Pro 400H','Crystal Archive Type II',35,2,0],
+      ['夜景电影','Vision3 500T','Vision 2383',35,2,3],
+      ['黑白建筑','Acros II','Multigrade RC Deluxe',35,0,3],
+      ['反转片风景','Velvia 100','直接扫描',35,0,4]
     ];
-    for (const [index,[label,film,paper,format]] of expected.entries()) {
+    for (const [index,[label,film,paper,format,shadows,blacks]] of expected.entries()) {
       await presets.selectOption({label});
       await expect(page.locator('#preset-materials')).toContainText(film);
       await apply.click();
       await expect(stock).toContainText(film);
       await expect(stock).toContainText(paper);
       await expect(page.locator(`[data-format="${format}"]`)).toHaveAttribute('aria-pressed','true');
+      await expect(page.locator('#value-shadows')).toHaveValue(String(shadows));
+      await expect(page.locator('#value-blacks')).toHaveValue(String(blacks));
       if (index === 0) {
         await expect(page.locator('#original')).toBeVisible();
         await expect(page.locator('#preview')).toBeHidden();
@@ -135,8 +137,10 @@ test('SpektraLab presets apply the specified materials and render on the selecte
     await expect(page.locator('#turn-value')).toHaveText('90°');
     await page.getByRole('button',{name:'photo-1.jpg',exact:true}).click();
     await expect(stock).toContainText('Portra 400');
+    await expect(page.locator('#value-blacks')).toHaveValue('0');
     await page.getByRole('button',{name:'photo-0.jpg',exact:true}).click();
     await expect(stock).toContainText('Velvia 100');
+    await expect(page.locator('#value-blacks')).toHaveValue('4');
     await expect(page.locator('#preview')).toBeHidden();
   } finally {
     await browser.close();
