@@ -877,7 +877,6 @@ try {
 try {
   for (const record of await listPhotos()) addPhoto(record);
   renderPhotos();
-  if (!photo && photos.length) showMode('gallery');
 } catch {
   libraryUnavailable=true;
   status('当前浏览器无法打开本地图库。仍可导入照片和保存工程。');

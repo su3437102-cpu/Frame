@@ -142,6 +142,10 @@ test('SpektraLab presets apply the specified materials and render on the selecte
     await expect(stock).toContainText('Velvia 100');
     await expect(page.locator('#value-blacks')).toHaveValue('4');
     await expect(page.locator('#preview')).toBeHidden();
+    await page.reload();
+    await expect(page.locator('#count')).toHaveText('2 张照片');
+    await expect(page.locator('#develop-tab')).toHaveAttribute('aria-pressed','true');
+    await expect(page.locator('#gallery-grid')).toBeHidden();
   } finally {
     await browser.close();
   }
