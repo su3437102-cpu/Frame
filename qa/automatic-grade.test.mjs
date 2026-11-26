@@ -38,3 +38,23 @@ test('natural auto leaves low-key, high-key, balanced and transparent input alon
     assert.equal(planAutomaticGrade(image).lut, null);
   }
 });
+
+test('a model suggestion changes tone while neutral channels stay within one code value', () => {
+  const image = ramp(12, 222);
+  for (let offset = 0; offset < image.data.length; offset += 4) {
+    image.data[offset + 1] = image.data[offset + 2] = image.data[offset];
+  }
+  const model = { size: 33, data: new Float32Array(33 ** 3 * 3) };
+  for (let offset = 0; offset < model.data.length; offset += 3) {
+    model.data[offset] = 1;
+    model.data[offset + 1] = .6;
+  }
+  const { lut } = planAutomaticGrade(image, model);
+  assert.ok(lut);
+  const rendered = renderGrade(image, undefined, { baseLut: lut, baseLutStrength: 100 });
+  assert.ok(rendered.data[32] > image.data[32]);
+  for (let offset = 0; offset < rendered.data.length; offset += 4) {
+    const channels = rendered.data.subarray(offset, offset + 3);
+    assert.ok(Math.max(...channels) - Math.min(...channels) <= 1);
+  }
+});
