@@ -1,5 +1,6 @@
-import { DEFAULT_SETTINGS, PRESETS, applyPreset, autoGrade, parseCube, renderGrade } from './grade-engine.mjs';
+import { DEFAULT_SETTINGS, PRESETS, parseCube, renderGrade } from './grade-engine.mjs';
 import { adaptiveLut } from './adaptive-grade.mjs';
+import { planAutomaticGrade } from './automatic-grade.mjs';
 import { generateSubjectMask } from './matte.mjs';
 import { generateBoxMask } from './box-segment.mjs';
 import { installBoxSelection } from './box-selection.mjs';
@@ -572,34 +573,43 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     if (!state.photo || state.aiRun || state.appliedLook) return;
     const run = Symbol('AI run');
     const photo = state.photo;
+    const filmRecipe = JSON.stringify(state.filmPrint);
     state.aiRun = run;
     setBusy(el('run-ai'), true, '正在分析…');
-    inFlightMessage.textContent = '正在计算与这张照片匹配的色彩映射';
+    inFlightMessage.textContent = '正在检查影调、RGB 触边和配色';
     try {
       const modelCanvas = sizedCanvas(photo.image, 600);
-      const lut = await adaptiveLut(modelCanvas);
-      if (state.photo !== photo || state.aiRun !== run) return;
+      const modelContext = modelCanvas.getContext('2d', { willReadFrequently: true });
+      if (state.filmPrint.enabled) {
+        const pixels = modelContext.getImageData(0, 0, modelCanvas.width, modelCanvas.height);
+        modelContext.putImageData(renderFilmPrint(pixels, state.filmPrint), 0, 0);
+      }
+      let model;
+      try {
+        model = await adaptiveLut(modelCanvas);
+      } catch (error) {
+        console.warn('AI 模型不可用，转为影调检测。', error);
+      }
+      if (state.photo !== photo || state.aiRun !== run || listeners.signal.aborted) return;
+      if (state.appliedLook || filmRecipe !== JSON.stringify(state.filmPrint)) {
+        inFlightMessage.textContent = '当前配方已变化，可重新分析';
+        return;
+      }
+      const input = renderFilmPrint(photo.preview, state.filmPrint);
+      const { lut, label } = planAutomaticGrade(input, model);
       state.baseLut = lut;
-      inFlightMessage.textContent = '已应用自动调色，可继续微调';
-      if (!quiet) toast('AI 自动调色已完成');
+      const message = !lut ? '已保留原有影调与配色' : model ? label + '，已检查亮暗端与配色' : label + '，使用基础影调分析';
+      inFlightMessage.textContent = message;
+      if (!quiet) toast(message);
     } catch (error) {
       if (state.photo !== photo || state.aiRun !== run) return;
       console.error(error);
-      if (!state.baseLut) {
-        const presetSettings = applyPreset(state.presetId);
-        const fallback = autoGrade(photo.preview, { presetId: state.presetId }).settings;
-        for (const field of Object.keys(fallback)) {
-          if (typeof fallback[field] === 'number' && state.settings[field] === presetSettings[field]) {
-            state.settings[field] = fallback[field];
-          }
-        }
-      }
-      inFlightMessage.textContent = '模型加载失败，已使用基础自动校正';
-      toast('AI 模型加载失败，已使用图片统计校正。');
+      inFlightMessage.textContent = '无法完成本次分析，保留当前设置';
+      if (!quiet) toast(inFlightMessage.textContent);
     } finally {
       if (state.aiRun === run) {
         state.aiRun = null;
-        setBusy(el('run-ai'), false, '重新自动调色');
+        setBusy(el('run-ai'), false, state.baseLut ? '重新自动调色' : '自动调色');
         syncSettings();
         scheduleRender();
       }

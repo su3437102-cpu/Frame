@@ -35,7 +35,7 @@ function encode(value) {
 }
 
 // OKLab's axes let us estimate color bias without confusing saturation with brightness.
-function toLab(red, green, blue) {
+export function toLab(red, green, blue) {
   const l = Math.cbrt(0.4122214708 * red + 0.5363325363 * green + 0.0514459929 * blue);
   const m = Math.cbrt(0.2119034982 * red + 0.6806995451 * green + 0.1073969566 * blue);
   const s = Math.cbrt(0.0883024619 * red + 0.2817188376 * green + 0.6299787005 * blue);
