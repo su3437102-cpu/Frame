@@ -57,9 +57,27 @@ qa 下的图片是此原型的真实浏览器截图；不是 Milanote 截图。3
 
 ## Skills 与验收
 
-Finesse UI： https://github.com/mouse-lin/finesse-skill/tree/main/skills/finesse-ui ，MIT，已通过官方 skill-installer 实际安装至本机技能目录并读取。本轮已应用，后续任务可发现该技能。
+截至 2026-11-26，Frame 开发工作区的 `.agents/skills/` 中核实到 41 个项目 Skill，来自 8 个来源。用户已确认的界面规格优先于 Skill 的通用规则。
 
-Taste： https://github.com/Leonxlnx/taste-skill ，本机 design-taste-frontend 已存在，应用 app-screens 工作流，执行实际浏览器检查。明确用户规格优先于技能的纯白禁令、随机配色、营销页动效等通用规则。
+### 已安装的 Skill
+
+| 来源 | 已安装的 Skill | FrameLab 使用记录 |
+| --- | --- | --- |
+| [Impeccable](https://github.com/pbakaus/impeccable) | `impeccable` | 用于调色工作台、拼贴工作台和胶卷方案的界面检查，也用于排查拥挤的间距。 |
+| [Hallmark](https://github.com/Nutlope/hallmark) | `hallmark` | 采用 [Studio 主题](https://www.usehallmark.com/themes/studio/)作为设计参考，用于画布工作台卡片预览的英文字体、排版和留白。 |
+| [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | `ui-ux-pro-max`、`banner-design`、`brand`、`design`、`design-system`、`slides`、`ui-styling` | UI UX Pro Max 是画布工作台卡片预览的设计参考。 |
+| [Taste Skill](https://github.com/Leonxlnx/taste-skill) | `design-taste-frontend` | R11 原型使用当时版本的 `app-screens` 流程，在浏览器中检查桌面、平板和手机布局。原型实测为 0 项失败、2 项警告。见 [验收记录](qa/验收记录.md)和 [Taste 报告](qa/taste-report.json)。 |
+| [Frontend Agent Skills](https://github.com/hueyexe/frontend-agent-skills) | `accessibility-inclusive-design`、`design-systems-frontend-architecture`、`forms-inputs-checkout`、`information-architecture-navigation`、`interaction-patterns-components`、`ui-visual-composition`、`ux-research-discovery-testing`、`ux-usability-foundations`、`ux-writing-content-design` | 已安装，暂无可核实的单项项目使用记录。 |
+| [Emil Kowalski Skills](https://github.com/emilkowalski/skills) | `animate`、`animate-expo`、`animation-performance`、`animation-vocabulary`、`apple-design`、`ask-emil`、`ask-sonner`、`break-ui`、`choreograph`、`emil-design-eng`、`find-animation-opportunities`、`gestures`、`improve-animations`、`learn-taste`、`mobile-native`、`pick-ui-library`、`prototype`、`remove-animations`、`review-animations`、`write-swift` | 开发流程约定用于交互缓动、反馈和动画审查，暂无可核实的单项项目使用记录。 |
+| [Motion Ref Skill](https://github.com/joepUI/motion-ref-skill) | `motion-ref` | 开发流程约定用于查找动效实现参考，暂无可核实的项目使用记录。 |
+| [Anthropic Frontend Design](https://github.com/anthropics/skills/tree/main/skills/frontend-design) | `frontend-design` | 已安装，暂无可核实的项目使用记录。 |
+
+### 项目此前使用的 Skill
+
+下列 Skill 有项目使用记录，当前 Frame 工作区未找到安装文件。
+
+- **Finesse UI**（`finesse-ui`，MIT）由当时的 skill-installer 安装并用于 R11 原型的视觉检查。验收记录为 P0 = 0，纯白和反色描边按用户确认的规格处理。[技能来源](https://github.com/mouse-lin/finesse-skill/tree/main/skills/finesse-ui) · [验收记录](qa/验收记录.md)
+- **Photo Quality Grade**（`photo-quality-grade` v1.3）由用户提供，用于 SpektraLab 暗房六套预设的浏览器渲染复测，覆盖 12 组 SDR 样片的亮度分位和 RGB 触边检查。[项目交接记录](PROJECT_HANDOFF.md)
 
 原型由原创 HTML/CSS/JS 实现，没有复制 Milanote 私有源码或品牌资源。第三方示例摄影素材见 sources。测试结果和实际截图见 qa。详细整体策划 DOCX/PDF 是交付目录中的上一版正式文档，本原型 README 记录最新第二轮选择与实现边界。
 
