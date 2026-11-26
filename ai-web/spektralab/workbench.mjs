@@ -180,6 +180,56 @@ function showMode(next) {
 for (const next of ['gallery','develop','edit']) $(next+'-tab').onclick = () => showMode(next);
 
 const formats = [['110','13 × 17',17],['APS','16.7 × 30',30],['135','24 × 36',35],['120','56 × 56',56]];
+// Material pairings based on https://spektralab.app/#films, mapped to the browser catalog.
+const presetDefinitions = [
+  ['日光人像','kodak_portra_160','kodak_portra_endura',56],
+  ['街头纪实','kodak_portra_400','kodak_supra_endura',35],
+  ['城市暮色','fujifilm_pro_400h','fujifilm_crystal_archive_typeii',35],
+  ['夜景电影','kodak_vision3_500t','kodak_2383',35],
+  ['黑白建筑','fujifilm_acros_100_ii','ilford_mgrc_deluxe_grade2',35],
+  ['反转片风景','fujifilm_velvia_100',null,35]
+];
+const developPresets = new Map();
+const presetMenu = $('develop-preset');
+const applyPreset = $('apply-preset');
+const presetMaterials = $('preset-materials');
+
+function loadPresets() {
+  const profiles = new Map(catalog.profiles.map(item => [item.id,item]));
+  for (const [label,filmId,paperId,format] of presetDefinitions) {
+    const negative = profiles.get(filmId);
+    const print = profiles.get(paperId);
+    if (!negative || (paperId && !print)) continue;
+    developPresets.set(filmId,{negative,print,format});
+    presetMenu.add(new Option(label,filmId));
+  }
+}
+
+function refreshPreset() {
+  const choice = developPresets.get(presetMenu.value);
+  applyPreset.disabled = presetMenu.disabled || !choice;
+  presetMaterials.hidden = !choice;
+  if (choice) {
+    const [formatName] = formats.find(([, , value]) => value === choice.format);
+    presetMaterials.textContent = [choice.negative.name,choice.print?.name || '直接扫描',formatName].join(' · ');
+  }
+}
+
+presetMenu.onchange = refreshPreset;
+applyPreset.onclick = () => {
+  const choice = developPresets.get(presetMenu.value);
+  film = choice.negative;
+  paper = choice.print;
+  values.format = choice.format;
+  $('direct').checked = !choice.print;
+  const category = $('category');
+  if (category.value && category.value !== stockCategory(film)) category.value = stockCategory(film);
+  renderStocks();
+  renderPapers();
+  updateAppearance();
+  schedule();
+};
+
 values.format = 35;
 for (const [name,size,value] of formats) {
   const button = node('button','',{type:'button'});
@@ -503,6 +553,8 @@ function refreshActions() {
   for (const id of ['save-project','copy-settings','reset-settings','crop-button']) $(id).disabled=!photo || !catalog;
   $('paste-settings').disabled=!photo || !catalog || !copiedSettings;
   $('previous').disabled=$('next').disabled=photos.length<2;
+  presetMenu.disabled = !photo || !developPresets.size;
+  applyPreset.disabled = presetMenu.disabled || !presetMenu.value;
 }
 function select(item, enter = false) {
   clearTimeout(timer);
@@ -510,6 +562,8 @@ function select(item, enter = false) {
   pending = null;
   sequence++;
   photo = item;
+  presetMenu.value = '';
+  refreshPreset();
   preview.dataset.ready = '';
   developmentStarted = previewFresh = false;
   comparison = null;
@@ -814,6 +868,7 @@ addEventListener('message', ({origin,source,data}) => {
 });
 try {
   catalog = await loadCatalog();
+  loadPresets();
   restoreRecipe(photo?.recipe);
   if (photo && !photo.thumbnail && !photo.url) submit('original');
 } catch (error) { status(error.message); }

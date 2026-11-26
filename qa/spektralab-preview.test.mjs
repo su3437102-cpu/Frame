@@ -90,3 +90,55 @@ test('SpektraLab opens originals, develops on demand and compares both views', {
     await browser.close();
   }
 });
+
+test('SpektraLab presets apply the specified materials and render on the selected photo', {timeout:90000}, async () => {
+  const browser = await chromium.launch({executablePath:process.env.FRAME_TEST_CHROMIUM || (existsSync(chrome) ? chrome : undefined)});
+  try {
+    const page = await browser.newPage({viewport:{width:1280,height:800}});
+    const presets = page.locator('#develop-preset');
+    const apply = page.locator('#apply-preset');
+    const start = page.locator('#develop-photo');
+    const download = page.locator('#download');
+    const stock = page.locator('#stock-info');
+    await page.goto(base+'/ai-web/spektralab/index.html');
+    await expect(presets).toBeDisabled();
+    await page.locator('#files').setInputFiles([image('photo-0.jpg'), image('photo-1.jpg')]);
+    await expect(presets).toBeEnabled();
+    await page.locator('#crop-button').click();
+    await page.locator('#output-size').selectOption('640');
+    await page.locator('#turn').click();
+
+    const expected = [
+      ['日光人像','Portra 160','Portra Endura',56],
+      ['街头纪实','Portra 400','Supra Endura',35],
+      ['城市暮色','Pro 400H','Crystal Archive Type II',35],
+      ['夜景电影','Vision3 500T','Vision 2383',35],
+      ['黑白建筑','Acros II','Multigrade RC Deluxe',35],
+      ['反转片风景','Velvia 100','直接扫描',35]
+    ];
+    for (const [index,[label,film,paper,format]] of expected.entries()) {
+      await presets.selectOption({label});
+      await expect(page.locator('#preset-materials')).toContainText(film);
+      await apply.click();
+      await expect(stock).toContainText(film);
+      await expect(stock).toContainText(paper);
+      await expect(page.locator(`[data-format="${format}"]`)).toHaveAttribute('aria-pressed','true');
+      if (index === 0) {
+        await expect(page.locator('#original')).toBeVisible();
+        await expect(page.locator('#preview')).toBeHidden();
+        await expect(page.locator('#status')).toContainText('未冲洗');
+        await start.click();
+      }
+      await expect(download).toBeEnabled({timeout:20000});
+    }
+    await expect(page.locator('#output-size')).toHaveValue('640');
+    await expect(page.locator('#turn-value')).toHaveText('90°');
+    await page.getByRole('button',{name:'photo-1.jpg',exact:true}).click();
+    await expect(stock).toContainText('Portra 400');
+    await page.getByRole('button',{name:'photo-0.jpg',exact:true}).click();
+    await expect(stock).toContainText('Velvia 100');
+    await expect(page.locator('#preview')).toBeHidden();
+  } finally {
+    await browser.close();
+  }
+});

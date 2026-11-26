@@ -81,6 +81,8 @@ summary {cursor:pointer;font-weight:650;padding:5px 0}
 .film-grid button[data-stock="不印放"] {background:#222220}
 .film-grid button[aria-pressed="true"] {color:#fff0d7;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .section-label {font-size:12px;color:var(--muted)}
+#apply-preset {white-space:nowrap}
+#preset-materials {margin:5px 0 0;line-height:1.5}
 .format-select {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
 .format-select button {padding:5px 2px;display:grid;justify-items:center}
 .format-select small {color:inherit;opacity:.78;font-size:9px}
