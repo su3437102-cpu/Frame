@@ -26,6 +26,30 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
   const $$ = selector => [...root.querySelectorAll(selector)];
   const el = id => root.getElementById(id);
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+  const menuBar = $('.spektralab-menus');
+  const menuCommands = $$('[data-workbench-command]');
+
+  function closeTopMenu(restoreFocus = false) {
+    const open = menuBar.querySelector('details[open]');
+    if (!open) return false;
+    open.open = false;
+    if (restoreFocus) open.querySelector('summary').focus();
+    return true;
+  }
+  for (const button of menuCommands) {
+    button.addEventListener('click', () => el(button.dataset.workbenchCommand).click(), listenerOptions);
+  }
+  menuBar.addEventListener('click', event => {
+    if (event.target.closest('button')) closeTopMenu();
+  }, listenerOptions);
+  document.addEventListener('pointerdown', event => {
+    if (!event.composedPath().includes(menuBar)) closeTopMenu();
+  }, listenerOptions);
+  root.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !closeTopMenu(true)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, listenerOptions);
 
   const paths = {
     'chevron-right': '<path d="m9 18 6-6-6-6"/>',
@@ -1175,9 +1199,6 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
       el('tab-' + target).setAttribute('aria-selected', String(active));
       el('panel-' + target).hidden = !active;
     }
-    $$('.rail-button[data-rail]').forEach(button => {
-      button.classList.toggle('active', button.dataset.rail === (panel === 'color' ? 'tone' : panel));
-    });
     if (panel === 'color') curveEditor.draw();
     updateView();
     renderOverlay();
@@ -1380,14 +1401,6 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     renderOverlay();
   });
   $$('[data-panel]').forEach(button => button.addEventListener('click', () => setPanel(button.dataset.panel, true)));
-  $$('[data-rail]').forEach(button => button.addEventListener('click', () => {
-    if (button.dataset.rail === 'presets') {
-      el('preset-shelf').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      $('.shelf-tabs [aria-pressed="true"]')?.focus({ preventScroll: true });
-    } else {
-      setPanel(button.dataset.rail, true);
-    }
-  }));
   $$('[data-view]').forEach(button => button.addEventListener('click', () => {
     cancelBoxSelection();
     state.maskMode = null;
@@ -2186,6 +2199,11 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     el('extract-look-header').disabled = locked;
     el('export-open').disabled = locked || !state.photo;
     el('framelab-back').disabled = frameLab.saving;
+    for (const button of menuCommands) {
+      const target = el(button.dataset.workbenchCommand);
+      const requiresPhoto = ['show-original', 'fit-view'].includes(target.id);
+      button.disabled = locked || target.disabled || (requiresPhoto && !state.photo);
+    }
   }
 
   function frameSourceUrl(source) {

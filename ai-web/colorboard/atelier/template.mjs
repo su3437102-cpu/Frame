@@ -2,11 +2,27 @@ import { symbols } from './symbols.mjs';
 
 export function atelierMarkup(assetRoot) {
   return `<div class="atelier">${symbols}
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="atelier-title"><button id="atelier-back" class="text-button" type="button" aria-label="返回画布">‹ <span>返回画布</span></button><span class="atelier-brand">FrameLab</span><h1 id="studio-title">抠图拼图工作台</h1></div>
-      <div class="atelier-actions"><button id="atelier-grade" class="button compact outline" type="button" hidden>回到调色</button><button class="button compact outline" id="export" type="button" disabled>导出</button><button id="atelier-save" class="button compact primary" type="button" disabled>保存到画布</button></div>
-    </div>
+  <header class="site-header spektralab-menubar">
+    <nav class="spektralab-menus" aria-label="拼贴菜单">
+      <details name="collage-workbench-menu"><summary>文件</summary><div class="spektralab-menu">
+        <button type="button" data-atelier-command="upload">导入照片…</button>
+        <button type="button" data-atelier-command="export">导出…</button>
+        <button type="button" data-atelier-command="atelier-save">保存到画布</button>
+      </div></details>
+      <details name="collage-workbench-menu"><summary>编辑</summary><div class="spektralab-menu">
+        <button type="button" data-atelier-command="undo">撤销 <kbd>Ctrl/⌘+Z</kbd></button>
+        <button type="button" data-atelier-command="redo">重做 <kbd>Ctrl/⌘+Shift+Z</kbd></button>
+      </div></details>
+      <details name="collage-workbench-menu"><summary>视图</summary><div class="spektralab-menu">
+        <button type="button" data-atelier-command="atelier-zoom-fit">适合窗口 <kbd>0</kbd></button>
+        <button type="button" data-atelier-command="view">预览作品</button>
+      </div></details>
+      <details name="collage-workbench-menu"><summary>模板</summary><div class="spektralab-menu">
+        <a href="#journal">野外手记</a><a href="#templates">构图模板</a>
+      </div></details>
+    </nav>
+    <h1 id="studio-title" class="spektralab-title">抠图拼图工作台</h1>
+    <button id="atelier-back" class="text-button spektralab-back" type="button" aria-label="返回画布">← FrameLab</button>
   </header>
   <main class="page">
     <section id="studio" aria-labelledby="studio-title">
@@ -24,10 +40,24 @@ export function atelierMarkup(assetRoot) {
               <button type="button" class="button compact outline" id="upload"><svg><use href="#i-upload"/></svg><span>导入照片</span></button>
               <input type="file" accept="image/*,.heic,.heif" id="image-input" multiple hidden>
             </div>
+            <div class="atelier-actions"><button id="atelier-grade" class="button compact outline" type="button" hidden>回到调色</button><button class="button compact outline" id="export" type="button" disabled>导出</button><button id="atelier-save" class="button compact primary" type="button" disabled>保存到画布</button></div>
+          </div>
+          <div class="atelier-view-row">
+            <div class="view-options">
+              <div class="atelier-view-tools" role="group" aria-label="画布视图">
+                <button id="atelier-pan" type="button" class="icon-button" aria-pressed="false" title="平移视图（也可按住空格拖动）" aria-label="平移视图"><svg aria-hidden="true"><use href="#i-hand"/></svg></button>
+                <button id="atelier-zoom-out" type="button" class="icon-button" title="缩小视图（− 或 Ctrl/⌘ 加滚轮）" aria-label="缩小视图"><svg aria-hidden="true"><use href="#i-minus"/></svg></button>
+                <button id="atelier-zoom-fit" type="button" title="适合窗口（0）" aria-label="适合窗口"><span id="atelier-zoom-readout">适合</span></button>
+                <button id="atelier-zoom-in" type="button" class="icon-button" title="放大视图（+ 或 Ctrl/⌘ 加滚轮）" aria-label="放大视图"><svg aria-hidden="true"><use href="#i-plus"/></svg></button>
+              </div>
+              <button id="view" type="button" class="icon-button" title="预览作品" aria-label="预览作品"><svg><use href="#i-zoom"/></svg></button>
+            </div>
             <div class="transform-lock">
               <label class="transform-lock-label" title="拖动时按住 Shift 临时切换等比"><input type="checkbox" id="transform-lock" aria-describedby="transform-lock-hint">等比</label>
               <span id="transform-lock-hint"><kbd>Shift</kbd> 临时切换</span>
             </div>
+            <label id="aspect-label" class="sr-only" for="aspect">画布比例</label>
+            <select id="aspect" title="画布比例"><option value="landscape">3∶2 横幅</option><option value="square">1∶1 方形</option><option value="portrait">4∶5 竖幅</option><option value="journal">3∶4 手记</option><option value="wide">16∶9 宽屏</option></select>
           </div>
           <div class="brush-options" id="brush-options" role="group" aria-label="画笔设置" hidden>
             <label for="brush-color">颜色 <input type="color" id="brush-color" value="#2e2923"></label>
@@ -51,23 +81,13 @@ export function atelierMarkup(assetRoot) {
           </div>
           <div class="board-footer">
             <div class="work-name"><span id="work-title">我的拼贴</span><small id="work-subtitle">1200 × 800 px</small></div>
-            <div class="view-options">
-              <label id="aspect-label" class="sr-only" for="aspect">画布比例</label>
-              <select id="aspect" title="画布比例"><option value="landscape">3∶2 横幅</option><option value="square">1∶1 方形</option><option value="portrait">4∶5 竖幅</option><option value="journal">3∶4 手记</option><option value="wide">16∶9 宽屏</option></select>
-              <div class="atelier-view-tools" role="group" aria-label="画布视图">
-                <button id="atelier-pan" type="button" class="icon-button" aria-pressed="false" title="平移视图（也可按住空格拖动）" aria-label="平移视图"><svg aria-hidden="true"><use href="#i-hand"/></svg></button>
-                <button id="atelier-zoom-out" type="button" class="icon-button" title="缩小视图（− 或 Ctrl/⌘ 加滚轮）" aria-label="缩小视图"><svg aria-hidden="true"><use href="#i-minus"/></svg></button>
-                <button id="atelier-zoom-fit" type="button" title="适合窗口（0）" aria-label="适合窗口"><span id="atelier-zoom-readout">适合</span></button>
-                <button id="atelier-zoom-in" type="button" class="icon-button" title="放大视图（+ 或 Ctrl/⌘ 加滚轮）" aria-label="放大视图"><svg aria-hidden="true"><use href="#i-plus"/></svg></button>
-              </div>
-              <button id="view" type="button" class="icon-button" title="预览作品" aria-label="预览作品"><svg><use href="#i-zoom"/></svg></button>
-            </div>
+            <p id="message" class="status" role="status" aria-live="polite"></p>
           </div>
         </div>
         <aside class="inspector" aria-label="拼贴设置">
           <div class="inspector-tabs" role="tablist" aria-label="编辑面板">
             <button id="tab-compose" role="tab" aria-selected="false" aria-controls="panel-compose" tabindex="-1" type="button">构图</button>
-            <button id="tab-layers" role="tab" aria-selected="true" aria-controls="panel-layers" class="selected" type="button">图层 <span id="layer-count"></span></button>
+            <button id="tab-layers" role="tab" aria-selected="true" aria-controls="panel-layers" class="selected" type="button">编辑</button>
             <button id="tab-regions" role="tab" aria-selected="false" aria-controls="panel-regions" tabindex="-1" type="button">九宫格编辑</button>
           </div>
           <div class="inspector-content">
@@ -88,7 +108,7 @@ export function atelierMarkup(assetRoot) {
               <button id="export-region" class="button compact outline" type="button"><svg aria-hidden="true"><use href="#i-download"/></svg><span>导出选区 1</span></button>
             </div>
             <div class="inspector-panel" id="panel-layers" role="tabpanel" aria-labelledby="tab-layers">
-              <div class="panel-title"><h2>图层顺序</h2><div class="add-layer-actions"><button type="button" class="text-button" id="add-type"><svg><use href="#i-plus"/></svg> 文字</button><button type="button" class="text-button" id="add-shape"><svg><use href="#i-plus"/></svg> 色纸</button></div></div>
+              <div class="panel-title"><h2>图层设置</h2><div class="add-layer-actions"><button type="button" class="text-button" id="add-type"><svg><use href="#i-plus"/></svg> 文字</button><button type="button" class="text-button" id="add-shape"><svg><use href="#i-plus"/></svg> 色纸</button></div></div>
               <details class="journal-layer-tools">
                 <summary>添加手记元素</summary>
                 <div>
@@ -97,7 +117,7 @@ export function atelierMarkup(assetRoot) {
                   <button type="button" class="text-button" id="journal-add-type">手记文字</button>
                 </div>
               </details>
-              <ul id="layer-list" aria-label="从前景到背景的图层"></ul>
+              <p id="layer-controls-empty" class="layer-controls-empty" hidden>选中画布或右栏中的图层，即可调整不透明度、裁切和变换。</p>
               <div id="layer-controls">
                 <div class="layer-actions" aria-label="所选图层操作">
                   <button type="button" class="icon-button" id="layer-up" aria-label="向上一层" title="向上一层"><svg><use href="#i-up"/></svg></button>
@@ -146,20 +166,25 @@ export function atelierMarkup(assetRoot) {
                 <button id="layer-replace" class="button outline compact layer-replace" type="button" hidden><svg aria-hidden="true"><use href="#i-image"/></svg>替换图片</button>
                 <input id="layer-image-input" type="file" accept="image/*" hidden>
               </div>
-              <p id="layer-empty" hidden>导入照片或抠图后，素材会出现在图层中。</p>
             </div>
           </div>
         </aside>
+        <aside class="atelier-browser" aria-label="图层和素材">
+          <section class="atelier-layer-browser" aria-labelledby="layer-browser-title">
+            <div class="atelier-pane-heading"><h2 id="layer-browser-title">图层 <span id="layer-count"></span></h2></div>
+            <ul id="layer-list" aria-label="从前景到背景的图层"></ul>
+            <p id="layer-empty" hidden>导入照片或抠图后，素材会出现在图层中。</p>
+          </section>
+          <section class="materials" aria-labelledby="material-browser-title">
+            <div class="atelier-pane-heading"><h2 id="material-browser-title">素材盘</h2></div>
+            <div class="material-list" id="material-list" aria-label="当前可用素材"></div>
+            <div class="material-actions">
+              <button type="button" class="button compact outline" id="atelier-cutout" aria-expanded="false" aria-controls="cutouts"><svg aria-hidden="true"><use href="#i-cut"/></svg>AI 抠图</button>
+              <button type="button" class="text-button sample-button" id="restore">载入示例</button>
+            </div>
+          </section>
+        </aside>
       </div>
-      <div class="materials">
-        <div class="materials-title"><h2>素材盘</h2></div>
-        <div class="material-list" id="material-list" aria-label="当前可用素材"></div>
-        <div class="material-actions">
-          <button type="button" class="button compact outline" id="atelier-cutout" aria-expanded="false" aria-controls="cutouts"><svg aria-hidden="true"><use href="#i-cut"/></svg>AI 抠图</button>
-          <button type="button" class="text-button sample-button" id="restore">载入示例</button>
-        </div>
-      </div>
-      <p id="message" class="status" role="status" aria-live="polite"></p>
     </section>
     <section id="cutouts" class="editorial cutout-workspace" aria-labelledby="cutout-title" hidden>
       <div class="section-intro cutout-intro"><h2 id="cutout-title" tabindex="-1">AI 抠图</h2><button type="button" id="cutout-hide" class="text-button">收起抠图</button></div>

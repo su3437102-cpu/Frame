@@ -49,7 +49,7 @@
   padding: 14px;
   border: 1px dashed #cbada3;
   border-radius: 6px;
-  background: #fcf6ef;
+  background: var(--white);
   color: var(--ink);
   text-align: center;
 }
@@ -163,7 +163,7 @@
   height: 42px;
   overflow: hidden;
   border-radius: 3px;
-  background: #eee8dd;
+  background: var(--sand);
   color: var(--muted);
 }
 
@@ -275,9 +275,7 @@
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 5px;
-  background-color: #f6f2eb;
-  background-image: radial-gradient(#d2c9bc 0.75px, transparent 0.85px);
-  background-size: 14px 14px;
+  background: var(--canvas);
   color: var(--muted);
   font-size: .875rem;
   text-align: center;

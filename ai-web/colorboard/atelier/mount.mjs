@@ -27,6 +27,23 @@ export async function mountAtelier(container, {source, project, theme, signal, o
     el('atelier-grade').hidden = false;
     el('atelier-grade').addEventListener('click', onGrade, {signal});
   }
+  const menus = root.querySelector('.spektralab-menus');
+  for (const menu of menus.querySelectorAll('details')) {
+    menu.addEventListener('toggle', () => {
+      if (!menu.open) return;
+      for (const command of menu.querySelectorAll('[data-atelier-command]')) {
+        command.disabled = el(command.dataset.atelierCommand).disabled;
+      }
+    }, {signal});
+  }
+  menus.addEventListener('keydown', event => {
+    const menu = event.target.closest('details[open]');
+    if (event.key !== 'Escape' || !menu) return;
+    event.preventDefault();
+    event.stopPropagation();
+    menu.open = false;
+    menu.querySelector('summary').focus();
+  }, {signal});
 
   let cutouts;
   let cutoutLoading;
@@ -124,11 +141,22 @@ export async function mountAtelier(container, {source, project, theme, signal, o
   }
 
   root.addEventListener('click', event => {
+    const openMenu = menus.querySelector('details[open]');
+    const command = event.target.closest?.('[data-atelier-command]');
+    if (command) {
+      const menu = command.closest('details');
+      menu.open = false;
+      menu.querySelector('summary').focus();
+      el(command.dataset.atelierCommand).click();
+      return;
+    }
+    if (openMenu && !openMenu.contains(event.target)) openMenu.open = false;
     if (event.target.closest?.('#montage-cutouts')) return void openCutout();
     const link = event.target.closest?.('a[href^="#"]');
     const target = link && el(link.getAttribute('href').slice(1));
     if (!target) return;
     event.preventDefault();
+    if (openMenu) openMenu.open = false;
     if (target.id === 'templates') void openGallery();
     if (target.id === 'journal') openJournalPreviews();
     target.scrollIntoView({block:'start'});

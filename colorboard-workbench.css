@@ -1,4 +1,6 @@
 /* The full-screen dialog keeps the workspace inert while its native editor mounts. */
+@import url("./ai-web/spektralab/workbench-theme.css");
+
 #colorboard-workbench {
   inset: 0;
   width: 100%;
@@ -10,10 +12,11 @@
   overflow: hidden;
   border: 0;
   border-radius: 0;
-  background: var(--bg);
+  color-scheme: dark;
+  background: var(--spektralab-base);
   box-shadow: none;
 }
-#colorboard-workbench::backdrop { background: var(--bg); }
+#colorboard-workbench::backdrop { background: var(--spektralab-base); }
 #colorboard-workbench .colorboard-root {
   position: absolute;
   inset: 0;
@@ -28,30 +31,30 @@
   z-index: 1;
   display: grid;
   place-content: center;
-  padding: 76px 24px 24px;
-  background: radial-gradient(var(--dot) .65px, transparent .85px) var(--bg) 0 0 / 21px 21px;
-  color: var(--muted);
+  padding: calc(24px + var(--spektralab-menu-height)) 24px 24px;
+  background: var(--spektralab-stage);
+  color: var(--spektralab-muted);
   text-align: center;
+  font: 12px/1.45 var(--spektralab-font);
 }
 #colorboard-workbench .colorboard-state::before {
   position: absolute;
   inset: 0 0 auto;
-  height: 54px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
+  height: var(--spektralab-menu-height);
+  border-bottom: 1px solid var(--spektralab-line);
+  background: var(--spektralab-base);
   content: "";
 }
 #colorboard-workbench .colorboard-state[hidden] { display: none; }
 #colorboard-workbench .colorboard-state p { margin: 0; }
 #colorboard-workbench [data-colorboard-back] {
   position: absolute;
-  inset: 5px auto auto 16px;
-  min-height: 44px;
-  padding: 0 10px;
-  font-size: 12px;
-  color: var(--ink);
+  inset: 0 12px auto auto;
+  min-height: calc(var(--spektralab-menu-height) - 1px);
+  padding: 0 6px;
+  border: 0;
+  color: var(--spektralab-muted);
+  background: transparent;
+  font: inherit;
 }
-@media (max-width: 740px) {
-  #colorboard-workbench .colorboard-state::before { height: 49px; }
-  #colorboard-workbench [data-colorboard-back] { inset: 2px auto auto 8px; }
-}
+#colorboard-workbench [data-colorboard-back]:hover { color: var(--spektralab-ink); }

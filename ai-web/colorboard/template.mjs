@@ -1,33 +1,69 @@
 const markup = `
 <div class="colorboard-layout">
-  <header class="topbar">
-    <button id="framelab-back" class="button" type="button" aria-label="返回画布" title="返回画布"><i data-icon="chevron-right"></i><span>返回画布</span></button>
-    <span class="brand">FrameLab</span>
-    <span class="header-divider" aria-hidden="true"></span>
-    <div class="breadcrumbs"><h1>AI 调色</h1><i data-icon="chevron-right"></i><strong id="doc-name">未连接照片</strong></div>
-    <div class="top-actions">
-      <button id="framelab-collage" class="button" type="button" aria-label="抠图拼图" title="抠图拼图"><i data-icon="cards"></i><span>抠图拼图</span></button>
-      <button id="open-file" class="button" type="button" aria-label="打开照片" title="打开照片"><i data-icon="upload"></i><span>打开照片</span></button>
-      <button id="extract-look-header" class="button" type="button" aria-label="提取调色" title="提取调色" aria-haspopup="dialog" aria-controls="extract-look-dialog"><i data-icon="sparkles"></i><span>提取调色</span></button>
-      <button id="export-open" class="button" type="button" aria-label="导出" title="导出"><i data-icon="download"></i><span>导出</span></button>
-      <button id="framelab-save" class="button button-dark" type="button" aria-label="保存到画布" title="保存到画布" disabled><i data-icon="check"></i><span>保存到画布</span></button>
-    </div>
+  <header class="topbar spektralab-menubar">
+    <nav class="spektralab-menus" aria-label="菜单栏">
+      <details name="grade-workbench-menu">
+        <summary>文件</summary>
+        <div class="spektralab-menu">
+          <button type="button" data-workbench-command="open-file">打开照片…</button>
+          <button type="button" data-workbench-command="export-open">导出…</button>
+          <button type="button" data-workbench-command="framelab-save">保存到画布</button>
+        </div>
+      </details>
+      <details name="grade-workbench-menu">
+        <summary>视图</summary>
+        <div class="spektralab-menu">
+          <button type="button" data-workbench-command="show-original">切换原图 <kbd>V</kbd></button>
+          <button type="button" data-workbench-command="fit-view">适合画板 <kbd>0</kbd></button>
+        </div>
+      </details>
+      <details name="grade-workbench-menu">
+        <summary>工具</summary>
+        <div class="spektralab-menu">
+          <button id="framelab-collage" type="button">抠图拼图</button>
+          <button id="extract-look-header" type="button" aria-haspopup="dialog" aria-controls="extract-look-dialog">提取调色…</button>
+        </div>
+      </details>
+      <button id="help-open" class="button" type="button">帮助</button>
+    </nav>
+    <h1 class="spektralab-title">AI 调色</h1>
+    <button id="framelab-back" class="button spektralab-back" type="button" aria-label="返回画布" title="返回画布">← FrameLab</button>
     <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/bmp" hidden>
     <input id="lut-input" type="file" accept=".cube" hidden>
     <input id="look-import-input" type="file" accept=".json,application/json" hidden>
   </header>
 
   <main class="workbench">
-    <nav class="rail" aria-label="工作台工具">
-      <button class="rail-button active" data-rail="tone" title="调色"><i data-icon="sliders"></i><span>调色</span></button>
-      <button class="rail-button" data-rail="glow" title="辉光"><i data-icon="sparkles"></i><span>辉光</span></button>
-      <button class="rail-button" data-rail="mask" title="蒙版"><i data-icon="mask"></i><span>蒙版</span></button>
-      <button class="rail-button" data-rail="presets" title="预设"><i data-icon="cards"></i><span>预设</span></button>
-      <span class="rail-spacer"></span>
-      <button class="rail-button" id="help-open" title="使用指南"><i data-icon="help"></i><span>指南</span></button>
-    </nav>
-
     <section class="board board-heading" id="board" aria-label="照片画板">
+      <div class="board-toolbar">
+        <div class="view-tools">
+          <button id="open-file" class="button" type="button" aria-label="打开照片" title="打开照片"><i data-icon="upload"></i><span>打开照片</span></button>
+          <div class="segmented" aria-label="预览模式">
+            <button type="button" data-view="after" class="selected" title="效果" aria-label="效果"><i data-icon="image"></i><span>效果</span></button>
+            <button type="button" data-view="compare" title="前后对照" aria-label="前后对照"><i data-icon="compare"></i><span>前后对照</span></button>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="export-open" class="button" type="button" aria-label="导出" title="导出"><i data-icon="download"></i><span>导出</span></button>
+          <button id="framelab-save" class="button button-dark" type="button" aria-label="保存到画布" title="保存到画布" disabled><i data-icon="check"></i><span>保存到画布</span></button>
+        </div>
+      </div>
+      <div class="board-view-toolbar">
+        <div id="zoom-controls" class="zoom-controls" role="group" aria-label="画布工具">
+          <button type="button" id="zoom-out" title="缩小（−）" aria-label="缩小"><i data-icon="minus"></i></button>
+          <button type="button" id="zoom-fit" title="适合画板（0）" aria-label="适合画板">适合</button>
+          <button type="button" id="zoom-in" title="放大（+）" aria-label="放大"><i data-icon="plus"></i></button>
+          <span class="viewport-tool-divider" aria-hidden="true"></span>
+          <button type="button" id="fit-view" title="适合画板（0）" aria-label="适合画板"><i data-icon="expand"></i></button>
+          <button type="button" id="view-hand" title="抓手（H 或按住空格拖动）" aria-label="抓手" aria-pressed="false"><i data-icon="hand"></i></button>
+          <button type="button" id="view-rotate" title="旋转视图（R 后拖动）" aria-label="拖动旋转视图" aria-pressed="false"><i data-icon="rotate"></i></button>
+          <span class="viewport-tool-divider" aria-hidden="true"></span>
+          <button type="button" id="rotate-left" title="逆时针转 90°" aria-label="逆时针转 90 度"><i data-icon="rotate-left"></i></button>
+          <button type="button" id="rotate-angle" title="转回 0°" aria-label="视图转回 0 度">0°</button>
+          <button type="button" id="rotate-right" title="顺时针转 90°" aria-label="顺时针转 90 度"><i data-icon="rotate-right"></i></button>
+        </div>
+        <button id="show-original" class="button" type="button" title="查看原图（V）"><i data-icon="eye"></i><span>看原图</span></button>
+      </div>
       <div class="viewport" id="viewport">
         <div class="photo-stage" id="photo-stage" aria-label="照片预览">
           <canvas id="result-canvas"></canvas>
@@ -52,25 +88,6 @@ const markup = `
           <span id="canvas-caption"><i data-icon="image"></i><span>未连接照片</span></span>
           <span id="image-meta">打开照片，或从画布连接原图</span>
         </div>
-        <div class="view-tools">
-          <div class="segmented" aria-label="预览模式">
-            <button type="button" data-view="after" class="selected" title="效果" aria-label="效果"><i data-icon="image"></i><span>效果</span></button>
-            <button type="button" data-view="compare" title="前后对照" aria-label="前后对照"><i data-icon="compare"></i><span>前后对照</span></button>
-          </div>
-          <button type="button" class="button icon-button" id="fit-view" title="适合画板（0）" aria-label="适合画板"><i data-icon="expand"></i></button>
-        </div>
-        <div id="zoom-controls" class="zoom-controls" role="group" aria-label="画布工具">
-          <button type="button" id="view-hand" title="抓手（H 或按住空格拖动）" aria-label="抓手" aria-pressed="false"><i data-icon="hand"></i></button>
-          <button type="button" id="view-rotate" title="旋转视图（R 后拖动）" aria-label="拖动旋转视图" aria-pressed="false"><i data-icon="rotate"></i></button>
-          <span class="viewport-tool-divider" aria-hidden="true"></span>
-          <button type="button" id="rotate-left" title="逆时针转 90°" aria-label="逆时针转 90 度"><i data-icon="rotate-left"></i></button>
-          <button type="button" id="rotate-angle" title="转回 0°" aria-label="视图转回 0 度">0°</button>
-          <button type="button" id="rotate-right" title="顺时针转 90°" aria-label="顺时针转 90 度"><i data-icon="rotate-right"></i></button>
-          <span class="viewport-tool-divider" aria-hidden="true"></span>
-          <button type="button" id="zoom-out" title="缩小（−）" aria-label="缩小"><i data-icon="minus"></i></button>
-          <button type="button" id="zoom-fit" title="适合画板（0）" aria-label="适合画板">适合</button>
-          <button type="button" id="zoom-in" title="放大（+）" aria-label="放大"><i data-icon="plus"></i></button>
-        </div>
       </div>
     </section>
 
@@ -81,6 +98,10 @@ const markup = `
         <button type="button" id="tab-glow" data-panel="glow" role="tab" aria-controls="panel-glow" aria-selected="false"><i data-icon="sparkles"></i>辉光</button>
         <button type="button" id="tab-mask" data-panel="mask" role="tab" aria-controls="panel-mask" aria-selected="false"><i data-icon="mask"></i>蒙版</button>
       </div>
+      <section class="histogram-section" aria-label="RGB 直方图">
+        <h2>RGB 直方图</h2>
+        <canvas id="histogram" width="512" height="130"></canvas>
+      </section>
       <div class="inspector-scroll">
         <section class="auto-section">
           <div id="automatic-look">
@@ -93,10 +114,6 @@ const markup = `
             <div id="applied-strength-wrap"></div>
             <button type="button" id="look-clear" class="text-button"><i data-icon="reset"></i><span>切回自动调色</span></button>
           </div>
-        </section>
-        <section class="histogram-section" aria-label="亮度直方图">
-          <div class="histogram-heading"><h2>直方图</h2><button id="show-original" class="text-button" type="button" title="查看原图（V）"><i data-icon="eye"></i><span>看原图</span></button></div>
-          <canvas id="histogram" width="390" height="106"></canvas>
         </section>
         <section id="panel-tone" role="tabpanel" aria-labelledby="tab-tone">
           <div class="panel-header"><h2>基础调整</h2><button id="reset-tone" class="text-button" type="button"><i data-icon="reset"></i>重置</button></div>
@@ -151,9 +168,16 @@ const markup = `
             <div id="mask-tone-controls"></div>
           </div>
         </section>
-        <section class="preset-shelf" id="preset-shelf" aria-labelledby="preset-heading">
+      </div>
+    </aside>
+
+    <aside class="preset-shelf" id="preset-shelf" aria-labelledby="preset-heading">
+      <div class="shelf-title" id="preset-heading">
+        <h2>预设与模板</h2>
+        <strong id="doc-name">未连接照片</strong>
+      </div>
+      <div class="shelf-scroll">
           <div class="shelf-heading">
-            <h2 id="preset-heading">风格预设</h2>
             <div class="shelf-tabs" aria-label="预设来源">
               <button type="button" id="feishu-looks-tab" aria-pressed="true">预设</button>
               <button type="button" id="my-looks-tab" aria-pressed="false">我的模板</button>
@@ -173,7 +197,6 @@ const markup = `
               </div>
               <div id="film-print-ranges"></div>
             </details>
-            <p class="feishu-summary">3 套调色、1 套辉光预设和 1 套框选留色模板。</p>
             <div id="feishu-look-grid" class="feishu-look-grid"></div>
           </div>
           <div id="my-looks" hidden>
@@ -181,9 +204,7 @@ const markup = `
             <div id="custom-look-grid" class="custom-look-grid"></div>
             <button id="look-import-open" class="text-button" type="button"><i data-icon="upload"></i>导入模板文件</button>
           </div>
-        </section>
       </div>
-      <div class="inspector-footer"><i data-icon="lock"></i><span>图像处理在当前设备完成</span></div>
     </aside>
   </main>
 

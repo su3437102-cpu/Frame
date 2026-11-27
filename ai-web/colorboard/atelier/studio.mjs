@@ -355,7 +355,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     $('layer-count').textContent = String(state.layers.length);
     for (const layer of state.layers.toReversed()) {
       const row = document.createElement('li');
-      const item = makeButton('', 'layer-item', () => chooseLayer(layer.id, false));
+      const item = makeButton('', 'layer-item', () => chooseLayer(layer.id, true));
       item.dataset.layer = String(layer.id);
       item.draggable = true;
       item.addEventListener('dragstart', event => {
@@ -410,17 +410,14 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
     if (focusedId) list.querySelector('[data-layer="' + focusedId + '"]')?.focus({preventScroll:true});
     const current = currentLayer();
     $('layer-controls').hidden = !current;
+    $('layer-controls-empty').hidden = Boolean(current);
     $('layer-replace').hidden = current?.kind !== 'photo';
     $('journal-pattern-row').hidden = current?.kind !== 'mark';
     $('text-path-row').hidden = current?.kind !== 'type';
     if (pathDrawing && (current?.kind !== 'type' || current.hidden)) toggleTextPath(false);
     $('text-path-edit').disabled = Boolean(current?.hidden);
     $('text-path-clear').hidden = !(current?.textPath || current?.curvePath || current?.curve);
-    const empty = $('layer-empty');
-    empty.hidden = Boolean(current);
-    empty.textContent = state.layers.length
-      ? '在画布上点选图层，或从上方列表选择。'
-      : '导入照片或抠图后，素材会出现在图层中。';
+    $('layer-empty').hidden = state.layers.length > 0;
     onPhotoChange();
     if (!current) return;
     const index = state.layers.indexOf(current);
@@ -1878,7 +1875,7 @@ export function mountStudio({root, revealStudio, assetRoot, signal, source, proj
       return;
     }
     const layer = currentLayer();
-    if (!layer || (event.target !== canvas && !event.target.closest?.('#panel-layers'))) return;
+    if (!layer || (event.target !== canvas && !event.target.closest?.('#panel-layers, .atelier-layer-browser'))) return;
     if (key === 'delete' || key === 'backspace') {
       event.preventDefault();
       deleteLayer();

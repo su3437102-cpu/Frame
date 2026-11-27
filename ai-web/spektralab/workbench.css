@@ -1,30 +1,32 @@
 /* Layout and color direction: SpektraLab Windows 2.0.0-alpha.3. */
+@import url("./workbench-theme.css");
+
 :root {
   color-scheme: dark;
-  --base:#0b0b0b;
-  --surface:#1d1d1d;
-  --hover:#2e2e2e;
-  --ink:#efefed;
-  --muted:#b1aea8;
-  --line:#30302e;
-  --accent:#e2b16e;
-  --menu-height:29px;
-  --toolbar-height:43px;
+  --base:var(--spektralab-base);
+  --surface:var(--spektralab-surface);
+  --hover:var(--spektralab-hover);
+  --ink:var(--spektralab-ink);
+  --muted:var(--spektralab-muted);
+  --line:var(--spektralab-line);
+  --accent:var(--spektralab-accent);
+  --menu-height:var(--spektralab-menu-height);
+  --toolbar-height:var(--spektralab-toolbar-height);
   background:var(--base);
   color:var(--ink);
-  font:12px/1.45 system-ui,"Microsoft YaHei",sans-serif;
+  font:12px/1.45 var(--spektralab-font);
 }
 * {box-sizing:border-box}
 body {margin:0}
 button, select, input {font:inherit}
-button, select {border:1px solid transparent;border-radius:6px;background:var(--surface);color:var(--ink);padding:5px 9px}
+button, select {border:1px solid transparent;border-radius:var(--spektralab-radius);background:var(--surface);color:var(--ink);padding:5px 9px}
 button:not(:disabled) {cursor:pointer}
 button:disabled {opacity:.45}
 button:not(:disabled):hover, select:hover {background:var(--hover)}
 button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-offset:2px}
 button:active:not(:disabled) {filter:brightness(.85)}
 [aria-pressed="true"] {background:var(--ink);color:var(--base)}
-.primary:not(:disabled) {background:var(--accent);color:#24180d;font-weight:600}
+.primary:not(:disabled) {background:var(--accent);color:var(--spektralab-on-accent);font-weight:600}
 [hidden] {display:none!important}
 a {color:var(--muted);text-underline-offset:4px}
 .menubar {position:relative;height:var(--menu-height);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:5px;padding:0 12px}
@@ -44,8 +46,8 @@ a {color:var(--muted);text-underline-offset:4px}
 #more .menu {left:auto;right:0}
 #more summary {padding:6px 9px}
 .workspace {
-  --rail-width:clamp(248px,29.375vw,720px);
-  --browser-width:clamp(175px,15.9375vw,400px);
+  --rail-width:var(--spektralab-rail-width);
+  --browser-width:var(--spektralab-browser-width);
   height:calc(100dvh - var(--menu-height));
   display:grid;
   grid-template-columns:var(--rail-width) minmax(0,1fr) var(--browser-width);
@@ -111,14 +113,14 @@ summary {cursor:pointer;font-weight:650;padding:5px 0}
 .toolbar,.statusbar {display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .toolbar {min-height:var(--toolbar-height);padding:5px 9px}
 .zoom,.outputs {display:flex;gap:4px}
-.stage {position:relative;display:grid;place-items:center;min-height:0;overflow:hidden;background:#080808}
+.stage {position:relative;display:grid;place-items:center;min-height:0;overflow:hidden;background:var(--spektralab-stage)}
 .stage:has(#gallery-grid:not([hidden])) {overflow:auto}
 .photo-pane {overflow:auto;overscroll-behavior:contain;display:flex;min-height:0;min-width:0}
 #single-pane,.pair {position:absolute;inset:0}
 .photo-surface {position:relative;flex:none;margin:auto}
 .photo-surface img,.photo-surface canvas {position:absolute;left:50%;top:50%;display:block;transform:translate(-50%,-50%) rotate(var(--view-rotation,0deg))}
 .pair {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line)}
-.pair figure {min-width:0;min-height:0;margin:0;display:grid;grid-template-rows:auto minmax(0,1fr);background:#080808}
+.pair figure {min-width:0;min-height:0;margin:0;display:grid;grid-template-rows:auto minmax(0,1fr);background:var(--spektralab-stage)}
 .pair figcaption {padding:6px 10px;color:var(--muted);border-bottom:1px solid var(--line)}
 #empty {text-align:center;color:var(--muted)}
 .statusbar {border-top:1px solid var(--line);border-bottom:0;color:var(--muted);font-size:11px;padding:6px 9px}

@@ -1,0 +1,111 @@
+:root,
+:host {
+  --spektralab-base: #0b0b0b;
+  --spektralab-surface: #1d1d1d;
+  --spektralab-hover: #2e2e2e;
+  --spektralab-stage: #080808;
+  --spektralab-ink: #efefed;
+  --spektralab-muted: #b1aea8;
+  --spektralab-line: #30302e;
+  --spektralab-accent: #e2b16e;
+  --spektralab-on-accent: #24180d;
+  --spektralab-accent-hover: #edc186;
+  --spektralab-accent-soft: #34291d;
+  --spektralab-menu-height: 29px;
+  --spektralab-toolbar-height: 43px;
+  --spektralab-rail-width: clamp(248px, 29.375vw, 720px);
+  --spektralab-browser-width: clamp(175px, 15.9375vw, 400px);
+  --spektralab-radius: 6px;
+  --spektralab-font: system-ui, "Microsoft YaHei", sans-serif;
+}
+
+.spektralab-menubar {
+  position: relative;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  height: var(--spektralab-menu-height);
+  padding-inline: 12px;
+  border-bottom: 1px solid var(--spektralab-line);
+  color: var(--spektralab-ink);
+  background: var(--spektralab-base);
+  font: 12px/1.45 var(--spektralab-font);
+}
+.spektralab-menus { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.spektralab-menus details { position: relative; margin: 0; padding: 0; border: 0; }
+.spektralab-menus summary,
+.spektralab-menus > button,
+.spektralab-menubar .spektralab-back {
+  min-height: 0;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.spektralab-menus summary { list-style: none; }
+.spektralab-menus summary::-webkit-details-marker { display: none; }
+.spektralab-menus summary:hover,
+.spektralab-menus > button:hover,
+.spektralab-menus details[open] summary,
+.spektralab-menubar .spektralab-back:hover { background: var(--spektralab-hover); }
+.spektralab-menubar :is(button, summary, a):focus-visible {
+  outline: 2px solid var(--spektralab-accent);
+  outline-offset: 1px;
+}
+.spektralab-title {
+  position: absolute;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  color: var(--spektralab-muted);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.spektralab-menubar .spektralab-back { color: var(--spektralab-muted); }
+.spektralab-menu {
+  position: absolute;
+  inset: 100% auto auto 0;
+  z-index: 9;
+  display: grid;
+  min-width: 150px;
+  padding: 4px;
+  border: 1px solid var(--spektralab-line);
+  border-radius: var(--spektralab-radius);
+  background: var(--spektralab-surface);
+  box-shadow: 0 10px 24px #08080880;
+}
+.spektralab-menu :is(button, a) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--spektralab-ink);
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.spektralab-menu :is(button:not(:disabled), a):hover { background: var(--spektralab-hover); }
+.spektralab-menu button:disabled { opacity: .45; }
+.spektralab-menu kbd { color: var(--spektralab-muted); font: inherit; }
+
+@media (max-width: 720px) {
+  .spektralab-menubar { padding-inline: 6px; }
+  .spektralab-title { display: none; }
+  .spektralab-menus summary,
+  .spektralab-menus > button,
+  .spektralab-menubar .spektralab-back { padding-inline: 5px; }
+}
