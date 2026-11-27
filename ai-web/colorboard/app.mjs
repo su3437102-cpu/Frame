@@ -1,5 +1,4 @@
 import { DEFAULT_SETTINGS, PRESETS, parseCube, renderGrade } from './grade-engine.mjs';
-import { adaptiveLut } from './adaptive-grade.mjs';
 import { planAutomaticGrade } from './automatic-grade.mjs';
 import { generateSubjectMask } from './matte.mjs';
 import { generateBoxMask } from './box-segment.mjs';
@@ -95,7 +94,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     settings: { ...DEFAULT_SETTINGS },
     presetId: null,
     baseLut: null,
-    aiStrength: 70,
+    aiStrength: 100,
     aiRun: null,
     appliedLook: null,
     referenceLut: null,
@@ -412,7 +411,7 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     state.subjectPresetLayerId = null;
     state.aiRun = null;
     state.baseLut = null;
-    state.aiStrength = 70;
+    state.aiStrength = 100;
     state.layers = [];
     state.layerId = null;
     state.maskMode = null;
@@ -573,33 +572,27 @@ export function mountColorBoard(root, { source = '', name = '', theme = 'light',
     if (!state.photo || state.aiRun || state.appliedLook) return;
     const run = Symbol('AI run');
     const photo = state.photo;
-    const filmRecipe = JSON.stringify(state.filmPrint);
     state.aiRun = run;
     setBusy(el('run-ai'), true, '正在分析…');
-    inFlightMessage.textContent = '正在检查影调、RGB 触边和配色';
+    inFlightMessage.textContent = '正在测量黑点、中间调和白点';
     try {
-      const modelCanvas = sizedCanvas(photo.image, 600);
-      const modelContext = modelCanvas.getContext('2d', { willReadFrequently: true });
-      if (state.filmPrint.enabled) {
-        const pixels = modelContext.getImageData(0, 0, modelCanvas.width, modelCanvas.height);
-        modelContext.putImageData(renderFilmPrint(pixels, state.filmPrint), 0, 0);
-      }
-      let model;
-      try {
-        model = await adaptiveLut(modelCanvas);
-      } catch (error) {
-        console.warn('AI 模型不可用，转为影调检测。', error);
-      }
-      if (state.photo !== photo || state.aiRun !== run || listeners.signal.aborted) return;
-      if (state.appliedLook || filmRecipe !== JSON.stringify(state.filmPrint)) {
-        inFlightMessage.textContent = '当前配方已变化，可重新分析';
-        return;
-      }
+      await new Promise(resolve => window.setTimeout(resolve, 0));
+      if (state.photo !== photo || state.aiRun !== run || state.appliedLook || listeners.signal.aborted) return;
       const input = renderFilmPrint(photo.preview, state.filmPrint);
-      const { lut, label } = planAutomaticGrade(input, model);
+      const { lut, before, after, reason } = planAutomaticGrade(input);
+      const previous = state.baseLut;
       state.baseLut = lut;
-      const message = !lut ? '已保留原有影调与配色' : model ? label + '，已检查亮暗端与配色' : label + '，使用基础影调分析';
-      inFlightMessage.textContent = message;
+      if (lut && previous?.title !== lut.title) state.aiStrength = 100;
+      const percentiles = profile => [profile.p01, profile.p50, profile.p99].map(value => Math.round(value * 100)).join(' / ');
+      const messages = {
+        'in-range': '亮度已接近目标区间',
+        'insufficient': '可用的影调层次太少',
+        'clipping-or-color': '候选未通过影调与 RGB 复测'
+      };
+      const message = lut ? '已自动校正直方图' : messages[reason];
+      inFlightMessage.textContent = lut
+        ? `黑点 / 中间调 / 白点（100% 强度） ${percentiles(before)} → ${percentiles(after)}`
+        : message;
       if (!quiet) toast(message);
     } catch (error) {
       if (state.photo !== photo || state.aiRun !== run) return;

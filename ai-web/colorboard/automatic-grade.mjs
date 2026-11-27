@@ -8,6 +8,14 @@ const luminance = (r, g, b) => .2126 * r + .7152 * g + .0722 * b;
 const decodeByte = Float64Array.from({ length: 256 }, (_, code) => linear(code / 255));
 const opaque = 243;
 const hueTolerance = Math.cos(8 * Math.PI / 180);
+// These are working ranges for a natural SDR starting point, in sRGB-encoded luminance.
+const toneBands = [
+  { key: 'p01', low: .04, high: .12, maxMove: .34 },
+  { key: 'p50', low: .35, high: .65, maxMove: .30 },
+  { key: 'p99', low: .88, high: .97, maxMove: .34 }
+];
+const anchorGap = .018;
+const maxSlope = 4.2;
 
 function lightCode(pixels, offset) {
   return Math.round(255 * encoded(luminance(decodeByte[pixels[offset]],
@@ -16,13 +24,11 @@ function lightCode(pixels, offset) {
 
 function profile({ data }) {
   const histogram = new Uint32Array(256);
-  let count = 0, clipped = 0;
+  let count = 0;
   for (let offset = 0; offset < data.length; offset += 4) {
     if (data[offset + 3] < opaque) continue;
     histogram[lightCode(data, offset)]++;
     count++;
-    const r = data[offset], g = data[offset + 1], b = data[offset + 2];
-    if (Math.min(r, g, b) >= 254 || Math.max(r, g, b) <= 1) clipped++;
   }
   const at = fraction => {
     let total = 0;
@@ -32,29 +38,56 @@ function profile({ data }) {
     }
   };
   const p05 = at(.05), p95 = at(.95);
-  return { count, p05, p50: at(.5), p95, p99: at(.99), span: p95 - p05,
-    clipped: clipped / Math.max(count, 1), occupied: histogram.filter(Boolean).length };
+  return { count, p01: at(.01), p50: at(.5), p99: at(.99), span: p95 - p05,
+    occupied: histogram.filter(Boolean).length };
 }
 
-function chooseTarget({ count, p05, p50, p95, p99, span, clipped, occupied }) {
-  if (count < 256 || occupied < 16 || p50 < .23 || p50 > .77 || span < .30 || clipped > .18) return null;
-  if (p50 < .28) return { key: 'p50', direction: 1, label: '轻提中间调' };
-  if (p50 > .72) return { key: 'p50', direction: -1, label: '轻收中间调' };
-  if (p99 > .96 && p95 > .88) return { key: 'p95', direction: -1, label: '轻收高光' };
-  if (p05 > .015 && p05 < .10 && p95 > .50) return { key: 'p05', direction: 1, label: '轻提暗部' };
-  return null;
+function toneAnchors(before) {
+  return toneBands.flatMap(band => {
+    const input = before[band.key];
+    // Saturated endpoints and anchors too close to the median cannot describe independent tones.
+    if (input < .008 || input > .992 || (band.key !== 'p50' && Math.abs(input - before.p50) < anchorGap)) return [];
+    const desired = clamp(input, band.low, band.high);
+    return [{ ...band, input, output: input + clamp(desired - input, -band.maxMove, band.maxMove) }];
+  });
 }
 
-function toneWeight(key, light) {
-  if (key === 'p05') return clamp(light / .06) * clamp((.48 - light) / .38) ** 2;
-  if (key === 'p95') return clamp((light - .55) / .35) ** 2 * clamp((1 - light) / .04);
-  return Math.sin(Math.PI * light);
+function toneCurve(anchors, selected, amount) {
+  const points = [[0, 0]];
+  for (const { key, input, output } of anchors) {
+    const [lastInput, lastOutput] = points.at(-1);
+    const blend = selected.includes(key) ? amount : 0;
+    const min = Math.max(1 - (1 - input) * maxSlope, lastOutput);
+    const max = Math.min(lastOutput + (input - lastInput) * maxSlope, 1);
+    points.push([input, clamp(input + (output - input) * blend, min, max)]);
+  }
+  points.push([1, 1]);
+  const slopes = points.slice(1).map(([x, y], i) => (y - points[i][1]) / (x - points[i][0]));
+  // Harmonic means keep the interpolated curve monotone and smooth between measured anchors.
+  const tangents = points.map((_, i) => {
+    const a = slopes[i - 1] ?? slopes[i];
+    const b = slopes[i] ?? slopes[i - 1];
+    return a > 0 && b > 0 ? 2 * a * b / (a + b) : 0;
+  });
+  const last = 2048;
+  const table = Float32Array.from({ length: last + 1 }, (_, index) => {
+    const light = index / last;
+    const i = points.findIndex(([x]) => x >= light && x > 0) - 1;
+    const [x, y] = points[i], [nextX, nextY] = points[i + 1];
+    const width = nextX - x;
+    const t = (light - x) / width;
+    return y + (nextY - y) * (3 - 2 * t) * t * t
+      + width * t * (1 - t) * ((1 - t) * tangents[i] - t * tangents[i + 1]);
+  });
+  return light => {
+    const position = light * last;
+    const i = Math.min(last - 1, Math.floor(position));
+    return table[i] + (table[i + 1] - table[i]) * (position - i);
+  };
 }
 
-function buildLut(target, model, amount) {
-  // Use the learned tone direction as a suggestion. The mapping scales
-  // linear RGB together, preserving hue without inferring a neutral surface.
-  const size = model?.size ?? 33;
+function buildLut(curve) {
+  const size = 33;
   const last = size - 1;
   const data = new Float32Array(size ** 3 * 3);
   const levels = Array.from({ length: size }, (_, index) => linear(index / last));
@@ -64,20 +97,17 @@ function buildLut(target, model, amount) {
         const r = levels[red], g = levels[green], b = levels[blue];
         const y = luminance(r, g, b);
         const light = encoded(y);
-        const learned = model ? encoded(luminance(linear(clamp(model.data[offset])),
-          linear(clamp(model.data[offset + 1])), linear(clamp(model.data[offset + 2])))) - light : 0;
-        const limit = .046 * amount * toneWeight(target.key, light);
-        const proposal = model ? clamp(.65 + target.direction * learned * 9, .5, 1) : .75;
-        const desired = linear(clamp(light + limit * target.direction * proposal));
-        // Uniform gamut limiting also leaves already clipped color ratios intact.
-        const gain = y ? Math.min(desired / y, 1 / Math.max(r, g, b)) : 1;
+        const desired = linear(clamp(curve(clamp(light))));
+        const peak = Math.max(r, g, b);
+        // Scale RGB together so tone correction preserves hue and usable highlight headroom.
+        const gain = y ? Math.min(desired / y, Math.max(peak, linear(253 / 255)) / peak) : 1;
         data[offset] = encoded(r * gain);
         data[offset + 1] = encoded(g * gain);
         data[offset + 2] = encoded(b * gain);
       }
     }
   }
-  return { size, data, domainMin: [0, 0, 0], domainMax: [1, 1, 1], title: 'FrameLab Natural Auto' };
+  return { size, data, domainMin: [0, 0, 0], domainMax: [1, 1, 1], title: 'FrameLab Histogram Auto' };
 }
 
 function respectsClippingAndPalette({ data: before }, { data: after }, count) {
@@ -100,14 +130,17 @@ function respectsClippingAndPalette({ data: before }, { data: after }, count) {
     lowAll += Number(nowLow === 3 && wasLow < 3);
     if (offset % stride) continue;
     sampled++;
-    const [, a, b] = toLab(decodeByte[before[offset]], decodeByte[before[offset + 1]], decodeByte[before[offset + 2]]);
-    const [, nextA, nextB] = toLab(decodeByte[after[offset]], decodeByte[after[offset + 1]], decodeByte[after[offset + 2]]);
+    const [light, a, b] = toLab(decodeByte[before[offset]], decodeByte[before[offset + 1]], decodeByte[before[offset + 2]]);
+    const [nextLight, nextA, nextB] = toLab(decodeByte[after[offset]], decodeByte[after[offset + 1]], decodeByte[after[offset + 2]]);
     const c = Math.hypot(a, b), nextC = Math.hypot(nextA, nextB);
-    if (c < .012 && nextC > .025) neutralChanges++;
+    // Chroma scales with lightness under uniform linear gain. Compare proportional chroma.
+    const relative = c / Math.max(.08, light);
+    const nextRelative = nextC / Math.max(.08, nextLight);
+    if (relative < .03 && nextRelative > .055) neutralChanges++;
     if (c < .035) continue;
     chromatic++;
     if (a * nextA + b * nextB < c * nextC * hueTolerance) hueChanges++;
-    if (nextC < c * .8 || nextC > c * 1.2) chromaChanges++;
+    if (nextRelative < relative * .78 || nextRelative > relative * 1.22) chromaChanges++;
   }
   return highAny <= count * .001 && lowAny <= count * .001 && highAll <= count * .0003 && lowAll <= count * .001
     && hueChanges <= chromatic * .015 && chromaChanges <= chromatic * .025 && neutralChanges <= sampled * .005;
@@ -127,25 +160,43 @@ function sample(image) {
   return { width, height, data };
 }
 
-function passes(image, before, lut, target) {
-  const rendered = renderGrade(image, undefined, { baseLut: lut });
-  const after = profile(rendered);
-  return target.direction * (after[target.key] - before[target.key]) >= .0075
-    && Math.abs(after.p50 - before.p50) <= .038 && after.span >= before.span - .035
-    && respectsClippingAndPalette(image, rendered, before.count);
+function distanceToBands(profile, anchors) {
+  return anchors.reduce((sum, { key, low, high }) => {
+    const value = profile[key];
+    return sum + Math.abs(value - clamp(value, low, high));
+  }, 0);
 }
 
-export function planAutomaticGrade(image, model) {
+function measureCandidate(image, before, lut, anchors) {
+  const rendered = renderGrade(image, undefined, { baseLut: lut });
+  const after = profile(rendered);
+  const distance = distanceToBands(after, anchors);
+  const improvement = distanceToBands(before, anchors) - distance;
+  if (improvement < .0075 || after.span < before.span - .055
+    || !respectsClippingAndPalette(image, rendered, before.count)) return null;
+  return { after, distance };
+}
+
+export function planAutomaticGrade(image) {
   const before = profile(image);
-  const target = chooseTarget(before);
-  if (!target) return { lut: null };
+  if (before.count < 256 || before.occupied < 5 || before.span < .025) return { lut: null, reason: 'insufficient' };
+  const anchors = toneAnchors(before);
+  if (distanceToBands(before, anchors) < .008) return { lut: null, reason: 'in-range' };
   const thumbnail = sample(image);
   const small = thumbnail === image ? before : profile(thumbnail);
-  for (const amount of [.75, .5, .25]) {
-    const lut = buildLut(target, model, amount);
-    if (passes(thumbnail, small, lut, target) && (thumbnail === image || passes(image, before, lut, target))) {
-      return { lut, label: target.label };
+  const active = anchors.filter(({ input, output }) => input !== output).map(({ key }) => key);
+  const variants = active.length > 1 ? [active, ...active.map(key => [key])] : [active];
+  let best;
+  for (const selected of variants) {
+    for (const amount of [1, .75, .5, .25, .125]) {
+      const lut = buildLut(toneCurve(anchors, selected, amount));
+      const estimated = measureCandidate(thumbnail, small, lut, anchors);
+      if (!estimated) continue;
+      const result = thumbnail === image ? estimated : measureCandidate(image, before, lut, anchors);
+      if (!result || (best && result.distance >= best.distance - .004)) continue;
+      best = { lut, before, ...result };
+      if (result.distance <= .008) return best;
     }
   }
-  return { lut: null };
+  return best ?? { lut: null, reason: 'clipping-or-color' };
 }
